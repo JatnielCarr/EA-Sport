@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EA Sports Tournament - Admin Panel</title>
+  <!-- Google Fonts - Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Font Awesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Custom Styles -->
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+  <div id="app">
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <div class="logo">
+          <i class="fas fa-gamepad"></i>
+          <span>EA Sports</span>
+        </div>
+        <button class="sidebar-toggle" id="sidebarToggle">
+          <i class="fas fa-bars"></i>
+        </button>
+      </div>
+      
+      <nav class="sidebar-nav">
+        <ul>
+          <li>
+            <a href="#/dashboard" class="nav-link active" data-page="dashboard">
+              <i class="fas fa-home"></i>
+              <span>Dashboard</span>
+            </a>
+          </li>
+          <li>
+            <a href="#/users" class="nav-link" data-page="users">
+              <i class="fas fa-users"></i>
+              <span>Usuarios</span>
+            </a>
+          </li>
+          <li>
+            <a href="#/tournaments" class="nav-link" data-page="tournaments">
+              <i class="fas fa-trophy"></i>
+              <span>Torneos</span>
+            </a>
+          </li>
+          <li>
+            <a href="#/teams" class="nav-link" data-page="teams">
+              <i class="fas fa-users-cog"></i>
+              <span>Equipos</span>
+            </a>
+          </li>
+          <li>
+            <a href="#/matches" class="nav-link" data-page="matches">
+              <i class="fas fa-gamepad"></i>
+              <span>Partidas</span>
+            </a>
+          </li>
+          <li>
+            <a href="#/games" class="nav-link" data-page="games">
+              <i class="fas fa-dice"></i>
+              <span>Juegos</span>
+            </a>
+          </li>
+        </ul>
+      </nav>
+      
+      <div class="sidebar-footer">
+        <div class="user-info">
+          <div class="avatar">
+            <i class="fas fa-user-shield"></i>
+          </div>
+          <div class="user-details">
+            <span class="user-name">Admin</span>
+            <span class="user-role">Administrador</span>
+          </div>
+          <button class="logout-btn" onclick="logout()" title="Cerrar sesión">
+            <i class="fas fa-sign-out-alt"></i>
+          </button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <!-- Header -->
+      <header class="header">
+        <div class="header-left">
+          <button class="mobile-menu-btn" id="mobileMenuBtn">
+            <i class="fas fa-bars"></i>
+          </button>
+          <h1 class="page-title" id="pageTitle">Dashboard</h1>
+        </div>
+        <div class="header-right">
+          <div class="search-box">
+            <i class="fas fa-search"></i>
+            <input type="text" placeholder="Buscar..." id="globalSearch">
+          </div>
+          <button class="notification-btn">
+            <i class="fas fa-bell"></i>
+            <span class="badge">3</span>
+          </button>
+          <button class="theme-toggle" id="themeToggle">
+            <i class="fas fa-moon"></i>
+          </button>
+        </div>
+      </header>
+
+      <!-- Page Content -->
+      <div class="page-content" id="pageContent">
+        <!-- Content will be loaded here dynamically -->
+      </div>
+    </main>
+  </div>
+
+  <!-- Modal Container -->
+  <div class="modal-overlay" id="modalOverlay">
+    <div class="modal" id="modal">
+      <div class="modal-header">
+        <h2 class="modal-title" id="modalTitle">Modal</h2>
+        <button class="modal-close" id="modalClose">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div class="modal-body" id="modalBody">
+        <!-- Modal content will be loaded here -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Container -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <script type="module" src="/js/app.js"></script>
+</body>
+</html>
