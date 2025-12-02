@@ -20,16 +20,34 @@ class ApiClient {
     };
 
     try {
+      console.log(`🔗 API Request: ${config.method || 'GET'} ${url}`);
       const response = await fetch(url, config);
-      const data = await response.json();
+      
+      // Manejar respuestas no-JSON
+      const contentType = response.headers.get('content-type');
+      let data;
+      
+      if (contentType && contentType.includes('application/json')) {
+        data = await response.json();
+      } else {
+        const text = await response.text();
+        console.error('Non-JSON response:', text);
+        throw new Error(`Respuesta no válida del servidor: ${response.status}`);
+      }
+      
+      console.log(`✅ API Response:`, data);
       
       if (!response.ok) {
-        throw new Error(data.error?.message || 'Error en la petición');
+        throw new Error(data.error?.message || data.message || `Error HTTP: ${response.status}`);
       }
       
       return data;
     } catch (error) {
-      console.error('API Error:', error);
+      console.error('❌ API Error:', error);
+      // Si es un error de red (fetch failed)
+      if (error.name === 'TypeError' && error.message.includes('fetch')) {
+        throw new Error('No se puede conectar con el servidor. Verifica que el backend esté corriendo.');
+      }
       throw error;
     }
   }
@@ -110,6 +128,7 @@ export const API = {
     getById: (id) => api.get(`/matches/${id}`),
     create: (data) => api.post('/matches', data),
     update: (id, data) => api.put(`/matches/${id}`, data),
+    delete: (id) => api.delete(`/matches/${id}`),
     reportResult: (matchId, data) => api.post(`/matches/${matchId}/results`, data),
     validateResult: (resultId, data) => api.put(`/match-results/${resultId}/validate`, data)
   },
@@ -117,7 +136,10 @@ export const API = {
   // Games
   games: {
     getAll: () => api.get('/games'),
-    create: (data) => api.post('/games', data)
+    getById: (id) => api.get(`/games/${id}`),
+    create: (data) => api.post('/games', data),
+    update: (id, data) => api.put(`/games/${id}`, data),
+    delete: (id) => api.delete(`/games/${id}`)
   },
 
   // Standings

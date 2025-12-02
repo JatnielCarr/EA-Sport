@@ -9,7 +9,8 @@ import { renderTeams } from './pages/teams.js';
 import { renderMatches } from './pages/matches.js';
 import { renderGames } from './pages/games.js';
 import { renderLogin, cleanupLogin } from './pages/login.js';
-import { showToast } from './ui.js';
+import { renderBracket } from './pages/bracket.js';
+import { showToast, initGamingEffects, closeModal, initModalHandlers } from './ui.js';
 import Auth from './auth.js';
 
 // =====================================================
@@ -26,6 +27,11 @@ const routes = {
   '/games': renderGames,
   '/login': renderLogin
 };
+
+// Dynamic routes patterns
+const dynamicRoutes = [
+  { pattern: /^\/tournaments\/([^/]+)\/bracket$/, handler: (container, params) => renderBracket(container, params[0]) }
+];
 
 // Protected routes that require authentication
 const protectedRoutes = ['/', '/dashboard', '/users', '/tournaments', '/teams', '/matches', '/games'];
@@ -59,7 +65,8 @@ async function navigateTo(route) {
   }
 
   // Check authentication for protected routes
-  if (protectedRoutes.includes(route) && !Auth.isLoggedIn()) {
+  const isProtectedRoute = protectedRoutes.includes(route) || route.startsWith('/tournaments/');
+  if (isProtectedRoute && !Auth.isLoggedIn()) {
     window.location.hash = '#/login';
     return;
   }
@@ -72,10 +79,22 @@ async function navigateTo(route) {
 
   // Find matching route handler
   let handler = routes[route];
+  let handlerParams = null;
   
-  // Handle dynamic routes (future enhancement)
+  // Handle dynamic routes
   if (!handler) {
-    // Default to dashboard if route not found
+    for (const dynamicRoute of dynamicRoutes) {
+      const match = route.match(dynamicRoute.pattern);
+      if (match) {
+        handler = dynamicRoute.handler;
+        handlerParams = match.slice(1); // Extract captured groups
+        break;
+      }
+    }
+  }
+  
+  // Default to dashboard if route not found
+  if (!handler) {
     handler = routes['/'];
     route = '/';
   }
@@ -91,7 +110,11 @@ async function navigateTo(route) {
   
   // Execute route handler
   try {
-    await handler(container);
+    if (handlerParams) {
+      await handler(container, handlerParams);
+    } else {
+      await handler(container);
+    }
   } catch (error) {
     console.error('Error rendering page:', error);
     container.innerHTML = `
@@ -331,6 +354,7 @@ window.toggleTheme = toggleTheme;
 window.toggleSidebar = toggleSidebar;
 window.toggleMobileMenu = toggleMobileMenu;
 window.logout = logout;
+window.closeModal = closeModal;
 
 // =====================================================
 // Application Initialization
@@ -346,6 +370,10 @@ async function init() {
   initMobileMenu();
   initUserSession();
   setupEventListeners();
+  initModalHandlers();
+
+  // Initialize gaming effects
+  initGamingEffects();
 
   // Check API health
   await checkAPIHealth();

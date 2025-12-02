@@ -158,8 +158,8 @@ function renderGamesCards(games) {
     const icon = gameIcons[g.slug] || gameIcons['default'];
     return `
     <div class="game-card" data-id="${g.id}" data-game="${g.slug || ''}">
-      ${g.cover_image_url ? 
-        `<img src="${g.cover_image_url}" alt="${g.name}" class="game-image" onerror="this.outerHTML='<div class=game-image-placeholder><i class=fas ${icon}></i></div>'">` :
+      ${g.icon_url ? 
+        `<img src="${g.icon_url}" alt="${g.name}" class="game-image" onerror="this.outerHTML='<div class=game-image-placeholder><i class=fas ${icon}></i></div>'">` :
         `<div class="game-image-placeholder"><i class="fas ${icon}"></i></div>`
       }
       <div class="game-content">
@@ -253,56 +253,21 @@ function showGameForm(game = null) {
 
       <div class="form-row">
         <div class="form-group">
-          <label class="form-label">Desarrollador</label>
+          <label class="form-label">Desarrollador *</label>
           <input type="text" class="form-control" name="developer" 
-                 value="${game?.developer || ''}" placeholder="Ej: Riot Games">
+                 value="${game?.developer || ''}" required placeholder="Ej: Riot Games">
         </div>
         <div class="form-group">
-          <label class="form-label">Año de Lanzamiento</label>
-          <input type="number" class="form-control" name="release_year" 
-                 value="${game?.release_year || ''}" min="1990" max="2030" placeholder="2023">
-        </div>
-      </div>
-
-      <div class="form-row">
-        <div class="form-group">
-          <label class="form-label">Género *</label>
-          <select class="form-control" name="genre" required>
-            <option value="">Seleccionar género</option>
-            <option value="FPS" ${game?.genre === 'FPS' ? 'selected' : ''}>Shooter (FPS)</option>
-            <option value="MOBA" ${game?.genre === 'MOBA' ? 'selected' : ''}>MOBA</option>
-            <option value="BATTLE_ROYALE" ${game?.genre === 'BATTLE_ROYALE' ? 'selected' : ''}>Battle Royale</option>
-            <option value="SPORTS" ${game?.genre === 'SPORTS' ? 'selected' : ''}>Deportes</option>
-            <option value="RACING" ${game?.genre === 'RACING' ? 'selected' : ''}>Carreras</option>
-            <option value="FIGHTING" ${game?.genre === 'FIGHTING' ? 'selected' : ''}>Lucha</option>
-            <option value="STRATEGY" ${game?.genre === 'STRATEGY' ? 'selected' : ''}>Estrategia</option>
-            <option value="OTHER" ${game?.genre === 'OTHER' ? 'selected' : ''}>Otro</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Tamaño de Equipo</label>
-          <input type="number" class="form-control" name="team_size" 
-                 value="${game?.team_size || 5}" min="1" max="20">
+          <label class="form-label">Tamaño de Equipo por Defecto *</label>
+          <input type="number" class="form-control" name="team_size_default" 
+                 value="${game?.team_size_default || 5}" min="1" max="20" required>
         </div>
       </div>
 
       <div class="form-group">
-        <label class="form-label">URL de Imagen de Portada</label>
-        <input type="url" class="form-control" name="cover_image_url" 
-               value="${game?.cover_image_url || ''}" placeholder="https://...">
-      </div>
-
-      <div class="form-group">
-        <label class="form-label">Descripción</label>
-        <textarea class="form-control" name="description" rows="3" 
-                  placeholder="Descripción del juego...">${game?.description || ''}</textarea>
-      </div>
-
-      <div class="form-group">
-        <label class="form-label">Configuración de Ranking (JSON)</label>
-        <textarea class="form-control" name="ranking_config" rows="4" 
-                  placeholder='{"tiers": ["Bronze", "Silver", "Gold"], ...}'>${game?.ranking_config ? JSON.stringify(game.ranking_config, null, 2) : ''}</textarea>
-        <small class="text-muted">Opcional: Configuración personalizada para el sistema de ranking</small>
+        <label class="form-label">URL del Icono</label>
+        <input type="url" class="form-control" name="icon_url" 
+               value="${game?.icon_url || ''}" placeholder="https://...">
       </div>
 
       <div class="modal-footer">
@@ -335,20 +300,10 @@ function showGameForm(game = null) {
     const data = Object.fromEntries(formData.entries());
     
     // Convert numeric fields
-    data.release_year = data.release_year ? parseInt(data.release_year) : null;
-    data.team_size = parseInt(data.team_size) || 5;
+    data.team_size_default = parseInt(data.team_size_default) || 5;
 
-    // Parse ranking config JSON if provided
-    if (data.ranking_config) {
-      try {
-        data.ranking_config = JSON.parse(data.ranking_config);
-      } catch {
-        showToast('error', 'Error', 'El JSON de configuración de ranking no es válido');
-        return;
-      }
-    } else {
-      delete data.ranking_config;
-    }
+    // Remove empty optional fields
+    if (!data.icon_url) delete data.icon_url;
 
     try {
       if (isEdit) {

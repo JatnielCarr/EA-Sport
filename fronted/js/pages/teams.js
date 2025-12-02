@@ -8,20 +8,23 @@ import { showLoading, showToast, openModal, closeModal, confirmDialog, formatDat
 let allTeams = [];
 let allUsers = [];
 let allGames = [];
+let allTournaments = [];
 
 export async function renderTeams(container) {
   showLoading(container);
 
   try {
-    const [teamsRes, usersRes, gamesRes] = await Promise.all([
+    const [teamsRes, usersRes, gamesRes, tournamentsRes] = await Promise.all([
       API.teams.getAll(),
       API.users.getAll(),
-      API.games.getAll()
+      API.games.getAll(),
+      API.tournaments.getAll()
     ]);
 
     allTeams = teamsRes.data || [];
     allUsers = usersRes.data || [];
     allGames = gamesRes.data || [];
+    allTournaments = tournamentsRes.data || [];
 
     container.innerHTML = `
       <div class="card">
@@ -43,11 +46,11 @@ export async function renderTeams(container) {
             <thead>
               <tr>
                 <th>Equipo</th>
+                <th>Torneo</th>
                 <th>Capitán</th>
                 <th>Juego</th>
-                <th>Región</th>
                 <th>Jugadores</th>
-                <th>Rating</th>
+                <th>Estado</th>
                 <th>Fecha de Creación</th>
                 <th>Acciones</th>
               </tr>
@@ -96,14 +99,14 @@ function renderTeamsRows(teams) {
           </div>
         </div>
       </td>
+      <td>${getTournamentName(t.tournament_id)}</td>
       <td>${getCaptainName(t.captain_id)}</td>
-      <td>${getGameName(t.game_id)}</td>
-      <td>${t.region || 'N/A'}</td>
+      <td>${getGameName(t.tournament_id)}</td>
       <td>
         <span class="badge badge-info">${t.players?.length || 0} jugadores</span>
       </td>
       <td>
-        <span class="rating">${t.rating || 1500}</span>
+        ${t.approved ? '<span class="badge badge-success">Aprobado</span>' : '<span class="badge badge-warning">Pendiente</span>'}
       </td>
       <td>${formatDate(t.created_at)}</td>
       <td>
@@ -126,9 +129,16 @@ function getCaptainName(captainId) {
   return user ? user.username : 'N/A';
 }
 
-function getGameName(gameId) {
-  const game = allGames.find(g => g.id === gameId);
+function getGameName(tournamentId) {
+  const tournament = allTournaments.find(t => t.id === tournamentId);
+  if (!tournament) return 'N/A';
+  const game = allGames.find(g => g.id === tournament.game_id);
   return game ? game.name : 'N/A';
+}
+
+function getTournamentName(tournamentId) {
+  const tournament = allTournaments.find(t => t.id === tournamentId);
+  return tournament ? tournament.name : 'N/A';
 }
 
 function handleSearch(e) {
@@ -240,7 +250,7 @@ function showPlayersModal(team) {
     };
 
     try {
-      await API.players.addToTeam(data);
+      await API.teams.addPlayer(team.id, data);
       showToast('success', 'Éxito', 'Jugador añadido al equipo');
       closeModal();
       const container = document.getElementById('pageContent');
@@ -254,7 +264,7 @@ function showPlayersModal(team) {
 window.removePlayerFromTeam = async function(teamId, userId) {
   if (await confirmDialog('¿Eliminar este jugador del equipo?')) {
     try {
-      await API.players.removeFromTeam(teamId, userId);
+      await API.teams.removePlayer(teamId, userId);
       showToast('success', 'Éxito', 'Jugador eliminado del equipo');
       closeModal();
       const container = document.getElementById('pageContent');
@@ -269,8 +279,8 @@ function showTeamForm(team = null) {
   const isEdit = !!team;
   const title = isEdit ? 'Editar Equipo' : 'Nuevo Equipo';
 
-  const gamesOptions = allGames.map(g => 
-    `<option value="${g.id}" ${team?.game_id === g.id ? 'selected' : ''}>${g.name}</option>`
+  const tournamentsOptions = allTournaments.map(t => 
+    `<option value="${t.id}" ${team?.tournament_id === t.id ? 'selected' : ''}>${t.name}</option>`
   ).join('');
 
   const captainsOptions = allUsers.map(u => 
@@ -295,10 +305,10 @@ function showTeamForm(team = null) {
 
       <div class="form-row">
         <div class="form-group">
-          <label class="form-label">Juego *</label>
-          <select class="form-control" name="game_id" required>
-            <option value="">Seleccionar juego</option>
-            ${gamesOptions}
+          <label class="form-label">Torneo *</label>
+          <select class="form-control" name="tournament_id" required>
+            <option value="">Seleccionar torneo</option>
+            ${tournamentsOptions}
           </select>
         </div>
         <div class="form-group">
@@ -310,33 +320,10 @@ function showTeamForm(team = null) {
         </div>
       </div>
 
-      <div class="form-row">
-        <div class="form-group">
-          <label class="form-label">Región</label>
-          <select class="form-control" name="region">
-            <option value="">Sin especificar</option>
-            <option value="NA" ${team?.region === 'NA' ? 'selected' : ''}>Norte América</option>
-            <option value="EU" ${team?.region === 'EU' ? 'selected' : ''}>Europa</option>
-            <option value="LATAM" ${team?.region === 'LATAM' ? 'selected' : ''}>Latinoamérica</option>
-            <option value="ASIA" ${team?.region === 'ASIA' ? 'selected' : ''}>Asia</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Rating Inicial</label>
-          <input type="number" class="form-control" name="rating" 
-                 value="${team?.rating || 1500}" min="0">
-        </div>
-      </div>
-
       <div class="form-group">
         <label class="form-label">URL del Logo</label>
         <input type="url" class="form-control" name="logo_url" 
                value="${team?.logo_url || ''}" placeholder="https://...">
-      </div>
-
-      <div class="form-group">
-        <label class="form-label">Descripción</label>
-        <textarea class="form-control" name="description" rows="3">${team?.description || ''}</textarea>
       </div>
 
       <div class="modal-footer">
@@ -354,9 +341,6 @@ function showTeamForm(team = null) {
     e.preventDefault();
     const formData = new FormData(e.target);
     const data = Object.fromEntries(formData.entries());
-    
-    // Convert rating to number
-    data.rating = parseInt(data.rating) || 1500;
 
     try {
       if (isEdit) {

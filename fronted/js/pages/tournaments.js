@@ -105,6 +105,9 @@ function renderTournamentsRows(tournaments) {
       </td>
       <td>${formatDateShort(t.start_date)}</td>
       <td>
+        <a href="#/tournaments/${t.id}/bracket" class="btn btn-primary btn-sm btn-icon" title="Ver Bracket">
+          <i class="fas fa-sitemap"></i>
+        </a>
         <button class="btn btn-secondary btn-sm btn-icon" data-action="view" title="Ver detalles">
           <i class="fas fa-eye"></i>
         </button>
@@ -424,6 +427,14 @@ function showTournamentForm(tournament = null) {
     data.max_participants = parseInt(data.max_participants);
     data.entry_fee = parseFloat(data.entry_fee) || 0;
     data.prize_pool = parseFloat(data.prize_pool) || 0;
+
+    // Convert dates to ISO format
+    if (data.start_date) {
+      data.start_date = new Date(data.start_date).toISOString();
+    }
+    if (data.registration_deadline) {
+      data.registration_deadline = new Date(data.registration_deadline).toISOString();
+    }
 
     try {
       if (isEdit) {

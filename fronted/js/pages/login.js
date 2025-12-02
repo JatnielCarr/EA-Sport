@@ -78,7 +78,7 @@ export async function renderLogin(container) {
 
         <div class="login-demo">
           <p><i class="fas fa-info-circle"></i> Credenciales de prueba:</p>
-          <code>admin@esports.com / Admin123!</code>
+          <code>admin@easports.com / admin123</code>
         </div>
       </div>
 

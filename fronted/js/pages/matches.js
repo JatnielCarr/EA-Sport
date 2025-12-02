@@ -101,21 +101,21 @@ function renderMatchesRows(matches) {
       </td>
       <td>${getTournamentName(m.tournament_id)}</td>
       <td>${m.round || '-'}</td>
-      <td class="${m.winner_id === m.team1_id ? 'winner' : ''}">
-        ${getTeamName(m.team1_id)}
+      <td class="${m.winner_id === m.home_team_id ? 'winner' : ''}">
+        ${getTeamName(m.home_team_id)}
       </td>
       <td class="text-center text-muted">VS</td>
-      <td class="${m.winner_id === m.team2_id ? 'winner' : ''}">
-        ${getTeamName(m.team2_id)}
+      <td class="${m.winner_id === m.away_team_id ? 'winner' : ''}">
+        ${getTeamName(m.away_team_id)}
       </td>
       <td class="text-center">
         ${m.status === 'COMPLETED' ? 
-          `<span class="score">${m.team1_score || 0} - ${m.team2_score || 0}</span>` : 
+          `<span class="score">${m.home_score || 0} - ${m.away_score || 0}</span>` : 
           '-'
         }
       </td>
       <td>${getMatchStatusBadge(m.status)}</td>
-      <td>${formatDateShort(m.scheduled_at)}</td>
+      <td>${formatDateShort(m.scheduled_datetime)}</td>
       <td>
         ${m.status !== 'COMPLETED' ? `
           <button class="btn btn-success btn-sm btn-icon" data-action="score" title="Reportar resultado">
@@ -210,22 +210,22 @@ async function handleTableActions(e) {
 }
 
 function showScoreModal(match) {
-  const team1 = allTeams.find(t => t.id === match.team1_id);
-  const team2 = allTeams.find(t => t.id === match.team2_id);
+  const team1 = allTeams.find(t => t.id === match.home_team_id);
+  const team2 = allTeams.find(t => t.id === match.away_team_id);
 
   const content = `
     <form id="scoreForm">
       <div class="score-input">
         <div class="team-score">
-          <label class="form-label">${team1?.name || 'Equipo 1'}</label>
-          <input type="number" class="form-control score-field" name="team1_score" 
-                 value="${match.team1_score || 0}" min="0" required>
+          <label class="form-label">${team1?.name || 'Equipo Local'}</label>bel>
+          <input type="number" class="form-control score-field" name="home_score" 
+                 value="${match.home_score || 0}" min="0" required>
         </div>
         <div class="vs-separator">VS</div>
         <div class="team-score">
-          <label class="form-label">${team2?.name || 'Equipo 2'}</label>
-          <input type="number" class="form-control score-field" name="team2_score" 
-                 value="${match.team2_score || 0}" min="0" required>
+          <label class="form-label">${team2?.name || 'Equipo Visitante'}</label>
+          <input type="number" class="form-control score-field" name="away_score" 
+                 value="${match.away_score || 0}" min="0" required>
         </div>
       </div>
 
@@ -233,8 +233,8 @@ function showScoreModal(match) {
         <label class="form-label">Ganador</label>
         <select class="form-control" name="winner_id" required>
           <option value="">Seleccionar ganador</option>
-          <option value="${match.team1_id}">${team1?.name || 'Equipo 1'}</option>
-          <option value="${match.team2_id}">${team2?.name || 'Equipo 2'}</option>
+          <option value="${match.home_team_id}">${team1?.name || 'Equipo Local'}</option>
+          <option value="${match.away_team_id}">${team2?.name || 'Equipo Visitante'}</option>
         </select>
       </div>
 
@@ -284,8 +284,8 @@ function showScoreModal(match) {
     e.preventDefault();
     const formData = new FormData(e.target);
     const data = {
-      team1_score: parseInt(formData.get('team1_score')),
-      team2_score: parseInt(formData.get('team2_score')),
+      home_score: parseInt(formData.get('home_score')),
+      away_score: parseInt(formData.get('away_score')),
       winner_id: formData.get('winner_id'),
       status: formData.get('status')
     };
@@ -326,16 +326,16 @@ function showMatchForm(match = null) {
 
       <div class="form-row">
         <div class="form-group">
-          <label class="form-label">Equipo 1 *</label>
-          <select class="form-control" name="team1_id" required>
-            <option value="">Seleccionar equipo</option>
+          <label class="form-label">Equipo Local</label>
+          <select class="form-control" name="home_team_id">
+            <option value="">Sin asignar</option>
             ${teamsOptions}
           </select>
         </div>
         <div class="form-group">
-          <label class="form-label">Equipo 2 *</label>
-          <select class="form-control" name="team2_id" required>
-            <option value="">Seleccionar equipo</option>
+          <label class="form-label">Equipo Visitante</label>
+          <select class="form-control" name="away_team_id">
+            <option value="">Sin asignar</option>
             ${teamsOptions}
           </select>
         </div>
@@ -343,18 +343,23 @@ function showMatchForm(match = null) {
 
       <div class="form-row">
         <div class="form-group">
-          <label class="form-label">Ronda</label>
+          <label class="form-label">Ronda *</label>
           <input type="number" class="form-control" name="round" 
-                 value="${match?.round || 1}" min="1">
+                 value="${match?.round || 1}" min="1" required>
         </div>
         <div class="form-group">
-          <label class="form-label">Número de Match</label>
+          <label class="form-label">Número de Match *</label>
           <input type="number" class="form-control" name="match_number" 
-                 value="${match?.match_number || 1}" min="1">
+                 value="${match?.match_number || 1}" min="1" required>
         </div>
       </div>
 
       <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Posición en Bracket *</label>
+          <input type="number" class="form-control" name="bracket_position" 
+                 value="${match?.bracket_position || 1}" min="1" required>
+        </div>
         <div class="form-group">
           <label class="form-label">Mejor de (BO)</label>
           <select class="form-control" name="best_of">
@@ -363,27 +368,24 @@ function showMatchForm(match = null) {
             <option value="5" ${match?.best_of === 5 ? 'selected' : ''}>BO5</option>
           </select>
         </div>
+      </div>
+
+      <div class="form-row">
         <div class="form-group">
           <label class="form-label">Estado</label>
           <select class="form-control" name="status">
-            <option value="PENDING" ${match?.status === 'PENDING' ? 'selected' : ''}>Pendiente</option>
             <option value="SCHEDULED" ${match?.status === 'SCHEDULED' ? 'selected' : ''}>Programada</option>
-            <option value="IN_PROGRESS" ${match?.status === 'IN_PROGRESS' ? 'selected' : ''}>En Progreso</option>
+            <option value="CHECK_IN" ${match?.status === 'CHECK_IN' ? 'selected' : ''}>Check-in</option>
+            <option value="LIVE" ${match?.status === 'LIVE' ? 'selected' : ''}>En Vivo</option>
             <option value="COMPLETED" ${match?.status === 'COMPLETED' ? 'selected' : ''}>Completada</option>
+            <option value="CANCELLED" ${match?.status === 'CANCELLED' ? 'selected' : ''}>Cancelada</option>
           </select>
         </div>
-      </div>
-
-      <div class="form-group">
-        <label class="form-label">Fecha Programada *</label>
-        <input type="datetime-local" class="form-control" name="scheduled_at" 
-               value="${match?.scheduled_at ? formatForInput(match.scheduled_at) : ''}" required>
-      </div>
-
-      <div class="form-group">
-        <label class="form-label">URL del Stream</label>
-        <input type="url" class="form-control" name="stream_url" 
-               value="${match?.stream_url || ''}" placeholder="https://twitch.tv/...">
+        <div class="form-group">
+          <label class="form-label">Fecha Programada</label>
+          <input type="datetime-local" class="form-control" name="scheduled_datetime" 
+                 value="${match?.scheduled_datetime ? formatForInput(match.scheduled_datetime) : ''}">
+        </div>
       </div>
 
       <div class="modal-footer">
@@ -400,8 +402,8 @@ function showMatchForm(match = null) {
   // Pre-select teams if editing
   if (isEdit) {
     setTimeout(() => {
-      document.querySelector(`select[name="team1_id"]`).value = match.team1_id || '';
-      document.querySelector(`select[name="team2_id"]`).value = match.team2_id || '';
+      document.querySelector(`select[name="home_team_id"]`).value = match.home_team_id || '';
+      document.querySelector(`select[name="away_team_id"]`).value = match.away_team_id || '';
     }, 100);
   }
 
@@ -413,10 +415,22 @@ function showMatchForm(match = null) {
     // Convert numeric fields
     data.round = parseInt(data.round) || 1;
     data.match_number = parseInt(data.match_number) || 1;
+    data.bracket_position = parseInt(data.bracket_position) || 1;
     data.best_of = parseInt(data.best_of) || 1;
 
-    // Validate teams are different
-    if (data.team1_id === data.team2_id) {
+    // Remove empty optional fields
+    if (!data.home_team_id) delete data.home_team_id;
+    if (!data.away_team_id) delete data.away_team_id;
+    
+    // Convert datetime to ISO format if provided
+    if (data.scheduled_datetime) {
+      data.scheduled_datetime = new Date(data.scheduled_datetime).toISOString();
+    } else {
+      delete data.scheduled_datetime;
+    }
+
+    // Validate teams are different if both provided
+    if (data.home_team_id && data.away_team_id && data.home_team_id === data.away_team_id) {
       showToast('error', 'Error', 'Los equipos deben ser diferentes');
       return;
     }

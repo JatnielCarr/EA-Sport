@@ -3,24 +3,213 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>EA Sports Tournament - Admin Panel</title>
-  <!-- Google Fonts - Inter -->
+  <title>EA SPORTS | Tournament Hub Pro 🎮</title>
+  <meta name="description" content="Professional Esports Tournament Management - The Ultimate Gaming Platform">
+  
+  <!-- Favicon Gaming -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎮</text></svg>">
+  
+  <!-- Google Fonts - Gaming Typography -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
   <!-- Font Awesome Icons -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  
   <!-- Custom Styles -->
   <link rel="stylesheet" href="/css/styles.css">
+  
+  <style>
+    /* 🎮 EPIC GAMING PRELOADER */
+    .preloader {
+      position: fixed;
+      inset: 0;
+      background: linear-gradient(135deg, #0a0e17 0%, #111827 50%, #0a0e17 100%);
+      z-index: 9999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      transition: opacity 0.6s ease, visibility 0.6s ease;
+    }
+    
+    .preloader.loaded {
+      opacity: 0;
+      visibility: hidden;
+    }
+    
+    .loader-logo {
+      position: relative;
+      width: 140px;
+      height: 140px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 30px;
+    }
+    
+    .loader-ring {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      border: 3px solid transparent;
+      border-radius: 50%;
+    }
+    
+    .loader-ring:nth-child(1) {
+      border-top-color: #00d4ff;
+      animation: spin 1.5s linear infinite;
+    }
+    
+    .loader-ring:nth-child(2) {
+      width: 85%;
+      height: 85%;
+      border-right-color: #00ff88;
+      animation: spin 2s linear infinite reverse;
+    }
+    
+    .loader-ring:nth-child(3) {
+      width: 70%;
+      height: 70%;
+      border-bottom-color: #ff6b35;
+      animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+      100% { transform: rotate(360deg); }
+    }
+    
+    .loader-icon {
+      font-size: 45px;
+      color: #00d4ff;
+      z-index: 10;
+      animation: pulse-glow 2s ease-in-out infinite;
+      filter: drop-shadow(0 0 20px rgba(0, 212, 255, 0.8));
+    }
+    
+    @keyframes pulse-glow {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.1); filter: drop-shadow(0 0 40px rgba(0, 212, 255, 1)); }
+    }
+    
+    .loader-text {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 28px;
+      font-weight: 900;
+      letter-spacing: 6px;
+      margin-bottom: 8px;
+      background: linear-gradient(90deg, #00d4ff, #00ff88, #ff6b35, #00d4ff);
+      background-size: 300% 100%;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      animation: gradient-shift 3s linear infinite;
+    }
+    
+    @keyframes gradient-shift {
+      0% { background-position: 0% 50%; }
+      100% { background-position: 300% 50%; }
+    }
+    
+    .loader-subtitle {
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 12px;
+      letter-spacing: 10px;
+      color: #64748b;
+      text-transform: uppercase;
+      margin-bottom: 40px;
+    }
+    
+    .loader-bar {
+      width: 280px;
+      height: 3px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 3px;
+      overflow: hidden;
+      position: relative;
+    }
+    
+    .loader-progress {
+      height: 100%;
+      background: linear-gradient(90deg, #00d4ff, #00ff88, #ff6b35);
+      border-radius: 3px;
+      animation: load 2s ease-in-out forwards;
+      box-shadow: 0 0 20px rgba(0, 212, 255, 0.5);
+    }
+    
+    @keyframes load {
+      0% { width: 0%; }
+      20% { width: 20%; }
+      50% { width: 50%; }
+      80% { width: 80%; }
+      100% { width: 100%; }
+    }
+    
+    .loader-status {
+      margin-top: 20px;
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 11px;
+      color: #00d4ff;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      animation: blink 1s infinite;
+    }
+    
+    @keyframes blink {
+      0%, 50%, 100% { opacity: 1; }
+      25%, 75% { opacity: 0.5; }
+    }
+    
+    /* Floating particles */
+    .particles {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      pointer-events: none;
+    }
+    
+    .particle {
+      position: absolute;
+      width: 4px;
+      height: 4px;
+      background: #00d4ff;
+      border-radius: 50%;
+      animation: float-up 10s infinite;
+    }
+    
+    @keyframes float-up {
+      0% { transform: translateY(100vh) scale(0); opacity: 0; }
+      10% { opacity: 1; }
+      90% { opacity: 1; }
+      100% { transform: translateY(-100vh) scale(1); opacity: 0; }
+    }
+  </style>
 </head>
-<body>
+<body class="hex-pattern">
+  <!-- 🎮 Epic Gaming Preloader -->
+  <div class="preloader" id="preloader">
+    <div class="particles" id="particles"></div>
+    <div class="loader-logo">
+      <div class="loader-ring"></div>
+      <div class="loader-ring"></div>
+      <div class="loader-ring"></div>
+      <i class="fas fa-gamepad loader-icon"></i>
+    </div>
+    <div class="loader-text">EA SPORTS</div>
+    <div class="loader-subtitle">Tournament Hub</div>
+    <div class="loader-bar">
+      <div class="loader-progress"></div>
+    </div>
+    <div class="loader-status">Initializing...</div>
+  </div>
+
   <div id="app">
     <!-- Sidebar -->
     <aside class="sidebar" id="sidebar">
       <div class="sidebar-header">
         <div class="logo">
-          <i class="fas fa-gamepad"></i>
-          <span>EA Sports</span>
+          <i class="fas fa-gamepad controller-icon"></i>
+          <span>EA SPORTS</span>
         </div>
         <button class="sidebar-toggle" id="sidebarToggle">
           <i class="fas fa-bars"></i>
@@ -30,38 +219,39 @@
       <nav class="sidebar-nav">
         <ul>
           <li>
-            <a href="#/dashboard" class="nav-link active" data-page="dashboard">
-              <i class="fas fa-home"></i>
+            <a href="#/dashboard" class="nav-link active icon-bounce" data-page="dashboard">
+              <i class="fas fa-chart-line"></i>
               <span>Dashboard</span>
             </a>
           </li>
           <li>
-            <a href="#/users" class="nav-link" data-page="users">
+            <a href="#/users" class="nav-link icon-bounce" data-page="users">
               <i class="fas fa-users"></i>
-              <span>Usuarios</span>
+              <span>Jugadores</span>
             </a>
           </li>
           <li>
-            <a href="#/tournaments" class="nav-link" data-page="tournaments">
-              <i class="fas fa-trophy"></i>
+            <a href="#/tournaments" class="nav-link icon-bounce" data-page="tournaments">
+              <i class="fas fa-trophy trophy-icon"></i>
               <span>Torneos</span>
+              <span class="badge-live">LIVE</span>
             </a>
           </li>
           <li>
-            <a href="#/teams" class="nav-link" data-page="teams">
-              <i class="fas fa-users-cog"></i>
+            <a href="#/teams" class="nav-link icon-bounce" data-page="teams">
+              <i class="fas fa-shield-halved"></i>
               <span>Equipos</span>
             </a>
           </li>
           <li>
-            <a href="#/matches" class="nav-link" data-page="matches">
-              <i class="fas fa-gamepad"></i>
+            <a href="#/matches" class="nav-link icon-bounce" data-page="matches">
+              <i class="fas fa-crosshairs"></i>
               <span>Partidas</span>
             </a>
           </li>
           <li>
-            <a href="#/games" class="nav-link" data-page="games">
-              <i class="fas fa-dice"></i>
+            <a href="#/games" class="nav-link icon-bounce" data-page="games">
+              <i class="fas fa-gamepad"></i>
               <span>Juegos</span>
             </a>
           </li>
@@ -69,16 +259,16 @@
       </nav>
       
       <div class="sidebar-footer">
-        <div class="user-info">
-          <div class="avatar">
-            <i class="fas fa-user-shield"></i>
+        <div class="user-info gradient-border-card">
+          <div class="avatar pulse-glow-pro">
+            <i class="fas fa-crown"></i>
           </div>
           <div class="user-details">
             <span class="user-name">Admin</span>
-            <span class="user-role">Administrador</span>
+            <span class="user-role"><i class="fas fa-star" style="color: #ffd700; font-size: 10px;"></i> Super Admin</span>
           </div>
           <button class="logout-btn" onclick="logout()" title="Cerrar sesión">
-            <i class="fas fa-sign-out-alt"></i>
+            <i class="fas fa-power-off"></i>
           </button>
         </div>
       </div>
@@ -92,20 +282,24 @@
           <button class="mobile-menu-btn" id="mobileMenuBtn">
             <i class="fas fa-bars"></i>
           </button>
-          <h1 class="page-title" id="pageTitle">Dashboard</h1>
+          <h1 class="page-title" id="pageTitle">
+            <i class="fas fa-bolt" style="color: #00d4ff; margin-right: 10px;"></i>
+            Dashboard
+          </h1>
         </div>
         <div class="header-right">
           <div class="search-box">
             <i class="fas fa-search"></i>
-            <input type="text" placeholder="Buscar..." id="globalSearch">
+            <input type="text" placeholder="Buscar torneos, equipos, jugadores..." id="globalSearch">
+            <kbd style="background: rgba(0,212,255,0.2); color: #00d4ff; padding: 2px 6px; border-radius: 4px; font-size: 10px;">⌘K</kbd>
           </div>
           <button class="notification-btn">
             <i class="fas fa-bell"></i>
-            <span class="badge">3</span>
+            <span class="badge">5</span>
           </button>
-          <button class="theme-toggle" id="themeToggle">
-            <i class="fas fa-moon"></i>
-          </button>
+          <div class="badge-live" style="margin-left: 10px;">
+            <span>3 LIVE</span>
+          </div>
         </div>
       </header>
 
@@ -120,8 +314,11 @@
   <div class="modal-overlay" id="modalOverlay">
     <div class="modal" id="modal">
       <div class="modal-header">
-        <h2 class="modal-title" id="modalTitle">Modal</h2>
-        <button class="modal-close" id="modalClose">
+        <h2 class="modal-title" id="modalTitle">
+          <i class="fas fa-gamepad" style="color: #00d4ff; margin-right: 10px;"></i>
+          Modal
+        </h2>
+        <button class="modal-close" id="modalClose" type="button">
           <i class="fas fa-times"></i>
         </button>
       </div>
@@ -134,6 +331,168 @@
   <!-- Toast Container -->
   <div class="toast-container" id="toastContainer"></div>
 
+  <!-- Chart.js for Analytics -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  
   <script type="module" src="/js/app.js"></script>
+  
+  <script>
+    // Create floating particles
+    function createParticles() {
+      const container = document.getElementById('particles');
+      if (!container) return;
+      
+      for (let i = 0; i < 20; i++) {
+        const particle = document.createElement('div');
+        particle.className = 'particle';
+        particle.style.left = Math.random() * 100 + '%';
+        particle.style.animationDelay = Math.random() * 10 + 's';
+        particle.style.animationDuration = (Math.random() * 10 + 8) + 's';
+        
+        // Random colors
+        const colors = ['#00d4ff', '#00ff88', '#ff6b35', '#ff0080'];
+        particle.style.background = colors[Math.floor(Math.random() * colors.length)];
+        particle.style.boxShadow = `0 0 10px ${particle.style.background}`;
+        
+        container.appendChild(particle);
+      }
+    }
+    createParticles();
+    
+    // Create ambient floating elements for background
+    function createAmbientElements() {
+      const body = document.body;
+      const ambientContainer = document.createElement('div');
+      ambientContainer.id = 'ambient-bg';
+      ambientContainer.style.cssText = `
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        z-index: 0;
+        overflow: hidden;
+        opacity: 0.6;
+      `;
+      
+      // Create floating geometric shapes
+      for (let i = 0; i < 8; i++) {
+        const shape = document.createElement('div');
+        const size = 100 + Math.random() * 200;
+        const isCircle = Math.random() > 0.5;
+        const colors = ['rgba(0, 212, 255, 0.03)', 'rgba(0, 255, 136, 0.03)', 'rgba(255, 107, 53, 0.02)'];
+        
+        shape.style.cssText = `
+          position: absolute;
+          width: ${size}px;
+          height: ${size}px;
+          background: ${colors[Math.floor(Math.random() * colors.length)]};
+          border-radius: ${isCircle ? '50%' : '20%'};
+          left: ${Math.random() * 100}%;
+          top: ${Math.random() * 100}%;
+          animation: ambient-float ${15 + Math.random() * 20}s ease-in-out infinite;
+          animation-delay: ${Math.random() * 10}s;
+          filter: blur(40px);
+        `;
+        ambientContainer.appendChild(shape);
+      }
+      
+      body.insertBefore(ambientContainer, body.firstChild);
+    }
+    
+    // Add ambient floating animation
+    const ambientStyle = document.createElement('style');
+    ambientStyle.textContent = `
+      @keyframes ambient-float {
+        0%, 100% { transform: translate(0, 0) rotate(0deg) scale(1); }
+        25% { transform: translate(50px, -30px) rotate(45deg) scale(1.1); }
+        50% { transform: translate(-20px, 40px) rotate(90deg) scale(0.9); }
+        75% { transform: translate(30px, 20px) rotate(135deg) scale(1.05); }
+      }
+      
+      /* Scanline effect */
+      body::after {
+        content: '';
+        position: fixed;
+        inset: 0;
+        background: repeating-linear-gradient(
+          0deg,
+          transparent,
+          transparent 2px,
+          rgba(0, 0, 0, 0.03) 2px,
+          rgba(0, 0, 0, 0.03) 4px
+        );
+        pointer-events: none;
+        z-index: 1;
+      }
+      
+      /* CRT vignette effect */
+      body::before {
+        content: '';
+        position: fixed;
+        inset: 0;
+        background: radial-gradient(ellipse at center, transparent 50%, rgba(0, 0, 0, 0.4) 100%);
+        pointer-events: none;
+        z-index: 1;
+      }
+    `;
+    document.head.appendChild(ambientStyle);
+    
+    // Preloader
+    window.addEventListener('load', () => {
+      const preloader = document.getElementById('preloader');
+      const status = preloader.querySelector('.loader-status');
+      
+      const messages = [
+        'Initializing system...',
+        'Loading game data...',
+        'Connecting to servers...',
+        'Syncing tournaments...',
+        'Preparing arena...',
+        'Ready to dominate! 🎮'
+      ];
+      
+      let i = 0;
+      const interval = setInterval(() => {
+        if (i < messages.length) {
+          status.textContent = messages[i];
+          i++;
+        }
+      }, 400);
+      
+      setTimeout(() => {
+        clearInterval(interval);
+        preloader.classList.add('loaded');
+        createAmbientElements();
+      }, 2500);
+    });
+    
+    // Easter egg: Konami code
+    let konamiCode = [];
+    const konamiSequence = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'b', 'a'];
+    
+    document.addEventListener('keydown', (e) => {
+      konamiCode.push(e.key);
+      konamiCode = konamiCode.slice(-10);
+      
+      if (konamiCode.join(',') === konamiSequence.join(',')) {
+        // Trigger epic effect
+        document.body.style.animation = 'rainbow-bg 2s ease';
+        
+        const style = document.createElement('style');
+        style.textContent = `
+          @keyframes rainbow-bg {
+            0% { filter: hue-rotate(0deg); }
+            100% { filter: hue-rotate(360deg); }
+          }
+        `;
+        document.head.appendChild(style);
+        
+        setTimeout(() => {
+          document.body.style.animation = '';
+        }, 2000);
+        
+        console.log('🎮 KONAMI CODE ACTIVATED! You are a true gamer!');
+      }
+    });
+  </script>
 </body>
 </html>

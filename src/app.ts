@@ -17,7 +17,7 @@ export async function buildApp() {
   // Register plugins
   await app.register(helmet);
   await app.register(cors, {
-    origin: ['http://localhost:3000', 'http://localhost:5173', 'http://127.0.0.1:5173'],
+    origin: ['http://localhost:3000', 'http://localhost:5173', 'http://localhost:5174', 'http://127.0.0.1:5173', 'http://127.0.0.1:5174'],
     credentials: true
   });
 
