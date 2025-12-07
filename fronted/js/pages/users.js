@@ -53,7 +53,7 @@ export async function renderUsers(container) {
     // Event Listeners
     document.getElementById('btnNewUser').addEventListener('click', () => showUserForm());
     document.getElementById('searchUsers').addEventListener('input', handleSearch);
-    
+
     // Delegate click events for action buttons
     document.getElementById('usersTableBody').addEventListener('click', handleTableActions);
 
@@ -81,9 +81,9 @@ function renderUsersRows(users) {
       <td>${user.email}</td>
       <td>${getRoleBadge(user.role)}</td>
       <td>
-        ${user.verified 
-          ? '<span class="text-success"><i class="fas fa-check-circle"></i></span>' 
-          : '<span class="text-muted"><i class="fas fa-times-circle"></i></span>'}
+        ${user.verified
+      ? '<span class="text-success"><i class="fas fa-check-circle"></i></span>'
+      : '<span class="text-muted"><i class="fas fa-times-circle"></i></span>'}
       </td>
       <td>${formatDate(user.created_at)}</td>
       <td>
@@ -105,7 +105,7 @@ function getRoleBadge(role) {
 
 function handleSearch(e) {
   const query = e.target.value.toLowerCase();
-  const filtered = allUsers.filter(user => 
+  const filtered = allUsers.filter(user =>
     user.username.toLowerCase().includes(query) ||
     user.email.toLowerCase().includes(query) ||
     user.role.toLowerCase().includes(query)
@@ -157,8 +157,8 @@ function showUserForm(user = null) {
       ${!isEdit ? `
         <div class="form-group">
           <label class="form-label">Contraseña *</label>
-          <input type="password" class="form-control" name="password_hash" 
-                 placeholder="Mínimo 8 caracteres" required>
+          <input type="password" class="form-control" name="password" 
+                 placeholder="Mínimo 6 caracteres" required minlength="6">
         </div>
       ` : ''}
       <div class="form-group">

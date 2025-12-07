@@ -2,6 +2,8 @@
 // API CLIENT - Comunicación con el backend
 // =====================================================
 
+import Auth from './auth.js';
+
 const API_BASE = 'http://localhost:3000';
 
 class ApiClient {
@@ -11,9 +13,12 @@ class ApiClient {
 
   async request(endpoint, options = {}) {
     const url = `${this.baseUrl}${endpoint}`;
+    const token = Auth.getToken();
+
     const config = {
       headers: {
         'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
         ...options.headers
       },
       ...options
@@ -22,11 +27,11 @@ class ApiClient {
     try {
       console.log(`🔗 API Request: ${config.method || 'GET'} ${url}`);
       const response = await fetch(url, config);
-      
+
       // Manejar respuestas no-JSON
       const contentType = response.headers.get('content-type');
       let data;
-      
+
       if (contentType && contentType.includes('application/json')) {
         data = await response.json();
       } else {
@@ -34,13 +39,13 @@ class ApiClient {
         console.error('Non-JSON response:', text);
         throw new Error(`Respuesta no válida del servidor: ${response.status}`);
       }
-      
+
       console.log(`✅ API Response:`, data);
-      
+
       if (!response.ok) {
         throw new Error(data.error?.message || data.message || `Error HTTP: ${response.status}`);
       }
-      
+
       return data;
     } catch (error) {
       console.error('❌ API Error:', error);

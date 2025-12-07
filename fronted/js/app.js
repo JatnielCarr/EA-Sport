@@ -8,6 +8,8 @@ import { renderTournaments } from './pages/tournaments.js';
 import { renderTeams } from './pages/teams.js';
 import { renderMatches } from './pages/matches.js';
 import { renderGames } from './pages/games.js';
+import { renderLeaderboard } from './pages/leaderboard.js';
+import { renderBrackets } from './pages/brackets.js';
 import { renderLogin, cleanupLogin } from './pages/login.js';
 import { renderBracket } from './pages/bracket.js';
 import { showToast, initGamingEffects, closeModal, initModalHandlers } from './ui.js';
@@ -25,6 +27,8 @@ const routes = {
   '/teams': renderTeams,
   '/matches': renderMatches,
   '/games': renderGames,
+  '/leaderboard': renderLeaderboard,
+  '/brackets': renderBrackets,
   '/login': renderLogin
 };
 
@@ -34,7 +38,7 @@ const dynamicRoutes = [
 ];
 
 // Protected routes that require authentication
-const protectedRoutes = ['/', '/dashboard', '/users', '/tournaments', '/teams', '/matches', '/games'];
+const protectedRoutes = ['/', '/dashboard', '/users', '/tournaments', '/teams', '/matches', '/games', '/leaderboard', '/brackets'];
 
 // =====================================================
 // Application State
@@ -53,7 +57,7 @@ function getRouteFromHash() {
 
 async function navigateTo(route) {
   const container = document.getElementById('pageContent');
-  
+
   if (!container) {
     console.error('Page content container not found');
     return;
@@ -80,7 +84,7 @@ async function navigateTo(route) {
   // Find matching route handler
   let handler = routes[route];
   let handlerParams = null;
-  
+
   // Handle dynamic routes
   if (!handler) {
     for (const dynamicRoute of dynamicRoutes) {
@@ -92,7 +96,7 @@ async function navigateTo(route) {
       }
     }
   }
-  
+
   // Default to dashboard if route not found
   if (!handler) {
     handler = routes['/'];
@@ -101,13 +105,13 @@ async function navigateTo(route) {
 
   // Update active nav item
   updateActiveNavItem(route);
-  
+
   // Update page title
   updatePageTitle(route);
-  
+
   // Store current route
   currentRoute = route;
-  
+
   // Execute route handler
   try {
     if (handlerParams) {
@@ -131,13 +135,16 @@ async function navigateTo(route) {
 }
 
 function updateActiveNavItem(route) {
-  // Remove active class from all nav items
-  document.querySelectorAll('.nav-item').forEach(item => {
+  // Remove active class from all nav links
+  document.querySelectorAll('.nav-link').forEach(item => {
     item.classList.remove('active');
   });
-  
-  // Add active class to current route
-  const activeItem = document.querySelector(`.nav-item[href="#${route}"]`);
+
+  // Add active class to current route - check for data-page attribute first
+  let activeItem = document.querySelector(`.nav-link[data-page="${route.replace('/', '')}"]`);
+  if (!activeItem) {
+    activeItem = document.querySelector(`.nav-link[href="#${route}"]`);
+  }
   if (activeItem) {
     activeItem.classList.add('active');
   }
@@ -147,6 +154,8 @@ function updatePageTitle(route) {
   const titles = {
     '/': 'Dashboard',
     '/dashboard': 'Dashboard',
+    '/leaderboard': 'Leaderboard',
+    '/brackets': 'Brackets',
     '/users': 'Usuarios',
     '/tournaments': 'Torneos',
     '/teams': 'Equipos',
@@ -154,7 +163,7 @@ function updatePageTitle(route) {
     '/games': 'Juegos',
     '/login': 'Iniciar Sesión'
   };
-  
+
   document.title = `${titles[route] || 'Admin'} | EA Sports Tournament`;
 }
 
@@ -171,7 +180,7 @@ function initTheme() {
 function toggleTheme() {
   const currentTheme = document.documentElement.getAttribute('data-theme');
   const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-  
+
   document.documentElement.setAttribute('data-theme', newTheme);
   localStorage.setItem('theme', newTheme);
   updateThemeIcon(newTheme);
@@ -212,7 +221,7 @@ function initMobileMenu() {
   document.addEventListener('click', (e) => {
     const sidebar = document.querySelector('.sidebar');
     const menuToggle = document.querySelector('.menu-toggle');
-    
+
     if (window.innerWidth <= 768 && sidebar && !sidebar.contains(e.target) && !menuToggle?.contains(e.target)) {
       sidebar.classList.remove('mobile-open');
     }
@@ -281,7 +290,7 @@ function setupEventListeners() {
   }
 
   // Navigation items - close mobile menu on click
-  document.querySelectorAll('.nav-item').forEach(item => {
+  document.querySelectorAll('.nav-link').forEach(item => {
     item.addEventListener('click', () => {
       if (window.innerWidth <= 768) {
         document.querySelector('.sidebar')?.classList.remove('mobile-open');
@@ -296,7 +305,7 @@ function setupEventListeners() {
       e.preventDefault();
       console.log('Search shortcut triggered');
     }
-    
+
     // Escape to close modal
     if (e.key === 'Escape') {
       const modal = document.getElementById('modal');

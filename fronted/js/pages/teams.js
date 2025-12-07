@@ -89,10 +89,10 @@ function renderTeamsRows(teams) {
     <tr data-id="${t.id}">
       <td>
         <div class="team-info">
-          ${t.logo_url ? 
-            `<img src="${t.logo_url}" alt="${t.name}" class="team-logo">` :
-            `<div class="team-logo-placeholder"><i class="fas fa-users"></i></div>`
-          }
+          ${t.logo_url ?
+      `<img src="${t.logo_url}" alt="${t.name}" class="team-logo">` :
+      `<div class="team-logo-placeholder"><i class="fas fa-users"></i></div>`
+    }
           <div>
             <strong>${t.name}</strong>
             <br><small class="text-muted">${t.tag}</small>
@@ -143,7 +143,7 @@ function getTournamentName(tournamentId) {
 
 function handleSearch(e) {
   const query = e.target.value.toLowerCase();
-  const filtered = allTeams.filter(t => 
+  const filtered = allTeams.filter(t =>
     t.name.toLowerCase().includes(query) ||
     t.tag.toLowerCase().includes(query)
   );
@@ -180,12 +180,12 @@ async function handleTableActions(e) {
 
 function showPlayersModal(team) {
   const players = team.players || [];
-  
+
   const content = `
     <div class="players-list">
-      ${players.length === 0 ? 
-        `<p class="text-muted text-center">No hay jugadores en este equipo</p>` :
-        `<table class="data-table">
+      ${players.length === 0 ?
+      `<p class="text-muted text-center">No hay jugadores en este equipo</p>` :
+      `<table class="data-table">
           <thead>
             <tr>
               <th>Jugador</th>
@@ -209,7 +209,7 @@ function showPlayersModal(team) {
             `).join('')}
           </tbody>
         </table>`
-      }
+    }
       <hr style="border-color: var(--border-color); margin: 20px 0;">
       <h4 style="margin-bottom: 15px;">Añadir Jugador</h4>
       <form id="addPlayerForm" class="form-row" style="align-items: flex-end;">
@@ -217,9 +217,9 @@ function showPlayersModal(team) {
           <label class="form-label">Usuario</label>
           <select class="form-control" name="user_id" required>
             <option value="">Seleccionar usuario</option>
-            ${allUsers.filter(u => u.role === 'PLAYER').map(u => 
-              `<option value="${u.id}">${u.username}</option>`
-            ).join('')}
+            ${allUsers.filter(u => u.role === 'USER').map(u =>
+      `<option value="${u.id}">${u.username}</option>`
+    ).join('')}
           </select>
         </div>
         <div class="form-group" style="flex: 1;">
@@ -261,7 +261,7 @@ function showPlayersModal(team) {
   });
 }
 
-window.removePlayerFromTeam = async function(teamId, userId) {
+window.removePlayerFromTeam = async function (teamId, userId) {
   if (await confirmDialog('¿Eliminar este jugador del equipo?')) {
     try {
       await API.teams.removePlayer(teamId, userId);
@@ -279,11 +279,23 @@ function showTeamForm(team = null) {
   const isEdit = !!team;
   const title = isEdit ? 'Editar Equipo' : 'Nuevo Equipo';
 
-  const tournamentsOptions = allTournaments.map(t => 
+  // Validar que hay torneos disponibles para nuevos equipos
+  if (!isEdit && allTournaments.length === 0) {
+    showToast('warning', 'Atención', 'Primero debes crear un torneo antes de poder agregar equipos');
+    return;
+  }
+
+  // Validar que hay usuarios disponibles
+  if (!isEdit && allUsers.length === 0) {
+    showToast('warning', 'Atención', 'Primero debes crear usuarios antes de poder agregar equipos');
+    return;
+  }
+
+  const tournamentsOptions = allTournaments.map(t =>
     `<option value="${t.id}" ${team?.tournament_id === t.id ? 'selected' : ''}>${t.name}</option>`
   ).join('');
 
-  const captainsOptions = allUsers.map(u => 
+  const captainsOptions = allUsers.map(u =>
     `<option value="${u.id}" ${team?.captain_id === u.id ? 'selected' : ''}>${u.username}</option>`
   ).join('');
 

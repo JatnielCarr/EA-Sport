@@ -7,7 +7,7 @@ export function showToast(type, title, message) {
   const container = document.getElementById('toastContainer');
   const toast = document.createElement('div');
   toast.className = `toast ${type}`;
-  
+
   const icons = {
     success: 'fa-check-circle',
     error: 'fa-times-circle',
@@ -27,7 +27,7 @@ export function showToast(type, title, message) {
   `;
 
   container.appendChild(toast);
-  
+
   // Auto remove
   const autoRemove = setTimeout(() => removeToast(toast), 5000);
 
@@ -117,11 +117,144 @@ export function getRoleBadge(role) {
   return `<span class="role-badge ${roleLower}">${role}</span>`;
 }
 
-// Confirm Dialog
-export function confirmDialog(message) {
+// Confirm Dialog - Custom Modal
+export function confirmDialog(message, title = 'Confirmar') {
   return new Promise((resolve) => {
-    const confirmed = window.confirm(message);
-    resolve(confirmed);
+    // Create overlay
+    const overlay = document.createElement('div');
+    overlay.className = 'confirm-overlay';
+    overlay.innerHTML = `
+      <div class="confirm-modal">
+        <div class="confirm-header">
+          <i class="fas fa-exclamation-triangle" style="color: var(--warning);"></i>
+          <h3>${title}</h3>
+        </div>
+        <div class="confirm-body">
+          <p>${message}</p>
+        </div>
+        <div class="confirm-footer">
+          <button class="btn btn-secondary" id="confirmCancel">
+            <i class="fas fa-times"></i> Cancelar
+          </button>
+          <button class="btn btn-danger" id="confirmOk">
+            <i class="fas fa-check"></i> Confirmar
+          </button>
+        </div>
+      </div>
+    `;
+
+    // Add styles if not exists
+    if (!document.getElementById('confirm-dialog-styles')) {
+      const style = document.createElement('style');
+      style.id = 'confirm-dialog-styles';
+      style.textContent = `
+        .confirm-overlay {
+          position: fixed;
+          inset: 0;
+          background: rgba(0, 0, 0, 0.85);
+          backdrop-filter: blur(8px);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 100001;
+          animation: fadeIn 0.2s ease;
+        }
+        
+        .confirm-modal {
+          background: var(--bg-secondary);
+          border-radius: var(--border-radius);
+          border: 1px solid var(--border-color);
+          width: 100%;
+          max-width: 400px;
+          box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5), 0 0 40px rgba(255, 184, 0, 0.2);
+          animation: slideUp 0.2s ease;
+        }
+        
+        .confirm-header {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          padding: 20px 24px;
+          border-bottom: 1px solid var(--border-color);
+          background: var(--bg-tertiary);
+        }
+        
+        .confirm-header i {
+          font-size: 24px;
+        }
+        
+        .confirm-header h3 {
+          font-size: 18px;
+          font-weight: 700;
+          margin: 0;
+        }
+        
+        .confirm-body {
+          padding: 24px;
+        }
+        
+        .confirm-body p {
+          color: var(--text-secondary);
+          font-size: 15px;
+          line-height: 1.6;
+          margin: 0;
+        }
+        
+        .confirm-footer {
+          display: flex;
+          justify-content: flex-end;
+          gap: 12px;
+          padding: 16px 24px;
+          border-top: 1px solid var(--border-color);
+        }
+        
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        
+        @keyframes slideUp {
+          from { transform: translateY(20px); opacity: 0; }
+          to { transform: translateY(0); opacity: 1; }
+        }
+      `;
+      document.head.appendChild(style);
+    }
+
+    document.body.appendChild(overlay);
+
+    // Focus the confirm button
+    const confirmBtn = overlay.querySelector('#confirmOk');
+    confirmBtn.focus();
+
+    // Handle clicks
+    overlay.querySelector('#confirmCancel').addEventListener('click', () => {
+      overlay.remove();
+      resolve(false);
+    });
+
+    overlay.querySelector('#confirmOk').addEventListener('click', () => {
+      overlay.remove();
+      resolve(true);
+    });
+
+    // Handle escape key
+    const handleEscape = (e) => {
+      if (e.key === 'Escape') {
+        overlay.remove();
+        resolve(false);
+        document.removeEventListener('keydown', handleEscape);
+      }
+    };
+    document.addEventListener('keydown', handleEscape);
+
+    // Handle click outside
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) {
+        overlay.remove();
+        resolve(false);
+      }
+    });
   });
 }
 
@@ -197,7 +330,7 @@ export function initCardTilt() {
       const centerY = rect.height / 2;
       const rotateX = (y - centerY) / 15;
       const rotateY = (centerX - x) / 15;
-      
+
       card.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale3d(1.02, 1.02, 1.02)`;
     });
 
@@ -215,13 +348,13 @@ export function initCardTilt() {
 // Ripple Click Effect
 export function initRippleEffect() {
   document.querySelectorAll('.btn, .nav-item, .stat-card').forEach(element => {
-    element.addEventListener('click', function(e) {
+    element.addEventListener('click', function (e) {
       const ripple = document.createElement('span');
       const rect = this.getBoundingClientRect();
       const size = Math.max(rect.width, rect.height);
       const x = e.clientX - rect.left - size / 2;
       const y = e.clientY - rect.top - size / 2;
-      
+
       ripple.style.cssText = `
         position: absolute;
         width: ${size}px;
@@ -234,11 +367,11 @@ export function initRippleEffect() {
         animation: ripple-expand 0.6s ease-out;
         pointer-events: none;
       `;
-      
+
       this.style.position = 'relative';
       this.style.overflow = 'hidden';
       this.appendChild(ripple);
-      
+
       setTimeout(() => ripple.remove(), 600);
     });
   });
@@ -262,13 +395,13 @@ export function initRippleEffect() {
 // Particle Explosion on Action
 export function createParticleExplosion(x, y, color = '#00d4ff') {
   const particleCount = 20;
-  
+
   for (let i = 0; i < particleCount; i++) {
     const particle = document.createElement('div');
     const angle = (Math.PI * 2 * i) / particleCount;
     const velocity = 50 + Math.random() * 100;
     const size = 4 + Math.random() * 8;
-    
+
     particle.style.cssText = `
       position: fixed;
       width: ${size}px;
@@ -281,12 +414,12 @@ export function createParticleExplosion(x, y, color = '#00d4ff') {
       z-index: 10000;
       box-shadow: 0 0 10px ${color};
     `;
-    
+
     document.body.appendChild(particle);
-    
+
     const destX = x + Math.cos(angle) * velocity;
     const destY = y + Math.sin(angle) * velocity;
-    
+
     particle.animate([
       { transform: 'translate(0, 0) scale(1)', opacity: 1 },
       { transform: `translate(${destX - x}px, ${destY - y}px) scale(0)`, opacity: 0 }
@@ -301,12 +434,12 @@ export function createParticleExplosion(x, y, color = '#00d4ff') {
 export function createConfetti(duration = 3000) {
   const colors = ['#00d4ff', '#00ff88', '#ff6b35', '#ff3366', '#ffd700', '#9b59b6'];
   const confettiCount = 100;
-  
+
   for (let i = 0; i < confettiCount; i++) {
     setTimeout(() => {
       const confetti = document.createElement('div');
       const color = colors[Math.floor(Math.random() * colors.length)];
-      
+
       confetti.style.cssText = `
         position: fixed;
         width: ${5 + Math.random() * 10}px;
@@ -318,9 +451,9 @@ export function createConfetti(duration = 3000) {
         z-index: 10000;
         border-radius: ${Math.random() > 0.5 ? '50%' : '0'};
       `;
-      
+
       document.body.appendChild(confetti);
-      
+
       confetti.animate([
         { transform: 'translateY(0) rotate(0deg)', opacity: 1 },
         { transform: `translateY(${window.innerHeight + 50}px) rotate(${720 + Math.random() * 360}deg)`, opacity: 0 }
@@ -336,7 +469,7 @@ export function createConfetti(duration = 3000) {
 export function typewriterEffect(element, text, speed = 50) {
   element.textContent = '';
   let i = 0;
-  
+
   const type = () => {
     if (i < text.length) {
       element.textContent += text.charAt(i);
@@ -344,7 +477,7 @@ export function typewriterEffect(element, text, speed = 50) {
       setTimeout(type, speed);
     }
   };
-  
+
   type();
 }
 
@@ -352,22 +485,22 @@ export function typewriterEffect(element, text, speed = 50) {
 export function countUp(element, target, duration = 2000) {
   const start = 0;
   const startTime = performance.now();
-  
+
   const animate = (currentTime) => {
     const elapsed = currentTime - startTime;
     const progress = Math.min(elapsed / duration, 1);
-    
+
     // Easing function
     const easeOutQuart = 1 - Math.pow(1 - progress, 4);
     const current = Math.floor(easeOutQuart * target);
-    
+
     element.textContent = current.toLocaleString();
-    
+
     if (progress < 1) {
       requestAnimationFrame(animate);
     }
   };
-  
+
   requestAnimationFrame(animate);
 }
 
@@ -376,7 +509,7 @@ export function glitchText(element) {
   const originalText = element.textContent;
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#$%&*';
   let iterations = 0;
-  
+
   const interval = setInterval(() => {
     element.textContent = originalText
       .split('')
@@ -385,9 +518,9 @@ export function glitchText(element) {
         return chars[Math.floor(Math.random() * chars.length)];
       })
       .join('');
-    
+
     if (iterations >= originalText.length) clearInterval(interval);
-    iterations += 1/3;
+    iterations += 1 / 3;
   }, 30);
 }
 
@@ -397,7 +530,7 @@ export function initScrollAnimations() {
     entries.forEach(entry => {
       if (entry.isIntersecting) {
         entry.target.classList.add('animated');
-        
+
         // Trigger count-up for stat values
         if (entry.target.classList.contains('stat-value')) {
           const value = parseInt(entry.target.dataset.value || entry.target.textContent);
@@ -408,7 +541,7 @@ export function initScrollAnimations() {
       }
     });
   }, { threshold: 0.1 });
-  
+
   document.querySelectorAll('.stat-card, .chart-card, .widget-card').forEach(el => {
     observer.observe(el);
   });
@@ -417,11 +550,11 @@ export function initScrollAnimations() {
 // Electric Border Effect
 export function initElectricBorders() {
   document.querySelectorAll('.btn-primary, .stat-card').forEach(el => {
-    el.addEventListener('mouseenter', function() {
+    el.addEventListener('mouseenter', function () {
       this.style.animation = 'electric-spark 0.5s ease-in-out';
     });
-    
-    el.addEventListener('animationend', function() {
+
+    el.addEventListener('animationend', function () {
       this.style.animation = '';
     });
   });
@@ -433,9 +566,9 @@ export function initGamingEffects() {
   initRippleEffect();
   initScrollAnimations();
   initElectricBorders();
-  
+
   // Delayed card tilt (after DOM ready)
   setTimeout(initCardTilt, 100);
-  
+
   console.log('🎮 Gaming effects initialized!');
 }

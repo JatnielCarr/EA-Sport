@@ -1893,6 +1893,32 @@ select.form-control {
   25%, 75% { opacity: 0.3; }
 }
 
+/* NEW Badge */
+.badge-new {
+  background: linear-gradient(135deg, #00ff88, #00d4ff);
+  color: #0a0e17;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  display: inline-flex;
+  align-items: center;
+  animation: pulse-new 2s ease-in-out infinite;
+}
+
+@keyframes pulse-new {
+  0%, 100% { 
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(0, 255, 136, 0.5);
+  }
+  50% { 
+    transform: scale(1.05);
+    box-shadow: 0 0 10px rgba(0, 255, 136, 0.4);
+  }
+}
+
 /* Hexagon Pattern Background */
 .hex-pattern {
   background-color: var(--bg-primary);

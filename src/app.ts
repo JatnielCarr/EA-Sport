@@ -27,7 +27,7 @@ export async function buildApp() {
   });
 
   // Authentication decorator
-  app.decorate('authenticate', async function(request: any, reply: any) {
+  app.decorate('authenticate', async function (request: any, reply: any) {
     try {
       await request.jwtVerify();
     } catch (err) {
@@ -92,7 +92,7 @@ export async function buildApp() {
     const { email, password } = request.body as { email: string; password: string };
 
     const user = await prisma.user.findUnique({ where: { email } });
-    
+
     if (!user) {
       return reply.status(401).send({ success: false, error: 'Invalid credentials' });
     }
@@ -105,12 +105,12 @@ export async function buildApp() {
       // If bcrypt fails, check if it's a plain text password (legacy)
       validPassword = password === user.password_hash;
     }
-    
+
     // Also check plain text comparison for non-hashed passwords
     if (!validPassword) {
       validPassword = password === user.password_hash;
     }
-    
+
     // If valid with plain password, update to hashed version
     if (validPassword && !user.password_hash.startsWith('$2')) {
       const hashedPassword = await bcrypt.hash(password, 10);
@@ -119,18 +119,18 @@ export async function buildApp() {
         data: { password_hash: hashedPassword }
       });
     }
-    
+
     if (!validPassword) {
       return reply.status(401).send({ success: false, error: 'Invalid credentials' });
     }
 
     // Generate JWT token
     const token = app.jwt.sign(
-      { 
-        id: user.id, 
-        email: user.email, 
+      {
+        id: user.id,
+        email: user.email,
         username: user.username,
-        role: user.role 
+        role: user.role
       },
       { expiresIn: '24h' }
     );
@@ -213,8 +213,8 @@ export async function buildApp() {
     try {
       await request.jwtVerify();
       const userData = request.user as any;
-      
-      const user = await prisma.user.findUnique({ 
+
+      const user = await prisma.user.findUnique({
         where: { id: userData.id },
         select: { id: true, email: true, username: true, role: true, created_at: true }
       });
@@ -273,11 +273,11 @@ export async function buildApp() {
       description: 'Create a new user',
       body: {
         type: 'object',
-        required: ['email', 'username', 'password_hash'],
+        required: ['email', 'username', 'password'],
         properties: {
           email: { type: 'string' },
           username: { type: 'string' },
-          password_hash: { type: 'string' },
+          password: { type: 'string', minLength: 6 },
           role: { type: 'string', enum: ['USER', 'ORGANIZER', 'ADMIN'] }
         }
       },
@@ -292,7 +292,19 @@ export async function buildApp() {
       }
     }
   }, async (request) => {
-    const user = await prisma.user.create({ data: request.body as any });
+    const { email, username, password, role } = request.body as { email: string; username: string; password: string; role?: string };
+
+    // Hash the password
+    const password_hash = await bcrypt.hash(password, 10);
+
+    const user = await prisma.user.create({
+      data: {
+        email,
+        username,
+        password_hash,
+        role: (role as any) || 'USER'
+      }
+    });
     return { success: true, data: user };
   });
 
@@ -666,7 +678,7 @@ export async function buildApp() {
     }
   }, async (request) => {
     const { id } = request.params as { id: string };
-    const team = await prisma.team.findUnique({ 
+    const team = await prisma.team.findUnique({
       where: { id },
       include: { captain: true, players: { include: { user: true } } }
     });
@@ -768,7 +780,7 @@ export async function buildApp() {
   }, async (request) => {
     const { teamId } = request.params as { teamId: string };
     const body = request.body as any;
-    const player = await prisma.teamPlayer.create({ 
+    const player = await prisma.teamPlayer.create({
       data: { team_id: teamId, ...body }
     });
     return { success: true, data: player };
@@ -864,7 +876,24 @@ export async function buildApp() {
       }
     }
   }, async (request) => {
-    const match = await prisma.match.create({ data: request.body as any });
+    const body = request.body as any;
+    // Filter out null/undefined values for foreign keys
+    const data: any = {
+      tournament_id: body.tournament_id,
+      round: body.round,
+      match_number: body.match_number,
+      bracket_position: body.bracket_position,
+      best_of: body.best_of || 3,
+      status: body.status || 'SCHEDULED'
+    };
+
+    // Only add team IDs if they are truthy (not null/undefined/empty)
+    if (body.home_team_id) data.home_team_id = body.home_team_id;
+    if (body.away_team_id) data.away_team_id = body.away_team_id;
+    if (body.scheduled_datetime) data.scheduled_datetime = new Date(body.scheduled_datetime);
+    if (body.winner_id) data.winner_id = body.winner_id;
+
+    const match = await prisma.match.create({ data });
     return { success: true, data: match };
   });
 
@@ -890,10 +919,10 @@ export async function buildApp() {
     }
   }, async (request) => {
     const { id } = request.params as { id: string };
-    const match = await prisma.match.findUnique({ 
+    const match = await prisma.match.findUnique({
       where: { id },
-      include: { 
-        home_team: { include: { players: { include: { user: true } } } }, 
+      include: {
+        home_team: { include: { players: { include: { user: true } } } },
         away_team: { include: { players: { include: { user: true } } } },
         winner: true,
         results: true
@@ -975,7 +1004,7 @@ export async function buildApp() {
   }, async (request) => {
     const { matchId } = request.params as { matchId: string };
     const body = request.body as any;
-    const result = await prisma.matchResult.create({ 
+    const result = await prisma.matchResult.create({
       data: { match_id: matchId, ...body }
     });
     return { success: true, data: result };
@@ -1012,7 +1041,7 @@ export async function buildApp() {
   }, async (request) => {
     const { id } = request.params as { id: string };
     const body = request.body as any;
-    const result = await prisma.matchResult.update({ 
+    const result = await prisma.matchResult.update({
       where: { id },
       data: { ...body, validated_at: new Date() }
     });
@@ -1211,7 +1240,7 @@ export async function buildApp() {
     }
   }, async (request) => {
     const { tournamentId } = request.params as { tournamentId: string };
-    const tournament = await prisma.tournament.findUnique({ 
+    const tournament = await prisma.tournament.findUnique({
       where: { id: tournamentId },
       include: { game: true, organizer: true }
     });

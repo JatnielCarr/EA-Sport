@@ -1,25 +1,29 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>EA SPORTS | Tournament Hub Pro 🎮</title>
   <meta name="description" content="Professional Esports Tournament Management - The Ultimate Gaming Platform">
-  
+
   <!-- Favicon Gaming -->
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎮</text></svg>">
-  
+  <link rel="icon" type="image/svg+xml"
+    href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎮</text></svg>">
+
   <!-- Google Fonts - Gaming Typography -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  
+  <link
+    href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap"
+    rel="stylesheet">
+
   <!-- Font Awesome Icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-  
+
   <!-- Custom Styles -->
   <link rel="stylesheet" href="/css/styles.css">
-  
+
   <style>
     /* 🎮 EPIC GAMING PRELOADER */
     .preloader {
@@ -33,12 +37,12 @@
       flex-direction: column;
       transition: opacity 0.6s ease, visibility 0.6s ease;
     }
-    
+
     .preloader.loaded {
       opacity: 0;
       visibility: hidden;
     }
-    
+
     .loader-logo {
       position: relative;
       width: 140px;
@@ -48,7 +52,7 @@
       justify-content: center;
       margin-bottom: 30px;
     }
-    
+
     .loader-ring {
       position: absolute;
       width: 100%;
@@ -56,30 +60,32 @@
       border: 3px solid transparent;
       border-radius: 50%;
     }
-    
+
     .loader-ring:nth-child(1) {
       border-top-color: #00d4ff;
       animation: spin 1.5s linear infinite;
     }
-    
+
     .loader-ring:nth-child(2) {
       width: 85%;
       height: 85%;
       border-right-color: #00ff88;
       animation: spin 2s linear infinite reverse;
     }
-    
+
     .loader-ring:nth-child(3) {
       width: 70%;
       height: 70%;
       border-bottom-color: #ff6b35;
       animation: spin 1s linear infinite;
     }
-    
+
     @keyframes spin {
-      100% { transform: rotate(360deg); }
+      100% {
+        transform: rotate(360deg);
+      }
     }
-    
+
     .loader-icon {
       font-size: 45px;
       color: #00d4ff;
@@ -87,12 +93,20 @@
       animation: pulse-glow 2s ease-in-out infinite;
       filter: drop-shadow(0 0 20px rgba(0, 212, 255, 0.8));
     }
-    
+
     @keyframes pulse-glow {
-      0%, 100% { transform: scale(1); }
-      50% { transform: scale(1.1); filter: drop-shadow(0 0 40px rgba(0, 212, 255, 1)); }
+
+      0%,
+      100% {
+        transform: scale(1);
+      }
+
+      50% {
+        transform: scale(1.1);
+        filter: drop-shadow(0 0 40px rgba(0, 212, 255, 1));
+      }
     }
-    
+
     .loader-text {
       font-family: 'Orbitron', sans-serif;
       font-size: 28px;
@@ -105,12 +119,17 @@
       -webkit-text-fill-color: transparent;
       animation: gradient-shift 3s linear infinite;
     }
-    
+
     @keyframes gradient-shift {
-      0% { background-position: 0% 50%; }
-      100% { background-position: 300% 50%; }
+      0% {
+        background-position: 0% 50%;
+      }
+
+      100% {
+        background-position: 300% 50%;
+      }
     }
-    
+
     .loader-subtitle {
       font-family: 'Rajdhani', sans-serif;
       font-size: 12px;
@@ -119,16 +138,16 @@
       text-transform: uppercase;
       margin-bottom: 40px;
     }
-    
+
     .loader-bar {
       width: 280px;
       height: 3px;
-      background: rgba(255,255,255,0.1);
+      background: rgba(255, 255, 255, 0.1);
       border-radius: 3px;
       overflow: hidden;
       position: relative;
     }
-    
+
     .loader-progress {
       height: 100%;
       background: linear-gradient(90deg, #00d4ff, #00ff88, #ff6b35);
@@ -136,15 +155,29 @@
       animation: load 2s ease-in-out forwards;
       box-shadow: 0 0 20px rgba(0, 212, 255, 0.5);
     }
-    
+
     @keyframes load {
-      0% { width: 0%; }
-      20% { width: 20%; }
-      50% { width: 50%; }
-      80% { width: 80%; }
-      100% { width: 100%; }
+      0% {
+        width: 0%;
+      }
+
+      20% {
+        width: 20%;
+      }
+
+      50% {
+        width: 50%;
+      }
+
+      80% {
+        width: 80%;
+      }
+
+      100% {
+        width: 100%;
+      }
     }
-    
+
     .loader-status {
       margin-top: 20px;
       font-family: 'Rajdhani', sans-serif;
@@ -154,12 +187,21 @@
       text-transform: uppercase;
       animation: blink 1s infinite;
     }
-    
+
     @keyframes blink {
-      0%, 50%, 100% { opacity: 1; }
-      25%, 75% { opacity: 0.5; }
+
+      0%,
+      50%,
+      100% {
+        opacity: 1;
+      }
+
+      25%,
+      75% {
+        opacity: 0.5;
+      }
     }
-    
+
     /* Floating particles */
     .particles {
       position: absolute;
@@ -167,7 +209,7 @@
       overflow: hidden;
       pointer-events: none;
     }
-    
+
     .particle {
       position: absolute;
       width: 4px;
@@ -176,15 +218,29 @@
       border-radius: 50%;
       animation: float-up 10s infinite;
     }
-    
+
     @keyframes float-up {
-      0% { transform: translateY(100vh) scale(0); opacity: 0; }
-      10% { opacity: 1; }
-      90% { opacity: 1; }
-      100% { transform: translateY(-100vh) scale(1); opacity: 0; }
+      0% {
+        transform: translateY(100vh) scale(0);
+        opacity: 0;
+      }
+
+      10% {
+        opacity: 1;
+      }
+
+      90% {
+        opacity: 1;
+      }
+
+      100% {
+        transform: translateY(-100vh) scale(1);
+        opacity: 0;
+      }
     }
   </style>
 </head>
+
 <body class="hex-pattern">
   <!-- 🎮 Epic Gaming Preloader -->
   <div class="preloader" id="preloader">
@@ -215,13 +271,20 @@
           <i class="fas fa-bars"></i>
         </button>
       </div>
-      
+
       <nav class="sidebar-nav">
         <ul>
           <li>
             <a href="#/dashboard" class="nav-link active icon-bounce" data-page="dashboard">
               <i class="fas fa-chart-line"></i>
               <span>Dashboard</span>
+            </a>
+          </li>
+          <li>
+            <a href="#/leaderboard" class="nav-link icon-bounce" data-page="leaderboard">
+              <i class="fas fa-crown" style="color: #ffd700;"></i>
+              <span>Leaderboard</span>
+              <span class="badge-new">NEW</span>
             </a>
           </li>
           <li>
@@ -255,9 +318,16 @@
               <span>Juegos</span>
             </a>
           </li>
+          <li>
+            <a href="#/brackets" class="nav-link icon-bounce" data-page="brackets">
+              <i class="fas fa-sitemap" style="color: var(--primary);"></i>
+              <span>Brackets</span>
+              <span class="badge-new">NEW</span>
+            </a>
+          </li>
         </ul>
       </nav>
-      
+
       <div class="sidebar-footer">
         <div class="user-info gradient-border-card">
           <div class="avatar pulse-glow-pro">
@@ -265,7 +335,8 @@
           </div>
           <div class="user-details">
             <span class="user-name">Admin</span>
-            <span class="user-role"><i class="fas fa-star" style="color: #ffd700; font-size: 10px;"></i> Super Admin</span>
+            <span class="user-role"><i class="fas fa-star" style="color: #ffd700; font-size: 10px;"></i> Super
+              Admin</span>
           </div>
           <button class="logout-btn" onclick="logout()" title="Cerrar sesión">
             <i class="fas fa-power-off"></i>
@@ -291,7 +362,8 @@
           <div class="search-box">
             <i class="fas fa-search"></i>
             <input type="text" placeholder="Buscar torneos, equipos, jugadores..." id="globalSearch">
-            <kbd style="background: rgba(0,212,255,0.2); color: #00d4ff; padding: 2px 6px; border-radius: 4px; font-size: 10px;">⌘K</kbd>
+            <kbd
+              style="background: rgba(0,212,255,0.2); color: #00d4ff; padding: 2px 6px; border-radius: 4px; font-size: 10px;">⌘K</kbd>
           </div>
           <button class="notification-btn">
             <i class="fas fa-bell"></i>
@@ -333,32 +405,32 @@
 
   <!-- Chart.js for Analytics -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  
+
   <script type="module" src="/js/app.js"></script>
-  
+
   <script>
     // Create floating particles
     function createParticles() {
       const container = document.getElementById('particles');
       if (!container) return;
-      
+
       for (let i = 0; i < 20; i++) {
         const particle = document.createElement('div');
         particle.className = 'particle';
         particle.style.left = Math.random() * 100 + '%';
         particle.style.animationDelay = Math.random() * 10 + 's';
         particle.style.animationDuration = (Math.random() * 10 + 8) + 's';
-        
+
         // Random colors
         const colors = ['#00d4ff', '#00ff88', '#ff6b35', '#ff0080'];
         particle.style.background = colors[Math.floor(Math.random() * colors.length)];
         particle.style.boxShadow = `0 0 10px ${particle.style.background}`;
-        
+
         container.appendChild(particle);
       }
     }
     createParticles();
-    
+
     // Create ambient floating elements for background
     function createAmbientElements() {
       const body = document.body;
@@ -372,14 +444,14 @@
         overflow: hidden;
         opacity: 0.6;
       `;
-      
+
       // Create floating geometric shapes
       for (let i = 0; i < 8; i++) {
         const shape = document.createElement('div');
         const size = 100 + Math.random() * 200;
         const isCircle = Math.random() > 0.5;
         const colors = ['rgba(0, 212, 255, 0.03)', 'rgba(0, 255, 136, 0.03)', 'rgba(255, 107, 53, 0.02)'];
-        
+
         shape.style.cssText = `
           position: absolute;
           width: ${size}px;
@@ -394,10 +466,10 @@
         `;
         ambientContainer.appendChild(shape);
       }
-      
+
       body.insertBefore(ambientContainer, body.firstChild);
     }
-    
+
     // Add ambient floating animation
     const ambientStyle = document.createElement('style');
     ambientStyle.textContent = `
@@ -435,12 +507,12 @@
       }
     `;
     document.head.appendChild(ambientStyle);
-    
+
     // Preloader
     window.addEventListener('load', () => {
       const preloader = document.getElementById('preloader');
       const status = preloader.querySelector('.loader-status');
-      
+
       const messages = [
         'Initializing system...',
         'Loading game data...',
@@ -449,7 +521,7 @@
         'Preparing arena...',
         'Ready to dominate! 🎮'
       ];
-      
+
       let i = 0;
       const interval = setInterval(() => {
         if (i < messages.length) {
@@ -457,26 +529,26 @@
           i++;
         }
       }, 400);
-      
+
       setTimeout(() => {
         clearInterval(interval);
         preloader.classList.add('loaded');
         createAmbientElements();
       }, 2500);
     });
-    
+
     // Easter egg: Konami code
     let konamiCode = [];
     const konamiSequence = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'b', 'a'];
-    
+
     document.addEventListener('keydown', (e) => {
       konamiCode.push(e.key);
       konamiCode = konamiCode.slice(-10);
-      
+
       if (konamiCode.join(',') === konamiSequence.join(',')) {
         // Trigger epic effect
         document.body.style.animation = 'rainbow-bg 2s ease';
-        
+
         const style = document.createElement('style');
         style.textContent = `
           @keyframes rainbow-bg {
@@ -485,14 +557,15 @@
           }
         `;
         document.head.appendChild(style);
-        
+
         setTimeout(() => {
           document.body.style.animation = '';
         }, 2000);
-        
+
         console.log('🎮 KONAMI CODE ACTIVATED! You are a true gamer!');
       }
     });
   </script>
 </body>
+
 </html>
