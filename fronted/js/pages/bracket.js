@@ -6,23 +6,44 @@ import API from '../api.js';
 import { showLoading, showToast, formatDate } from '../ui.js';
 
 let currentTournament = null;
+let currentGame = null;
 let tournamentMatches = [];
 let tournamentTeams = [];
+
+// Games that require a timer (physical competitions like robot battles)
+// These games have external time limits, unlike video games where the match has its own timer
+const GAMES_REQUIRING_TIMER = [
+  'robots', 'sumo-robots', 'battle-bots', 'robot-wars', 'sumo', 'wrestling-robots',
+  'line-follower', 'maze-solver', 'robotica'
+];
+
+// Check if a game requires timer display
+function gameRequiresTimer(gameSlug) {
+  if (!gameSlug) return false;
+  return GAMES_REQUIRING_TIMER.some(slug => gameSlug.toLowerCase().includes(slug));
+}
+
 
 export async function renderBracket(container, tournamentId) {
   showLoading(container);
 
   try {
-    // Load tournament data, matches and teams
-    const [tournamentRes, matchesRes, teamsRes] = await Promise.all([
+    // Load tournament data, matches, teams, and games
+    const [tournamentRes, matchesRes, teamsRes, gamesRes] = await Promise.all([
       API.tournaments.getById(tournamentId),
       API.matches.getAll({ tournament_id: tournamentId }),
-      API.teams.getAll(tournamentId)
+      API.teams.getAll(tournamentId),
+      API.games.getAll()
     ]);
 
     currentTournament = tournamentRes.data;
     tournamentMatches = matchesRes.data || [];
     tournamentTeams = teamsRes.data || [];
+
+    // Get the game for this tournament
+    const allGames = gamesRes.data || [];
+    currentGame = allGames.find(g => g.id === currentTournament.game_id) || null;
+
 
     // Show sidebar and header
     document.querySelector('.sidebar')?.classList.remove('hidden');
@@ -112,7 +133,7 @@ function renderBracketView() {
 
   // Organize matches by rounds
   const rounds = organizeMatchesByRound(tournamentMatches);
-  
+
   return `
     <div class="bracket-wrapper">
       ${rounds.map((round, index) => `
@@ -132,7 +153,7 @@ function renderBracketView() {
 function organizeMatchesByRound(matches) {
   // Group matches by round number
   const roundsMap = {};
-  
+
   matches.forEach(match => {
     const round = match.round || 1;
     if (!roundsMap[round]) {
@@ -159,13 +180,43 @@ function getRoundName(roundIndex, totalRounds) {
 function renderMatchCard(match) {
   const team1 = tournamentTeams.find(t => t.id === match.team1_id);
   const team2 = tournamentTeams.find(t => t.id === match.team2_id);
-  
+
   const isCompleted = match.status === 'COMPLETED';
+  const isLive = match.status === 'LIVE' || match.status === 'IN_PROGRESS';
   const winner = match.winner_id;
-  
+
+  // Check if this game type requires a timer display
+  const showTimer = currentGame && gameRequiresTimer(currentGame.slug);
+  // Default match duration in minutes (can be customized per tournament later)
+  const matchDuration = match.match_duration || currentTournament?.match_duration || 3;
+
+  // Generate timer HTML for games that require it
+  let timerHtml = '';
+  if (showTimer && !isCompleted) {
+    if (isLive) {
+      // Show countdown timer for live matches
+      timerHtml = `
+        <div class="match-timer live">
+          <i class="fas fa-stopwatch"></i>
+          <span class="timer-text">⏱️ Tiempo restante: ${matchDuration}:00</span>
+        </div>
+      `;
+    } else {
+      // Show duration info before match starts
+      timerHtml = `
+        <div class="match-timer pending">
+          <i class="fas fa-hourglass-half"></i>
+          <span class="timer-text">Duración: ${matchDuration} min</span>
+        </div>
+      `;
+    }
+  }
+
   return `
-    <div class="match-card ${isCompleted ? 'completed' : ''}" data-match-id="${match.id}">
+    <div class="match-card ${isCompleted ? 'completed' : ''} ${isLive ? 'live' : ''}" data-match-id="${match.id}">
       <div class="match-number">Match #${match.match_number || match.id.substring(0, 4)}</div>
+      
+      ${timerHtml}
       
       <div class="match-teams">
         <div class="team-slot ${winner === match.team1_id ? 'winner' : ''} ${!team1 ? 'tbd' : ''}">
@@ -238,25 +289,25 @@ async function generateBracket() {
   try {
     // Shuffle teams randomly
     const shuffledTeams = [...tournamentTeams].sort(() => Math.random() - 0.5);
-    
+
     // Calculate number of rounds needed
     const numTeams = shuffledTeams.length;
     const numRounds = Math.ceil(Math.log2(numTeams));
     const bracketSize = Math.pow(2, numRounds);
-    
+
     // Create matches for the bracket
     const matches = [];
     let matchNumber = 1;
-    
+
     // First round - pair teams
     const firstRoundMatches = bracketSize / 2;
     for (let i = 0; i < firstRoundMatches; i++) {
       const team1 = shuffledTeams[i * 2] || null;
       const team2 = shuffledTeams[i * 2 + 1] || null;
-      
+
       // Skip if both teams are null (bye)
       if (!team1 && !team2) continue;
-      
+
       const matchData = {
         tournament_id: currentTournament.id,
         round: 1,
@@ -267,10 +318,10 @@ async function generateBracket() {
         // If one team has a bye, they automatically win
         winner_id: (!team1 && team2) ? team2.id : ((!team2 && team1) ? team1.id : null)
       };
-      
+
       matches.push(matchData);
     }
-    
+
     // Create placeholder matches for subsequent rounds
     let prevRoundMatches = firstRoundMatches;
     for (let round = 2; round <= numRounds; round++) {
@@ -287,20 +338,20 @@ async function generateBracket() {
       }
       prevRoundMatches = roundMatches;
     }
-    
+
     // Create matches in the backend
     for (const match of matches) {
       await API.matches.create(match);
     }
-    
+
     showToast('success', 'Éxito', 'Bracket generado correctamente');
-    
+
     // Reload matches
     const matchesRes = await API.matches.getAll({ tournament_id: currentTournament.id });
     tournamentMatches = matchesRes.data || [];
-    
+
     document.getElementById('bracketContainer').innerHTML = renderBracketView();
-    
+
   } catch (error) {
     console.error('Error generating bracket:', error);
     showToast('error', 'Error', error.message);
@@ -375,7 +426,7 @@ function showResultModal(matchId) {
 
     try {
       const winnerId = score1 > score2 ? match.team1_id : match.team2_id;
-      
+
       await API.matches.update(matchId, {
         score_team1: score1,
         score_team2: score2,
@@ -404,26 +455,26 @@ async function updateNextRoundMatch(currentMatch, winnerId) {
   // Find the next round match
   const nextRound = currentMatch.round + 1;
   const nextRoundMatches = tournamentMatches.filter(m => m.round === nextRound);
-  
+
   if (nextRoundMatches.length === 0) return; // This was the final
-  
+
   // Determine which match in the next round this winner goes to
   const currentRoundMatches = tournamentMatches
     .filter(m => m.round === currentMatch.round)
     .sort((a, b) => a.match_number - b.match_number);
-  
+
   const matchIndex = currentRoundMatches.findIndex(m => m.id === currentMatch.id);
   const nextMatchIndex = Math.floor(matchIndex / 2);
   const isFirstTeam = matchIndex % 2 === 0;
-  
+
   const nextMatch = nextRoundMatches[nextMatchIndex];
   if (!nextMatch) return;
-  
+
   // Update the next match with the winner
-  const updateData = isFirstTeam 
+  const updateData = isFirstTeam
     ? { team1_id: winnerId }
     : { team2_id: winnerId };
-  
+
   await API.matches.update(nextMatch.id, updateData);
 }
 
@@ -639,7 +690,58 @@ function addBracketStyles() {
       margin-top: 10px;
     }
 
+    /* Match Timer Styles */
+    .match-timer {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 10px 15px;
+      margin-bottom: 10px;
+      border-radius: var(--border-radius-sm);
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+
+    .match-timer.live {
+      background: linear-gradient(135deg, rgba(255, 51, 102, 0.2), rgba(255, 107, 53, 0.2));
+      color: var(--danger);
+      border: 1px solid var(--danger);
+      animation: timer-pulse 1.5s infinite;
+    }
+
+    .match-timer.pending {
+      background: rgba(0, 212, 255, 0.1);
+      color: var(--info);
+      border: 1px solid rgba(0, 212, 255, 0.3);
+    }
+
+    .match-timer i {
+      font-size: 1rem;
+    }
+
+    .match-timer.live .timer-text {
+      font-size: 1rem;
+    }
+
+    @keyframes timer-pulse {
+      0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+      }
+      50% {
+        opacity: 0.8;
+        transform: scale(1.02);
+      }
+    }
+
+    .match-card.live {
+      border-color: var(--danger);
+      box-shadow: 0 0 20px rgba(255, 51, 102, 0.3);
+    }
+
     /* Result Modal */
+
     .result-teams {
       display: flex;
       align-items: center;

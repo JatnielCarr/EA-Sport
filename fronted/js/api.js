@@ -3,8 +3,7 @@
 // =====================================================
 
 import Auth from './auth.js';
-
-const API_BASE = 'http://localhost:3000';
+import { API_BASE } from './config.js';
 
 class ApiClient {
   constructor(baseUrl) {

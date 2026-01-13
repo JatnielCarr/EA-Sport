@@ -29,11 +29,7 @@ enum TournamentStatus {
   CANCELLED
 }
 
-enum PaymentStatus {
-  PENDING
-  PAID
-  REFUNDED
-}
+
 
 enum TeamPlayerStatus {
   ACTIVE
@@ -56,6 +52,8 @@ enum UserRole {
   ADMIN
 }
 
+
+
 // ====================== MODELS ======================
 
 model User {
@@ -76,7 +74,7 @@ model User {
   reported_results      MatchResult[]      @relation("ResultReporter")
   validated_results     MatchResult[]      @relation("ResultValidator")
   player_stats          PlayerStats[]
-
+  
   @@index([email])
   @@index([username])
   @@map("users")
@@ -169,7 +167,6 @@ model Team {
   captain_id        String
   seed              Int?
   registration_date DateTime      @default(now())
-  payment_status    PaymentStatus @default(PENDING)
   approved          Boolean       @default(false)
   disqualified      Boolean       @default(false)
   created_at        DateTime      @default(now())
@@ -322,3 +319,5 @@ model PlayerStats {
   @@index([rating])
   @@map("player_stats")
 }
+
+

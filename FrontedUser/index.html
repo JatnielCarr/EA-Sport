@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ApexTournament</title>
+  <meta name="description" content="Plataforma de torneos de esports - Ve partidas en vivo, brackets y más">
+  <meta name="theme-color" content="#00d4ff">
+
+  <!-- PWA Manifest -->
+  <link rel="manifest" href="/manifest.json">
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700&display=swap"
+    rel="stylesheet">
+
+  <!-- Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+
+<body>
+  <!-- Navigation -->
+  <nav class="navbar">
+    <div class="nav-container">
+      <a href="#/" class="nav-logo">
+        <i class="fas fa-bolt"></i>
+        <span>Apex</span>
+        <span class="logo-accent">Tournaments</span>
+      </a>
+
+      <ul class="nav-menu">
+        <li><a href="#/" class="nav-link active"><i class="fas fa-home"></i> Inicio</a></li>
+        <li><a href="#/torneos" class="nav-link"><i class="fas fa-trophy"></i> Torneos</a></li>
+        <li><a href="#/live" class="nav-link"><i class="fas fa-broadcast-tower"></i> En Vivo</a></li>
+        <li><a href="#/ranking" class="nav-link"><i class="fas fa-medal"></i> Ranking</a></li>
+      </ul>
+
+      <div class="nav-actions">
+        <a href="#/login" class="btn btn-outline">Iniciar Sesión</a>
+        <a href="#/registro" class="btn btn-primary">Registrarse</a>
+      </div>
+
+      <button class="nav-toggle" aria-label="Toggle menu">
+        <i class="fas fa-bars"></i>
+      </button>
+    </div>
+  </nav>
+
+  <!-- Main Content -->
+  <main id="app">
+    <!-- Content will be loaded dynamically -->
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="footer-container">
+      <div class="footer-brand">
+        <div class="footer-logo">
+          <i class="fas fa-bolt"></i>
+          <span>ApexTournament</span>
+        </div>
+        <p>La plataforma líder en torneos de esports</p>
+      </div>
+
+      <div class="footer-links">
+        <div class="footer-column">
+          <h4>Plataforma</h4>
+          <a href="#/torneos">Torneos</a>
+          <a href="#/live">En Vivo</a>
+          <a href="#/ranking">Ranking</a>
+        </div>
+        <div class="footer-column">
+          <h4>Soporte</h4>
+          <a href="#/faq">FAQ</a>
+          <a href="#/contacto">Contacto</a>
+          <a href="#/reglas">Reglas</a>
+        </div>
+        <div class="footer-column">
+          <h4>Legal</h4>
+          <a href="#/privacidad">Privacidad</a>
+          <a href="#/terminos">Términos</a>
+        </div>
+      </div>
+
+      <div class="footer-social">
+        <a href="#" aria-label="Discord"><i class="fab fa-discord"></i></a>
+        <a href="#" aria-label="Twitter"><i class="fab fa-twitter"></i></a>
+        <a href="#" aria-label="Twitch"><i class="fab fa-twitch"></i></a>
+        <a href="#" aria-label="YouTube"><i class="fab fa-youtube"></i></a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>&copy; 2024 ApexTournament. Todos los derechos reservados.</p>
+    </div>
+  </footer>
+
+  <!-- Toast container -->
+  <div id="toastContainer" class="toast-container"></div>
+
+  <!-- Scripts -->
+  <script type="module" src="/js/app.js"></script>
+
+  <!-- Service Worker Registration -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js')
+          .then(reg => console.log('SW registered'))
+          .catch(err => console.log('SW registration failed'));
+      });
+    }
+  </script>
+</body>
+
+</html>

@@ -9,6 +9,7 @@ import { showLoading, formatCurrency, showToast } from '../ui.js';
 let chartInstances = [];
 
 export async function renderDashboard(container) {
+  console.log('🚀 Dashboard: Starting render...');
   showLoading(container);
 
   // Cleanup previous charts
@@ -16,6 +17,7 @@ export async function renderDashboard(container) {
   chartInstances = [];
 
   try {
+    console.log('📡 Dashboard: Fetching data from API...');
     // Fetch all data in parallel
     const [usersRes, tournamentsRes, teamsRes, matchesRes, gamesRes] = await Promise.all([
       API.users.getAll(),
@@ -24,6 +26,7 @@ export async function renderDashboard(container) {
       API.matches.getAll(),
       API.games.getAll()
     ]);
+    console.log('✅ Dashboard: Data fetched successfully', { usersRes, tournamentsRes, teamsRes, matchesRes, gamesRes });
 
     const users = usersRes.data || [];
     const tournaments = tournamentsRes.data || [];
@@ -31,8 +34,10 @@ export async function renderDashboard(container) {
     const matches = matchesRes.data || [];
     const games = gamesRes.data || [];
 
+    console.log('📊 Dashboard: Calculating stats...', { users: users.length, tournaments: tournaments.length, teams: teams.length, matches: matches.length, games: games.length });
+
     // Calculate stats
-    const activeTournaments = tournaments.filter(t => 
+    const activeTournaments = tournaments.filter(t =>
       ['REGISTRATION_OPEN', 'IN_PROGRESS'].includes(t.status)
     ).length;
     const liveMatches = matches.filter(m => m.status === 'LIVE').length;
@@ -45,6 +50,7 @@ export async function renderDashboard(container) {
     const tournamentsByGame = calculateTournamentsByGame(tournaments, games);
     const activityData = generateActivityData();
 
+    console.log('🎨 Dashboard: Rendering HTML...');
     container.innerHTML = `
       <!-- Welcome Banner -->
       <div class="welcome-banner">
@@ -168,7 +174,7 @@ export async function renderDashboard(container) {
       </div>
 
       <!-- Prize Pool & Games Row -->
-      <div class="stats-grid" style="grid-template-columns: repeat(2, 1fr);">
+      <div class="statsspec-grid prize-pool-grid">
         <div class="stat-card warning gradient-border-card">
           <div class="stat-header">
             <div class="stat-icon">
@@ -1124,6 +1130,13 @@ export async function renderDashboard(container) {
           background: rgba(255, 184, 0, 0.3);
         }
         
+        .btn-remind.active {
+          background: rgba(0, 255, 136, 0.2);
+          color: #00ff88;
+          border: 1px solid rgba(0, 255, 136, 0.3);
+          cursor: default;
+        }
+        
         .btn-stats {
           background: rgba(0, 212, 255, 0.2);
           color: var(--primary);
@@ -1194,6 +1207,9 @@ export async function renderDashboard(container) {
     // Initialize Charts after DOM is ready
     setTimeout(() => {
       initCharts(activityData, tournamentsByStatus, matchesByStatus, usersByRole, tournamentsByGame);
+
+      // Initialize live match button handlers
+      initLiveMatchButtons();
     }, 100);
 
   } catch (error) {
@@ -1425,18 +1441,18 @@ function calculateTournamentsByStatus(tournaments) {
     'COMPLETED': 'Completado',
     'CANCELLED': 'Cancelado'
   };
-  
+
   const counts = {};
   tournaments.forEach(t => {
     const label = statusLabels[t.status] || t.status;
     counts[label] = (counts[label] || 0) + 1;
   });
-  
+
   // If no data, return demo data
   if (Object.keys(counts).length === 0) {
     return { 'En Curso': 3, 'Inscripciones': 5, 'Completado': 8, 'Borrador': 2 };
   }
-  
+
   return counts;
 }
 
@@ -1447,17 +1463,17 @@ function calculateMatchesByStatus(matches) {
     'COMPLETED': 'Completadas',
     'CANCELLED': 'Canceladas'
   };
-  
+
   const counts = {};
   matches.forEach(m => {
     const label = statusLabels[m.status] || m.status;
     counts[label] = (counts[label] || 0) + 1;
   });
-  
+
   if (Object.keys(counts).length === 0) {
     return { 'Completadas': 45, 'Programadas': 12, 'En Vivo': 3 };
   }
-  
+
   return counts;
 }
 
@@ -1467,40 +1483,40 @@ function calculateUsersByRole(users) {
     'ORGANIZER': 'Organizadores',
     'USER': 'Jugadores'
   };
-  
+
   const counts = {};
   users.forEach(u => {
     const label = roleLabels[u.role] || u.role;
     counts[label] = (counts[label] || 0) + 1;
   });
-  
+
   if (Object.keys(counts).length === 0) {
     return { 'Jugadores': 150, 'Organizadores': 12, 'Admins': 3 };
   }
-  
+
   return counts;
 }
 
 function calculateTournamentsByGame(tournaments, games) {
   const counts = {};
-  
+
   games.forEach(g => {
     const count = tournaments.filter(t => t.game_id === g.id).length;
     if (count > 0 || games.length <= 6) {
       counts[g.name] = count;
     }
   });
-  
+
   if (Object.keys(counts).length === 0) {
-    return { 
-      'Clash Royale': 5, 
-      'League of Legends': 8, 
-      'Valorant': 6, 
+    return {
+      'Clash Royale': 5,
+      'League of Legends': 8,
+      'Valorant': 6,
       'FC 25': 4,
       'Rocket League': 3
     };
   }
-  
+
   return counts;
 }
 
@@ -1518,25 +1534,28 @@ function generateLiveMatchesWidget(matches, teams, tournaments, games) {
   const liveMatches = matches.filter(m => m.status === 'LIVE');
   const scheduledMatches = matches.filter(m => m.status === 'SCHEDULED').slice(0, 3);
   const recentMatches = matches.filter(m => m.status === 'COMPLETED').slice(0, 2);
-  
+
   // Combine and show up to 5 matches
   let displayMatches = [...liveMatches, ...scheduledMatches, ...recentMatches].slice(0, 5);
-  
+
   // If no real matches, create demo data
   if (displayMatches.length === 0) {
     return generateDemoLiveMatches(games);
   }
-  
+
   return displayMatches.map(match => {
-    const game = games.find(g => g.id === match.game_id);
     const tournament = tournaments.find(t => t.id === match.tournament_id);
-    const team1 = teams.find(t => t.id === match.team1_id);
-    const team2 = teams.find(t => t.id === match.team2_id);
-    
-    const isLive = match.status === 'LIVE';
-    const isScheduled = match.status === 'SCHEDULED';
+    const game = games.find(g => g.id === tournament?.game_id);
+    const team1 = teams.find(t => t.id === match.home_team_id);
+    const team2 = teams.find(t => t.id === match.away_team_id);
+
+    const isLive = match.status === 'LIVE' || match.status === 'IN_PROGRESS';
+    const isScheduled = match.status === 'SCHEDULED' || match.status === 'PENDING';
     const isCompleted = match.status === 'COMPLETED';
-    
+
+    const score1 = match.home_score || 0;
+    const score2 = match.away_score || 0;
+
     return `
       <div class="live-match-card ${isLive ? 'is-live' : ''} ${isCompleted ? 'is-completed' : ''}">
         <div class="match-status-bar ${match.status.toLowerCase()}">
@@ -1555,7 +1574,7 @@ function generateLiveMatchesWidget(matches, teams, tournaments, games) {
         </div>
         
         <div class="match-teams">
-          <div class="match-team ${match.score1 > match.score2 ? 'winner' : ''}">
+          <div class="match-team ${score1 > score2 ? 'winner' : ''}">
             <div class="team-avatar">
               <i class="fas fa-shield-halved"></i>
             </div>
@@ -1563,13 +1582,13 @@ function generateLiveMatchesWidget(matches, teams, tournaments, games) {
           </div>
           
           <div class="match-score-display">
-            <span class="score team1-score ${match.score1 > match.score2 ? 'winning' : ''}">${match.score1 || 0}</span>
+            <span class="score team1-score ${score1 > score2 ? 'winning' : ''}">${score1}</span>
             <span class="score-separator">:</span>
-            <span class="score team2-score ${match.score2 > match.score1 ? 'winning' : ''}">${match.score2 || 0}</span>
+            <span class="score team2-score ${score2 > score1 ? 'winning' : ''}">${score2}</span>
             ${isLive ? '<div class="live-timer">' + getRandomTime() + '</div>' : ''}
           </div>
           
-          <div class="match-team ${match.score2 > match.score1 ? 'winner' : ''}">
+          <div class="match-team ${score2 > score1 ? 'winner' : ''}">
             <div class="team-avatar away">
               <i class="fas fa-shield-halved"></i>
             </div>
@@ -1641,12 +1660,12 @@ function generateDemoLiveMatches(games) {
       time: 'Final'
     }
   ];
-  
+
   return demoMatches.map(match => {
     const isLive = match.status === 'LIVE';
     const isScheduled = match.status === 'SCHEDULED';
     const isCompleted = match.status === 'COMPLETED';
-    
+
     return `
       <div class="live-match-card ${isLive ? 'is-live' : ''} ${isCompleted ? 'is-completed' : ''}">
         <div class="match-status-bar ${match.status.toLowerCase()}">
@@ -1762,4 +1781,346 @@ function formatDateShort(dateString) {
     month: 'short',
     year: 'numeric'
   });
+}
+
+// =====================================================
+// LIVE MATCH BUTTON HANDLERS
+// =====================================================
+
+function initLiveMatchButtons() {
+  // Handle "Recordar" (Remind) button clicks
+  document.querySelectorAll('.btn-remind').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const matchCard = btn.closest('.live-match-card');
+      const team1 = matchCard.querySelector('.match-team:first-of-type .team-name')?.textContent || 'Equipo 1';
+      const team2 = matchCard.querySelector('.match-team:last-of-type .team-name')?.textContent || 'Equipo 2';
+
+      // Show notification
+      showToast('success', '¡Recordatorio activado!', `Te notificaremos cuando comience: ${team1} vs ${team2}`);
+
+      // Change button appearance
+      btn.innerHTML = '<i class="fas fa-check"></i> Recordatorio activado';
+      btn.classList.add('active');
+      btn.disabled = true;
+
+      // Store in localStorage
+      const reminders = JSON.parse(localStorage.getItem('matchReminders') || '[]');
+      reminders.push({
+        teams: `${team1} vs ${team2}`,
+        timestamp: Date.now()
+      });
+      localStorage.setItem('matchReminders', JSON.stringify(reminders));
+    });
+  });
+
+  // Handle "Estadísticas" (Stats) button clicks
+  document.querySelectorAll('.btn-stats').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const matchCard = btn.closest('.live-match-card');
+      const team1 = matchCard.querySelector('.match-team:first-of-type .team-name')?.textContent || 'Equipo 1';
+      const team2 = matchCard.querySelector('.match-team:last-of-type .team-name')?.textContent || 'Equipo 2';
+      const score1 = matchCard.querySelector('.team1-score')?.textContent || '0';
+      const score2 = matchCard.querySelector('.team2-score')?.textContent || '0';
+
+      // Create and show stats modal
+      showStatsModal(team1, team2, score1, score2);
+    });
+  });
+
+  // Handle "Ver Partida" (Watch Match) button clicks
+  document.querySelectorAll('.btn-watch').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const matchCard = btn.closest('.live-match-card');
+      const team1 = matchCard.querySelector('.match-team:first-of-type .team-name')?.textContent || 'Equipo 1';
+      const team2 = matchCard.querySelector('.match-team:last-of-type .team-name')?.textContent || 'Equipo 2';
+
+      showToast('info', 'Transmisión en vivo', `Conectando a la partida: ${team1} vs ${team2}...`);
+
+      // Could redirect to a live stream page or open a modal with the stream
+      // For now, just show the toast
+    });
+  });
+}
+
+// Stats Modal
+function showStatsModal(team1, team2, score1, score2) {
+  // Create modal overlay
+  const overlay = document.createElement('div');
+  overlay.className = 'stats-modal-overlay';
+  overlay.innerHTML = `
+    <div class="stats-modal">
+      <div class="stats-modal-header">
+        <h3><i class="fas fa-chart-bar"></i> Estadísticas de la Partida</h3>
+        <button class="stats-modal-close"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="stats-modal-body">
+        <div class="stats-teams-header">
+          <div class="stats-team">
+            <div class="stats-team-avatar"><i class="fas fa-shield-halved"></i></div>
+            <span class="stats-team-name">${team1}</span>
+          </div>
+          <div class="stats-score-display">
+            <span class="stats-score">${score1}</span>
+            <span class="stats-separator">-</span>
+            <span class="stats-score">${score2}</span>
+          </div>
+          <div class="stats-team">
+            <div class="stats-team-avatar away"><i class="fas fa-shield-halved"></i></div>
+            <span class="stats-team-name">${team2}</span>
+          </div>
+        </div>
+        
+        <div class="stats-details">
+          <div class="stat-row">
+            <span class="stat-value left">${Math.floor(Math.random() * 20) + 10}</span>
+            <span class="stat-label">Rondas Ganadas</span>
+            <span class="stat-value right">${Math.floor(Math.random() * 20) + 10}</span>
+          </div>
+          <div class="stat-bar-container">
+            <div class="stat-bar left" style="width: ${Math.floor(Math.random() * 40) + 30}%"></div>
+            <div class="stat-bar right" style="width: ${Math.floor(Math.random() * 40) + 30}%"></div>
+          </div>
+          
+          <div class="stat-row">
+            <span class="stat-value left">${Math.floor(Math.random() * 50) + 20}</span>
+            <span class="stat-label">Puntos Totales</span>
+            <span class="stat-value right">${Math.floor(Math.random() * 50) + 20}</span>
+          </div>
+          <div class="stat-bar-container">
+            <div class="stat-bar left" style="width: ${Math.floor(Math.random() * 40) + 30}%"></div>
+            <div class="stat-bar right" style="width: ${Math.floor(Math.random() * 40) + 30}%"></div>
+          </div>
+          
+          <div class="stat-row">
+            <span class="stat-value left">${(Math.random() * 2 + 0.5).toFixed(1)}</span>
+            <span class="stat-label">K/D Ratio</span>
+            <span class="stat-value right">${(Math.random() * 2 + 0.5).toFixed(1)}</span>
+          </div>
+          <div class="stat-bar-container">
+            <div class="stat-bar left" style="width: ${Math.floor(Math.random() * 40) + 30}%"></div>
+            <div class="stat-bar right" style="width: ${Math.floor(Math.random() * 40) + 30}%"></div>
+          </div>
+        </div>
+      </div>
+      <div class="stats-modal-footer">
+        <button class="btn btn-primary" onclick="this.closest('.stats-modal-overlay').remove()">
+          <i class="fas fa-check"></i> Cerrar
+        </button>
+      </div>
+    </div>
+  `;
+
+  // Add styles for the modal
+  if (!document.getElementById('stats-modal-styles')) {
+    const styles = document.createElement('style');
+    styles.id = 'stats-modal-styles';
+    styles.textContent = `
+      .stats-modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.8);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10000;
+        animation: fadeIn 0.2s ease;
+      }
+      
+      @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+      }
+      
+      .stats-modal {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: 16px;
+        width: 90%;
+        max-width: 500px;
+        overflow: hidden;
+        animation: slideUp 0.3s ease;
+      }
+      
+      @keyframes slideUp {
+        from { transform: translateY(20px); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
+      }
+      
+      .stats-modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 20px;
+        background: linear-gradient(135deg, rgba(0, 212, 255, 0.1), rgba(0, 255, 136, 0.1));
+        border-bottom: 1px solid var(--border-color);
+      }
+      
+      .stats-modal-header h3 {
+        margin: 0;
+        font-size: 18px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      
+      .stats-modal-header h3 i {
+        color: var(--primary);
+      }
+      
+      .stats-modal-close {
+        background: none;
+        border: none;
+        color: var(--text-secondary);
+        cursor: pointer;
+        padding: 8px;
+        border-radius: 8px;
+        transition: all 0.2s;
+      }
+      
+      .stats-modal-close:hover {
+        background: var(--bg-tertiary);
+        color: var(--text-primary);
+      }
+      
+      .stats-modal-body {
+        padding: 24px;
+      }
+      
+      .stats-teams-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 24px;
+      }
+      
+      .stats-team {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+      }
+      
+      .stats-team-avatar {
+        width: 50px;
+        height: 50px;
+        border-radius: 12px;
+        background: linear-gradient(135deg, var(--primary), var(--accent));
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+        color: white;
+      }
+      
+      .stats-team-avatar.away {
+        background: linear-gradient(135deg, #ff6b35, #ff3366);
+      }
+      
+      .stats-team-name {
+        font-weight: 600;
+        font-size: 14px;
+      }
+      
+      .stats-score-display {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      
+      .stats-score {
+        font-family: 'Orbitron', sans-serif;
+        font-size: 32px;
+        font-weight: 900;
+        color: var(--primary);
+      }
+      
+      .stats-separator {
+        font-size: 24px;
+        color: var(--text-muted);
+      }
+      
+      .stats-details {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+      
+      .stat-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      
+      .stat-label {
+        font-size: 12px;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 1px;
+      }
+      
+      .stat-value {
+        font-weight: 600;
+        font-size: 16px;
+      }
+      
+      .stat-value.left { color: var(--primary); }
+      .stat-value.right { color: #ff6b35; }
+      
+      .stat-bar-container {
+        display: flex;
+        gap: 4px;
+        height: 6px;
+        background: var(--bg-tertiary);
+        border-radius: 3px;
+        overflow: hidden;
+      }
+      
+      .stat-bar {
+        height: 100%;
+        border-radius: 3px;
+        transition: width 0.5s ease;
+      }
+      
+      .stat-bar.left { background: linear-gradient(90deg, var(--primary), var(--primary-light)); }
+      .stat-bar.right { background: linear-gradient(90deg, #ff6b35, #ff8f6b); margin-left: auto; }
+      
+      .stats-modal-footer {
+        padding: 16px 24px;
+        border-top: 1px solid var(--border-color);
+        display: flex;
+        justify-content: flex-end;
+      }
+    `;
+    document.head.appendChild(styles);
+  }
+
+  // Add to body
+  document.body.appendChild(overlay);
+
+  // Close on overlay click
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) {
+      overlay.remove();
+    }
+  });
+
+  // Close on button click
+  overlay.querySelector('.stats-modal-close').addEventListener('click', () => {
+    overlay.remove();
+  });
+
+  // Close on Escape key
+  const escHandler = (e) => {
+    if (e.key === 'Escape') {
+      overlay.remove();
+      document.removeEventListener('keydown', escHandler);
+    }
+  };
+  document.addEventListener('keydown', escHandler);
 }

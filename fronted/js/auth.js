@@ -2,12 +2,12 @@
 // AUTH MODULE - Authentication Management
 // =====================================================
 
-const API_BASE = 'http://localhost:3000';
+import { API_BASE, APP_CONFIG } from './config.js';
 
 class Auth {
   constructor() {
-    this.tokenKey = 'ea_sports_token';
-    this.userKey = 'ea_sports_user';
+    this.tokenKey = APP_CONFIG.tokenKey;
+    this.userKey = APP_CONFIG.userKey;
   }
 
   // Get stored token
@@ -25,7 +25,7 @@ class Auth {
   isLoggedIn() {
     const token = this.getToken();
     if (!token) return false;
-    
+
     // Check if token is expired
     try {
       const payload = JSON.parse(atob(token.split('.')[1]));

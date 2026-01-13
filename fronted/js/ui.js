@@ -2,11 +2,16 @@
 // UI UTILITIES - Componentes reutilizables
 // =====================================================
 
-// Toast Notifications
+import { escapeHtml } from './utils.js';
+import { APP_CONFIG } from './config.js';
+
+// Toast Notifications - XSS Safe
 export function showToast(type, title, message) {
   const container = document.getElementById('toastContainer');
+  if (!container) return;
+
   const toast = document.createElement('div');
-  toast.className = `toast ${type}`;
+  toast.className = `toast ${escapeHtml(type)}`;
 
   const icons = {
     success: 'fa-check-circle',
@@ -15,24 +20,42 @@ export function showToast(type, title, message) {
     info: 'fa-info-circle'
   };
 
-  toast.innerHTML = `
-    <div class="toast-icon">
-      <i class="fas ${icons[type]}"></i>
-    </div>
-    <div class="toast-content">
-      <div class="toast-title">${title}</div>
-      <div class="toast-message">${message}</div>
-    </div>
-    <button class="toast-close"><i class="fas fa-times"></i></button>
-  `;
+  const iconClass = icons[type] || icons.info;
+
+  // Create elements safely to prevent XSS
+  const iconDiv = document.createElement('div');
+  iconDiv.className = 'toast-icon';
+  iconDiv.innerHTML = `<i class="fas ${iconClass}"></i>`;
+
+  const contentDiv = document.createElement('div');
+  contentDiv.className = 'toast-content';
+
+  const titleDiv = document.createElement('div');
+  titleDiv.className = 'toast-title';
+  titleDiv.textContent = title; // Safe - textContent escapes HTML
+
+  const messageDiv = document.createElement('div');
+  messageDiv.className = 'toast-message';
+  messageDiv.textContent = message; // Safe - textContent escapes HTML
+
+  contentDiv.appendChild(titleDiv);
+  contentDiv.appendChild(messageDiv);
+
+  const closeBtn = document.createElement('button');
+  closeBtn.className = 'toast-close';
+  closeBtn.innerHTML = '<i class="fas fa-times"></i>';
+
+  toast.appendChild(iconDiv);
+  toast.appendChild(contentDiv);
+  toast.appendChild(closeBtn);
 
   container.appendChild(toast);
 
-  // Auto remove
-  const autoRemove = setTimeout(() => removeToast(toast), 5000);
+  // Auto remove using config
+  const autoRemove = setTimeout(() => removeToast(toast), APP_CONFIG.toastDuration);
 
   // Manual close
-  toast.querySelector('.toast-close').addEventListener('click', () => {
+  closeBtn.addEventListener('click', () => {
     clearTimeout(autoRemove);
     removeToast(toast);
   });
@@ -71,17 +94,32 @@ export function showLoading(container) {
   `;
 }
 
-// Empty State
+// Empty State - XSS Safe
 export function showEmptyState(container, icon, title, message) {
-  container.innerHTML = `
-    <div class="empty-state fade-in">
-      <div class="empty-icon">
-        <i class="fas ${icon}"></i>
-      </div>
-      <h3 class="empty-title">${title}</h3>
-      <p class="empty-message">${message}</p>
-    </div>
-  `;
+  // Sanitize icon to only allow valid Font Awesome classes
+  const safeIcon = /^fa-[a-z-]+$/.test(icon) ? icon : 'fa-question-circle';
+
+  const wrapper = document.createElement('div');
+  wrapper.className = 'empty-state fade-in';
+
+  const iconDiv = document.createElement('div');
+  iconDiv.className = 'empty-icon';
+  iconDiv.innerHTML = `<i class="fas ${safeIcon}"></i>`;
+
+  const titleEl = document.createElement('h3');
+  titleEl.className = 'empty-title';
+  titleEl.textContent = title; // Safe
+
+  const messageEl = document.createElement('p');
+  messageEl.className = 'empty-message';
+  messageEl.textContent = message; // Safe
+
+  wrapper.appendChild(iconDiv);
+  wrapper.appendChild(titleEl);
+  wrapper.appendChild(messageEl);
+
+  container.innerHTML = '';
+  container.appendChild(wrapper);
 }
 
 // Format Date
@@ -271,19 +309,49 @@ export function debounce(func, wait) {
   };
 }
 
-// Initialize modal close handlers
+// Store event listeners for cleanup
+let modalEscapeHandler = null;
+let modalOverlayHandler = null;
+let modalCloseHandler = null;
+
+// Initialize modal close handlers - with proper cleanup
 export function initModalHandlers() {
   const overlay = document.getElementById('modalOverlay');
   const closeBtn = document.getElementById('modalClose');
 
-  closeBtn.addEventListener('click', closeModal);
-  overlay.addEventListener('click', (e) => {
-    if (e.target === overlay) closeModal();
-  });
+  if (!overlay || !closeBtn) return;
 
-  document.addEventListener('keydown', (e) => {
+  // Remove existing listeners if any (prevents memory leak)
+  cleanupModalHandlers();
+
+  // Create named handlers for cleanup
+  modalCloseHandler = () => closeModal();
+  modalOverlayHandler = (e) => {
+    if (e.target === overlay) closeModal();
+  };
+  modalEscapeHandler = (e) => {
     if (e.key === 'Escape') closeModal();
-  });
+  };
+
+  closeBtn.addEventListener('click', modalCloseHandler);
+  overlay.addEventListener('click', modalOverlayHandler);
+  document.addEventListener('keydown', modalEscapeHandler);
+}
+
+// Cleanup modal handlers to prevent memory leaks
+export function cleanupModalHandlers() {
+  const overlay = document.getElementById('modalOverlay');
+  const closeBtn = document.getElementById('modalClose');
+
+  if (closeBtn && modalCloseHandler) {
+    closeBtn.removeEventListener('click', modalCloseHandler);
+  }
+  if (overlay && modalOverlayHandler) {
+    overlay.removeEventListener('click', modalOverlayHandler);
+  }
+  if (modalEscapeHandler) {
+    document.removeEventListener('keydown', modalEscapeHandler);
+  }
 }
 
 // =====================================================

@@ -6,6 +6,7 @@ import bcrypt from 'bcrypt';
 import { swaggerConfig } from './config/swagger';
 import { prisma } from './config/database';
 
+
 const JWT_SECRET = process.env.JWT_SECRET || 'ea-sports-tournament-secret-key-2024';
 
 export async function buildApp() {
@@ -14,11 +15,27 @@ export async function buildApp() {
     disableRequestLogging: process.env.NODE_ENV === 'test'
   });
 
+  // CORS Configuration - More flexible for development and production
+  const CORS_ORIGINS = process.env.CORS_ORIGINS
+    ? process.env.CORS_ORIGINS.split(',')
+    : [
+      'http://localhost:3000',
+      'http://localhost:5173',
+      'http://localhost:5174',
+      'http://localhost:5175',
+      'http://127.0.0.1:5173',
+      'http://127.0.0.1:5174',
+      'http://127.0.0.1:5175',
+      'http://localhost:4173', // Vite preview
+      'http://127.0.0.1:4173'
+    ];
+
   // Register plugins
   await app.register(helmet);
   await app.register(cors, {
-    origin: ['http://localhost:3000', 'http://localhost:5173', 'http://localhost:5174', 'http://127.0.0.1:5173', 'http://127.0.0.1:5174'],
-    credentials: true
+    origin: CORS_ORIGINS,
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS']
   });
 
   // Register JWT
@@ -97,27 +114,33 @@ export async function buildApp() {
       return reply.status(401).send({ success: false, error: 'Invalid credentials' });
     }
 
-    // Verify password - try bcrypt first, then plain text for legacy passwords
+    // Verify password using bcrypt
     let validPassword = false;
-    try {
-      validPassword = await bcrypt.compare(password, user.password_hash);
-    } catch {
-      // If bcrypt fails, check if it's a plain text password (legacy)
-      validPassword = password === user.password_hash;
-    }
+    const isHashedPassword = user.password_hash.startsWith('$2');
 
-    // Also check plain text comparison for non-hashed passwords
-    if (!validPassword) {
+    if (isHashedPassword) {
+      // Standard bcrypt comparison for hashed passwords
+      try {
+        validPassword = await bcrypt.compare(password, user.password_hash);
+      } catch {
+        validPassword = false;
+      }
+    } else {
+      // Legacy plain text password support (will be auto-migrated)
+      // WARNING: This should be removed once all passwords are migrated
       validPassword = password === user.password_hash;
-    }
 
-    // If valid with plain password, update to hashed version
-    if (validPassword && !user.password_hash.startsWith('$2')) {
-      const hashedPassword = await bcrypt.hash(password, 10);
-      await prisma.user.update({
-        where: { id: user.id },
-        data: { password_hash: hashedPassword }
-      });
+      if (validPassword) {
+        // Log migration for monitoring
+        console.warn(`[SECURITY] User ${user.id} has legacy plain text password - migrating to bcrypt`);
+
+        // Migrate to hashed password immediately
+        const hashedPassword = await bcrypt.hash(password, 10);
+        await prisma.user.update({
+          where: { id: user.id },
+          data: { password_hash: hashedPassword }
+        });
+      }
     }
 
     if (!validPassword) {
@@ -224,6 +247,51 @@ export async function buildApp() {
       }
 
       return { success: true, data: user };
+    } catch (err) {
+      return reply.status(401).send({ success: false, error: 'Unauthorized' });
+    }
+  });
+
+  // Change password
+  app.post('/auth/change-password', {
+    schema: {
+      tags: ['Auth'],
+      description: 'Change user password',
+      body: {
+        type: 'object',
+        required: ['currentPassword', 'newPassword'],
+        properties: {
+          currentPassword: { type: 'string', minLength: 1 },
+          newPassword: { type: 'string', minLength: 6 }
+        }
+      }
+    }
+  }, async (request, reply) => {
+    try {
+      await request.jwtVerify();
+      const userData = request.user as any;
+      const { currentPassword, newPassword } = request.body as { currentPassword: string; newPassword: string };
+
+      const user = await prisma.user.findUnique({ where: { id: userData.id } });
+
+      if (!user) {
+        return reply.status(404).send({ success: false, error: 'User not found' });
+      }
+
+      // Verify current password
+      const validPassword = await bcrypt.compare(currentPassword, user.password_hash);
+      if (!validPassword) {
+        return reply.status(400).send({ success: false, error: 'Current password is incorrect' });
+      }
+
+      // Hash and update new password
+      const newPasswordHash = await bcrypt.hash(newPassword, 10);
+      await prisma.user.update({
+        where: { id: userData.id },
+        data: { password_hash: newPasswordHash }
+      });
+
+      return { success: true, message: 'Password changed successfully' };
     } catch (err) {
       return reply.status(401).send({ success: false, error: 'Unauthorized' });
     }
@@ -594,6 +662,94 @@ export async function buildApp() {
   }, async (request) => {
     const game = await prisma.game.create({ data: request.body as any });
     return { success: true, data: game };
+  });
+
+  app.get('/games/:id', {
+    schema: {
+      tags: ['Games'],
+      description: 'Get game by ID',
+      params: {
+        type: 'object',
+        properties: {
+          id: { type: 'string' }
+        }
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            data: { type: 'object' }
+          }
+        }
+      }
+    }
+  }, async (request) => {
+    const { id } = request.params as { id: string };
+    const game = await prisma.game.findUnique({ where: { id } });
+    return { success: true, data: game };
+  });
+
+  app.put('/games/:id', {
+    schema: {
+      tags: ['Games'],
+      description: 'Update game by ID',
+      params: {
+        type: 'object',
+        properties: {
+          id: { type: 'string' }
+        }
+      },
+      body: {
+        type: 'object',
+        properties: {
+          name: { type: 'string' },
+          slug: { type: 'string' },
+          developer: { type: 'string' },
+          icon_url: { type: 'string' },
+          team_size_default: { type: 'integer' }
+        }
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            data: { type: 'object' }
+          }
+        }
+      }
+    }
+  }, async (request) => {
+    const { id } = request.params as { id: string };
+    const game = await prisma.game.update({ where: { id }, data: request.body as any });
+    return { success: true, data: game };
+  });
+
+  app.delete('/games/:id', {
+    schema: {
+      tags: ['Games'],
+      description: 'Delete game by ID',
+      params: {
+        type: 'object',
+        properties: {
+          id: { type: 'string' }
+        }
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            message: { type: 'string' }
+          }
+        }
+      }
+    }
+  }, async (request) => {
+    const { id } = request.params as { id: string };
+    await prisma.game.delete({ where: { id } });
+    return { success: true, message: 'Game deleted' };
   });
 
   // Teams
@@ -967,7 +1123,34 @@ export async function buildApp() {
     return { success: true, data: match };
   });
 
+  app.delete('/matches/:id', {
+    schema: {
+      tags: ['Matches'],
+      description: 'Delete match by ID',
+      params: {
+        type: 'object',
+        properties: {
+          id: { type: 'string' }
+        }
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            message: { type: 'string' }
+          }
+        }
+      }
+    }
+  }, async (request) => {
+    const { id } = request.params as { id: string };
+    await prisma.match.delete({ where: { id } });
+    return { success: true, message: 'Match deleted' };
+  });
+
   // Match Results
+
   app.post('/matches/:matchId/results', {
     schema: {
       tags: ['Matches'],
@@ -1262,6 +1445,8 @@ export async function buildApp() {
       }
     });
   });
+
+
 
   return app;
 }

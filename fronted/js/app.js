@@ -12,7 +12,10 @@ import { renderLeaderboard } from './pages/leaderboard.js';
 import { renderBrackets } from './pages/brackets.js';
 import { renderLogin, cleanupLogin } from './pages/login.js';
 import { renderBracket } from './pages/bracket.js';
-import { showToast, initGamingEffects, closeModal, initModalHandlers } from './ui.js';
+
+import { showToast, initGamingEffects, closeModal, initModalHandlers, cleanupModalHandlers } from './ui.js';
+import { getInitials } from './utils.js';
+import { API_BASE } from './config.js';
 import Auth from './auth.js';
 
 // =====================================================
@@ -29,6 +32,7 @@ const routes = {
   '/games': renderGames,
   '/leaderboard': renderLeaderboard,
   '/brackets': renderBrackets,
+
   '/login': renderLogin
 };
 
@@ -140,10 +144,17 @@ function updateActiveNavItem(route) {
     item.classList.remove('active');
   });
 
+  // Handle root route specially - map to 'dashboard'
+  const pageName = route === '/' ? 'dashboard' : route.replace('/', '');
+
   // Add active class to current route - check for data-page attribute first
-  let activeItem = document.querySelector(`.nav-link[data-page="${route.replace('/', '')}"]`);
+  let activeItem = document.querySelector(`.nav-link[data-page="${pageName}"]`);
   if (!activeItem) {
     activeItem = document.querySelector(`.nav-link[href="#${route}"]`);
+  }
+  // Fallback for '/' route
+  if (!activeItem && route === '/') {
+    activeItem = document.querySelector('.nav-link[href="#/dashboard"]');
   }
   if (activeItem) {
     activeItem.classList.add('active');
@@ -199,41 +210,27 @@ function updateThemeIcon(theme) {
 
 function initSidebar() {
   const sidebarState = localStorage.getItem('sidebarCollapsed');
+  const sidebar = document.querySelector('.sidebar');
+  const mainContent = document.querySelector('.main-content');
+
   if (sidebarState === 'true') {
-    document.querySelector('.sidebar')?.classList.add('collapsed');
+    sidebar?.classList.add('collapsed');
+    mainContent?.classList.add('sidebar-collapsed');
   }
 }
 
 function toggleSidebar() {
   const sidebar = document.querySelector('.sidebar');
+  const mainContent = document.querySelector('.main-content');
+
   if (sidebar) {
     sidebar.classList.toggle('collapsed');
+    mainContent?.classList.toggle('sidebar-collapsed');
     localStorage.setItem('sidebarCollapsed', sidebar.classList.contains('collapsed'));
   }
 }
 
-// =====================================================
-// Mobile Menu
-// =====================================================
 
-function initMobileMenu() {
-  // Close sidebar on mobile when clicking outside
-  document.addEventListener('click', (e) => {
-    const sidebar = document.querySelector('.sidebar');
-    const menuToggle = document.querySelector('.menu-toggle');
-
-    if (window.innerWidth <= 768 && sidebar && !sidebar.contains(e.target) && !menuToggle?.contains(e.target)) {
-      sidebar.classList.remove('mobile-open');
-    }
-  });
-}
-
-function toggleMobileMenu() {
-  const sidebar = document.querySelector('.sidebar');
-  if (sidebar) {
-    sidebar.classList.toggle('mobile-open');
-  }
-}
 
 // =====================================================
 // API Health Check
@@ -241,7 +238,7 @@ function toggleMobileMenu() {
 
 async function checkAPIHealth() {
   try {
-    const response = await fetch('http://localhost:3000/health', {
+    const response = await fetch(`${API_BASE}/health`, {
       method: 'GET',
       mode: 'cors'
     });
@@ -283,20 +280,6 @@ function setupEventListeners() {
     sidebarToggle.addEventListener('click', toggleSidebar);
   }
 
-  // Mobile menu toggle
-  const menuToggle = document.querySelector('.menu-toggle');
-  if (menuToggle) {
-    menuToggle.addEventListener('click', toggleMobileMenu);
-  }
-
-  // Navigation items - close mobile menu on click
-  document.querySelectorAll('.nav-link').forEach(item => {
-    item.addEventListener('click', () => {
-      if (window.innerWidth <= 768) {
-        document.querySelector('.sidebar')?.classList.remove('mobile-open');
-      }
-    });
-  });
 
   // Keyboard shortcuts
   document.addEventListener('keydown', (e) => {
@@ -345,10 +328,8 @@ function getRoleLabel(role) {
   return labels[role] || role;
 }
 
-function getInitials(name) {
-  if (!name) return 'U';
-  return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
-}
+// Note: getInitials is now imported from utils.js for safety
+// Legacy fallback removed - using centralized utility function
 
 // Logout function
 function logout() {
@@ -361,7 +342,7 @@ function logout() {
 
 window.toggleTheme = toggleTheme;
 window.toggleSidebar = toggleSidebar;
-window.toggleMobileMenu = toggleMobileMenu;
+
 window.logout = logout;
 window.closeModal = closeModal;
 
@@ -376,7 +357,7 @@ async function init() {
   // Initialize features
   initTheme();
   initSidebar();
-  initMobileMenu();
+
   initUserSession();
   setupEventListeners();
   initModalHandlers();

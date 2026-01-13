@@ -1,7 +1,7 @@
 {
-  "name": "esports-tournament-api",
+  "name": "apex-tournament",
   "version": "1.0.0",
-  "description": "API RESTful para gestión de torneos de esports y videojuegos competitivos",
+  "description": "ApexTournament - Plataforma profesional para gestión de torneos de esports y videojuegos competitivos",
   "main": "dist/server.js",
   "scripts": {
     "dev": "tsx watch src/server.ts",
