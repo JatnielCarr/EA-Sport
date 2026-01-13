@@ -362,9 +362,9 @@ CMD ["npm", "start"]
 
 Este proyecto está bajo la Licencia MIT - ver el archivo [LICENSE](LICENSE) para más detalles.
 
-## 👤 Autor
+## 👤 Autores
 
-**JatnielCarr**
+
 - GitHub: [@JatnielCarr](https://github.com/JatnielCarr)
 - GitHub: [@Dark14411](https://github.com/Dark14411)
 - GitHub: [@Alfredo2364](https://github.com/Alfredo2364)
