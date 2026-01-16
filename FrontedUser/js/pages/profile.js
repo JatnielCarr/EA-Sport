@@ -109,9 +109,55 @@ export async function renderProfile(container) {
                             <i class="fas fa-history"></i>
                             Actividad Reciente
                         </h2>
-                        <div class="activity-list empty-state-small">
-                            <i class="fas fa-clock"></i>
-                            <p>No hay actividad reciente</p>
+                        <div class="quick-actions">
+                            <a href="#/historial" class="quick-action-card">
+                                <div class="quick-action-icon">
+                                    <i class="fas fa-history"></i>
+                                </div>
+                                <div class="quick-action-info">
+                                    <h4>Historial de Partidas</h4>
+                                    <p>Ver todas tus partidas y estadísticas</p>
+                                </div>
+                                <i class="fas fa-chevron-right"></i>
+                            </a>
+                            <a href="#/logros" class="quick-action-card">
+                                <div class="quick-action-icon badges">
+                                    <i class="fas fa-award"></i>
+                                </div>
+                                <div class="quick-action-info">
+                                    <h4>Logros y Medallas</h4>
+                                    <p>Desbloquea logros y colecciona medallas</p>
+                                </div>
+                                <i class="fas fa-chevron-right"></i>
+                            </a>
+                            <a href="#/favoritos" class="quick-action-card">
+                                <div class="quick-action-icon favorites">
+                                    <i class="fas fa-heart"></i>
+                                </div>
+                                <div class="quick-action-info">
+                                    <h4>Mis Favoritos</h4>
+                                    <p>Torneos y equipos guardados</p>
+                                </div>
+                                <i class="fas fa-chevron-right"></i>
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- Performance Chart Section -->
+                    <div class="profile-section full-width">
+                        <h2 class="section-title">
+                            <i class="fas fa-chart-line"></i>
+                            Rendimiento
+                        </h2>
+                        <div class="chart-container">
+                            <div class="chart-card">
+                                <h4>Victorias vs Derrotas</h4>
+                                <div class="pie-chart" id="winLossChart"></div>
+                            </div>
+                            <div class="chart-card">
+                                <h4>Rendimiento Semanal</h4>
+                                <div class="bar-chart" id="weeklyChart"></div>
+                            </div>
                         </div>
                     </div>
                 </div>

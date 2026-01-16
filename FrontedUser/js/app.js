@@ -20,6 +20,16 @@ import { renderRules } from './pages/rules.js';
 import { renderPrivacy } from './pages/privacy.js';
 import { renderTerms } from './pages/terms.js';
 import { initNotifications } from './notifications.js';
+import { renderFavorites } from './pages/favorites.js';
+import { renderHistory } from './pages/history.js';
+import { renderBadges } from './pages/badges.js';
+import { initTheme, toggleTheme, updateThemeToggleButton } from './theme.js';
+import { initSearch, openSearch } from './search.js';
+import { initLazyLoading, initScrollReveal } from './utils.js';
+import { initBreadcrumbs } from './breadcrumbs.js';
+import { initPageTransitions } from './transitions.js';
+import { initSounds, playSuccess, playError } from './sounds.js';
+import { launchConfetti, launchConfettiBurst } from './confetti.js';
 
 // Initialize app
 document.addEventListener('DOMContentLoaded', () => {
@@ -27,10 +37,51 @@ document.addEventListener('DOMContentLoaded', () => {
     initNavigation();
     updateNavbarAuth();
     initNotifications();
+    initTheme();
+    initSearch();
+    initLazyLoading();
+    initScrollReveal();
+    initThemeToggle();
+    initSearchButton();
+    initBreadcrumbs();
+    initPageTransitions();
+    initSounds();
 
     // Listen for auth changes
     window.addEventListener('authChanged', updateNavbarAuth);
+    window.addEventListener('themeChanged', updateThemeToggleButton);
 });
+
+// Initialize theme toggle button
+function initThemeToggle() {
+    const themeBtn = document.getElementById('themeToggle');
+    if (themeBtn) {
+        themeBtn.addEventListener('click', () => {
+            toggleTheme();
+            updateThemeIcon();
+        });
+        updateThemeIcon();
+    }
+}
+
+// Update theme icon based on current theme
+function updateThemeIcon() {
+    const themeBtn = document.getElementById('themeToggle');
+    if (!themeBtn) return;
+
+    const icon = themeBtn.querySelector('i');
+    const isLight = document.documentElement.classList.contains('theme-light');
+    icon.className = isLight ? 'fas fa-moon' : 'fas fa-sun';
+    themeBtn.setAttribute('title', isLight ? 'Cambiar a modo oscuro' : 'Cambiar a modo claro');
+}
+
+// Initialize search button in navbar
+function initSearchButton() {
+    const searchBtn = document.getElementById('navSearchBtn');
+    if (searchBtn) {
+        searchBtn.addEventListener('click', openSearch);
+    }
+}
 
 // =====================================================
 // Router
@@ -48,7 +99,7 @@ async function handleRoute() {
     updateActiveNav(hash);
 
     // Protected routes that require authentication
-    const protectedRoutes = ['#/perfil', '#/dashboard', '#/configuracion'];
+    const protectedRoutes = ['#/perfil', '#/dashboard', '#/configuracion', '#/historial', '#/logros'];
     if (protectedRoutes.some(route => hash.startsWith(route)) && !isAuthenticated()) {
         window.showToast('error', 'Acceso denegado', 'Debes iniciar sesión');
         window.location.hash = '#/login';
@@ -77,7 +128,10 @@ async function handleRoute() {
         '#/contacto': () => renderContact(app),
         '#/reglas': () => renderRules(app),
         '#/privacidad': () => renderPrivacy(app),
-        '#/terminos': () => renderTerms(app)
+        '#/terminos': () => renderTerms(app),
+        '#/favoritos': () => renderFavorites(app),
+        '#/historial': () => renderHistory(app),
+        '#/logros': () => renderBadges(app)
     };
 
     // Check for tournament detail route

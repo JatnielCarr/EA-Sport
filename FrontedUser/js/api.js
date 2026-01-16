@@ -6,58 +6,121 @@ import { getToken } from './auth.js';
 
 const API_BASE = 'http://localhost:3000';
 
+// Cache system
+const cache = new Map();
+const CACHE_TTL = 60000; // 1 minute default
+
 class ApiClient {
     constructor(baseUrl) {
         this.baseUrl = baseUrl;
+        this.retryAttempts = 3;
+        this.retryDelay = 1000;
     }
 
-    async request(endpoint, options = {}) {
+    // Check if cached data is still valid
+    getCached(key) {
+        const cached = cache.get(key);
+        if (!cached) return null;
+        if (Date.now() - cached.timestamp > cached.ttl) {
+            cache.delete(key);
+            return null;
+        }
+        return cached.data;
+    }
+
+    // Store in cache
+    setCache(key, data, ttl = CACHE_TTL) {
+        cache.set(key, { data, timestamp: Date.now(), ttl });
+    }
+
+    // Clear specific cache entry or all
+    clearCache(key) {
+        if (key) cache.delete(key);
+        else cache.clear();
+    }
+
+    async request(endpoint, options = {}, config = {}) {
         const url = `${this.baseUrl}${endpoint}`;
         const token = getToken();
+        const cacheKey = `${options.method || 'GET'}:${endpoint}`;
+        const { useCache = true, cacheTTL = CACHE_TTL, retries = this.retryAttempts } = config;
 
-        try {
-            const response = await fetch(url, {
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-                    ...options.headers
-                },
-                ...options
-            });
-
-            const data = await response.json();
-
-            if (!response.ok) {
-                throw new Error(data.error || 'Error en la solicitud');
-            }
-
-            return data;
-        } catch (error) {
-            console.error('API Error:', error);
-            throw error;
+        // Check cache for GET requests
+        if ((!options.method || options.method === 'GET') && useCache) {
+            const cached = this.getCached(cacheKey);
+            if (cached) return cached;
         }
+
+        let lastError;
+        for (let attempt = 0; attempt < retries; attempt++) {
+            try {
+                const controller = new AbortController();
+                const timeout = setTimeout(() => controller.abort(), 10000); // 10s timeout
+
+                const response = await fetch(url, {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+                        ...options.headers
+                    },
+                    signal: controller.signal,
+                    ...options
+                });
+
+                clearTimeout(timeout);
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Error en la solicitud');
+                }
+
+                // Cache successful GET requests
+                if ((!options.method || options.method === 'GET') && useCache) {
+                    this.setCache(cacheKey, data, cacheTTL);
+                }
+
+                return data;
+            } catch (error) {
+                lastError = error;
+
+                // Don't retry on abort or client errors
+                if (error.name === 'AbortError' || (error.status && error.status < 500)) {
+                    throw error;
+                }
+
+                // Exponential backoff
+                if (attempt < retries - 1) {
+                    const delay = this.retryDelay * Math.pow(2, attempt);
+                    console.log(`Retrying request (${attempt + 1}/${retries}) in ${delay}ms...`);
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                }
+            }
+        }
+
+        console.error('API Error after retries:', lastError);
+        throw lastError;
     }
 
-    get(endpoint) {
-        return this.request(endpoint, { method: 'GET' });
+    get(endpoint, config = {}) {
+        return this.request(endpoint, { method: 'GET' }, config);
     }
 
-    post(endpoint, body) {
+    post(endpoint, body, config = {}) {
         return this.request(endpoint, {
             method: 'POST',
             body: JSON.stringify(body)
-        });
+        }, { ...config, useCache: false });
     }
 
-    put(endpoint, body) {
+    put(endpoint, body, config = {}) {
         return this.request(endpoint, {
             method: 'PUT',
             body: JSON.stringify(body)
-        });
+        }, { ...config, useCache: false });
     }
 
-    delete(endpoint) {
-        return this.request(endpoint, { method: 'DELETE' });
+    delete(endpoint, config = {}) {
+        return this.request(endpoint, { method: 'DELETE' }, { ...config, useCache: false });
     }
 }
 

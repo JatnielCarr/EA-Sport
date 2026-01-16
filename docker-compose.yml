@@ -1,0 +1,32 @@
+services:
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: n8n-telegram-invitations
+    restart: always
+    ports:
+      - "5678:5678"
+    environment:
+      # Configuración básica
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_BASIC_AUTH_USER=admin
+      - N8N_BASIC_AUTH_PASSWORD=ApexTournament2026
+      - N8N_HOST=localhost
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+      # Zona horaria (ajusta según tu ubicación)
+      - GENERIC_TIMEZONE=America/Mexico_City
+      - TZ=America/Mexico_City
+      # Webhooks (para recibir respuestas de Telegram)
+      - WEBHOOK_URL=http://localhost:5678/
+    volumes:
+      - n8n_data:/home/node/.n8n
+    networks:
+      - apex-network
+
+networks:
+  apex-network:
+    driver: bridge
+
+volumes:
+  n8n_data:
+    driver: local
