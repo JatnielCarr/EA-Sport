@@ -98,7 +98,6 @@ CREATE TABLE IF NOT EXISTS teams (
     captain_id VARCHAR(191) NOT NULL,
     seed INT,
     registration_date DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
-    payment_status ENUM('PENDING', 'PAID', 'REFUNDED') DEFAULT 'PENDING',
     approved BOOLEAN DEFAULT FALSE,
     disqualified BOOLEAN DEFAULT FALSE,
     created_at DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
@@ -226,6 +225,75 @@ CREATE TABLE IF NOT EXISTS player_stats (
 );
 
 -- =====================================================
+-- TABLAS DE CLANS
+-- =====================================================
+
+-- Tabla de clanes
+CREATE TABLE IF NOT EXISTS clans (
+    id VARCHAR(191) PRIMARY KEY,
+    name VARCHAR(255) NOT NULL UNIQUE,
+    tag VARCHAR(10) NOT NULL UNIQUE,
+    banner_url VARCHAR(500),
+    description TEXT,
+    location VARCHAR(100),
+    access_type ENUM('OPEN', 'INVITE_ONLY', 'CLOSED') DEFAULT 'OPEN',
+    requirements TEXT,
+    max_members INT DEFAULT 50,
+    leader_id VARCHAR(191) NOT NULL,
+    created_at DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
+    updated_at DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+    FOREIGN KEY (leader_id) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX idx_name (name),
+    INDEX idx_leader_id (leader_id),
+    INDEX idx_access_type (access_type)
+);
+
+-- Tabla de miembros de clan
+CREATE TABLE IF NOT EXISTS clan_members (
+    id VARCHAR(191) PRIMARY KEY,
+    clan_id VARCHAR(191) NOT NULL,
+    user_id VARCHAR(191) NOT NULL,
+    role ENUM('LEADER', 'OFFICER', 'MEMBER') DEFAULT 'MEMBER',
+    joined_at DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
+    FOREIGN KEY (clan_id) REFERENCES clans(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_clan_user (clan_id, user_id),
+    INDEX idx_clan_id (clan_id),
+    INDEX idx_user_id (user_id)
+);
+
+-- Tabla de solicitudes de clan
+CREATE TABLE IF NOT EXISTS clan_requests (
+    id VARCHAR(191) PRIMARY KEY,
+    clan_id VARCHAR(191) NOT NULL,
+    user_id VARCHAR(191) NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    message TEXT NOT NULL,
+    status ENUM('PENDING', 'ACCEPTED', 'REJECTED') DEFAULT 'PENDING',
+    created_at DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
+    updated_at DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+    FOREIGN KEY (clan_id) REFERENCES clans(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX idx_clan_id (clan_id),
+    INDEX idx_user_id (user_id),
+    INDEX idx_status (status)
+);
+
+-- Tabla de mensajes de clan
+CREATE TABLE IF NOT EXISTS clan_messages (
+    id VARCHAR(191) PRIMARY KEY,
+    clan_id VARCHAR(191) NOT NULL,
+    user_id VARCHAR(191) NOT NULL,
+    content TEXT NOT NULL,
+    is_announcement BOOLEAN DEFAULT FALSE,
+    created_at DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
+    FOREIGN KEY (clan_id) REFERENCES clans(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX idx_clan_id (clan_id),
+    INDEX idx_clan_created (clan_id, created_at)
+);
+
+-- =====================================================
 -- DATOS DE EJEMPLO
 -- =====================================================
 
@@ -264,11 +332,11 @@ INSERT INTO tournaments (id, name, slug, description, game_id, organizer_id, for
 ON DUPLICATE KEY UPDATE name = VALUES(name);
 
 -- Insertar equipos de ejemplo
-INSERT INTO teams (id, tournament_id, name, tag, captain_id, seed, payment_status, approved) VALUES
-('team_dragons', 'tournament_lol_winter', 'Dragon Esports', 'DRG', 'user_player1', 1, 'PAID', TRUE),
-('team_wolves', 'tournament_lol_winter', 'Night Wolves', 'NW', 'user_player3', 2, 'PAID', TRUE),
-('team_phoenix', 'tournament_lol_winter', 'Phoenix Rising', 'PHX', 'user_player5', 3, 'PAID', TRUE),
-('team_storm', 'tournament_lol_winter', 'Storm Riders', 'STR', 'user_player7', 4, 'PAID', TRUE)
+INSERT INTO teams (id, tournament_id, name, tag, captain_id, seed, approved) VALUES
+('team_dragons', 'tournament_lol_winter', 'Dragon Esports', 'DRG', 'user_player1', 1, TRUE),
+('team_wolves', 'tournament_lol_winter', 'Night Wolves', 'NW', 'user_player3', 2, TRUE),
+('team_phoenix', 'tournament_lol_winter', 'Phoenix Rising', 'PHX', 'user_player5', 3, TRUE),
+('team_storm', 'tournament_lol_winter', 'Storm Riders', 'STR', 'user_player7', 4, TRUE)
 ON DUPLICATE KEY UPDATE name = VALUES(name);
 
 -- Insertar jugadores de equipo
@@ -308,6 +376,21 @@ INSERT INTO player_stats (id, user_id, game_id, total_matches, wins, losses, win
 ('stats_6', 'user_player6', 'game_cs2', 250, 150, 100, 60.00, 1800)
 ON DUPLICATE KEY UPDATE total_matches = VALUES(total_matches);
 
+-- Insertar clanes de ejemplo
+INSERT INTO clans (id, name, tag, description, location, access_type, max_members, leader_id) VALUES
+('clan_elite', 'Elite Gamers', 'ELT', 'Clan de jugadores de élite en múltiples juegos.', 'España', 'OPEN', 50, 'user_player1'),
+('clan_shadows', 'Shadow Warriors', 'SHW', 'Guerreros de las sombras, especialistas en Valorant y CS2.', 'México', 'INVITE_ONLY', 30, 'user_player3')
+ON DUPLICATE KEY UPDATE name = VALUES(name);
+
+-- Insertar miembros de clan de ejemplo
+INSERT INTO clan_members (id, clan_id, user_id, role) VALUES
+('cm_1', 'clan_elite', 'user_player1', 'LEADER'),
+('cm_2', 'clan_elite', 'user_player2', 'OFFICER'),
+('cm_3', 'clan_elite', 'user_player5', 'MEMBER'),
+('cm_4', 'clan_shadows', 'user_player3', 'LEADER'),
+('cm_5', 'clan_shadows', 'user_player4', 'MEMBER')
+ON DUPLICATE KEY UPDATE role = VALUES(role);
+
 -- =====================================================
 -- VERIFICACIÓN
 -- =====================================================
@@ -317,3 +400,5 @@ SELECT CONCAT('Games: ', COUNT(*)) AS count FROM games;
 SELECT CONCAT('Tournaments: ', COUNT(*)) AS count FROM tournaments;
 SELECT CONCAT('Teams: ', COUNT(*)) AS count FROM teams;
 SELECT CONCAT('Matches: ', COUNT(*)) AS count FROM matches;
+SELECT CONCAT('Clans: ', COUNT(*)) AS count FROM clans;
+SELECT CONCAT('Clan Members: ', COUNT(*)) AS count FROM clan_members;
