@@ -3,7 +3,7 @@
 // =====================================================
 
 import { isAuthenticated, getStoredUser } from '../auth.js';
-import { showLoading } from '../app.js';
+import { showLoading } from '../ui-helpers.js';
 import { launchConfetti } from '../confetti.js';
 
 // Badge definitions

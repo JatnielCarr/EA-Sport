@@ -4,7 +4,7 @@
 
 import API from '../api.js';
 import { getStoredUser, isAuthenticated } from '../auth.js';
-import { showLoading, formatDate } from '../app.js';
+import { showLoading, formatDate } from '../ui-helpers.js';
 
 export async function renderProfile(container) {
     if (!isAuthenticated()) {

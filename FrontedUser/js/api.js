@@ -176,7 +176,52 @@ export const API = {
     users: {
         getById: (id) => client.get(`/users/${id}`),
         update: (id, data) => client.put(`/users/${id}`, data),
-        getStats: (userId) => client.get(`/users/${userId}/stats`)
+        getStats: (userId) => client.get(`/users/${userId}/stats`),
+        getClan: (userId) => client.get(`/users/${userId}/clan`)
+    },
+
+    // Clanes
+    clans: {
+        // Público
+        getAll: (filters = {}) => {
+            const params = new URLSearchParams();
+            if (filters.access_type) params.append('access_type', filters.access_type);
+            if (filters.search) params.append('search', filters.search);
+            if (filters.location) params.append('location', filters.location);
+            const query = params.toString();
+            return client.get(`/clans${query ? `?${query}` : ''}`);
+        },
+        getById: (id) => client.get(`/clans/${id}`),
+
+        // Autenticado
+        create: (data) => client.post('/clans', data),
+        update: (id, data) => client.put(`/clans/${id}`, data),
+        delete: (id) => client.delete(`/clans/${id}`),
+
+        // Unirse
+        join: (clanId, userId) => client.post(`/clans/${clanId}/join`, { user_id: userId }),
+        sendRequest: (clanId, data) => client.post(`/clans/${clanId}/request`, data),
+
+        // Gestión de solicitudes
+        getRequests: (clanId) => client.get(`/clans/${clanId}/requests`),
+        approveRequest: (clanId, requestId) =>
+            client.post(`/clans/${clanId}/requests/${requestId}/approve`, {}),
+        rejectRequest: (clanId, requestId) =>
+            client.post(`/clans/${clanId}/requests/${requestId}/reject`, {}),
+
+        // Miembros
+        removeMember: (clanId, userId) => client.delete(`/clans/${clanId}/members/${userId}`),
+        updateMemberRole: (clanId, userId, role) =>
+            client.put(`/clans/${clanId}/members/${userId}/role`, { role }),
+
+        // Chat
+        getMessages: (clanId, limit = 50) => client.get(`/clans/${clanId}/messages?limit=${limit}`),
+        sendMessage: (clanId, userId, content, isAnnouncement = false) =>
+            client.post(`/clans/${clanId}/messages`, {
+                user_id: userId,
+                content,
+                is_announcement: isAnnouncement
+            })
     }
 };
 

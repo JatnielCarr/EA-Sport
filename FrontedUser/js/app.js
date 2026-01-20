@@ -4,6 +4,7 @@
 
 import API from './api.js';
 import { isAuthenticated, getStoredUser, logout } from './auth.js';
+import { showLoading, showToast, formatDate, formatCurrency } from './ui-helpers.js';
 import { renderHome } from './pages/home.js';
 import { renderTournaments } from './pages/tournaments.js';
 import { renderTournament } from './pages/tournament.js';
@@ -30,6 +31,9 @@ import { initBreadcrumbs } from './breadcrumbs.js';
 import { initPageTransitions } from './transitions.js';
 import { initSounds, playSuccess, playError } from './sounds.js';
 import { launchConfetti, launchConfettiBurst } from './confetti.js';
+import { renderClansPage } from './pages/clans.js';
+import { renderClanPage } from './pages/clan.js';
+import { renderCreateClanPage } from './pages/create-clan.js';
 
 // Initialize app
 document.addEventListener('DOMContentLoaded', () => {
@@ -119,6 +123,8 @@ async function handleRoute() {
         '#/torneos': () => renderTournaments(app),
         '#/live': () => renderLive(app),
         '#/ranking': () => renderRanking(app),
+        '#/clanes': () => renderClansPage(app),
+        '#/crear-clan': () => renderCreateClanPage(app),
         '#/login': () => renderLogin(app),
         '#/registro': () => renderRegister(app),
         '#/perfil': () => renderProfile(app),
@@ -138,6 +144,12 @@ async function handleRoute() {
     if (hash.startsWith('#/torneo/')) {
         const tournamentId = hash.split('/')[2];
         return renderTournament(app, tournamentId);
+    }
+
+    // Check for clan detail route
+    if (hash.startsWith('#/clan/')) {
+        const clanId = hash.split('/')[2];
+        return renderClanPage(app, clanId);
     }
 
     // Execute route or default to home
@@ -256,63 +268,6 @@ function updateNavbarAuth() {
 }
 
 // =====================================================
-// UI Utilities (exportadas globalmente)
+// UI Utilities (re-exportadas para compatibilidad)
 // =====================================================
-export function showLoading(container) {
-    container.innerHTML = `
-    <div class="container">
-      <div class="loading">
-        <div class="loading-spinner"></div>
-        <p>Cargando...</p>
-      </div>
-    </div>
-  `;
-}
-
-export function showToast(type, title, message) {
-    const container = document.getElementById('toastContainer');
-    const icons = {
-        success: 'fa-check-circle',
-        error: 'fa-exclamation-circle',
-        info: 'fa-info-circle',
-        warning: 'fa-exclamation-triangle'
-    };
-
-    const toast = document.createElement('div');
-    toast.className = `toast ${type}`;
-    toast.innerHTML = `
-    <i class="fas ${icons[type]} toast-icon"></i>
-    <div class="toast-content">
-      <div class="toast-title">${title}</div>
-      <div class="toast-message">${message}</div>
-    </div>
-  `;
-
-    container.appendChild(toast);
-
-    setTimeout(() => {
-        toast.style.animation = 'slideIn 0.3s ease reverse';
-        setTimeout(() => toast.remove(), 300);
-    }, 4000);
-}
-
-export function formatDate(dateString) {
-    if (!dateString) return '-';
-    return new Date(dateString).toLocaleDateString('es-ES', {
-        day: 'numeric',
-        month: 'short',
-        year: 'numeric'
-    });
-}
-
-export function formatCurrency(amount) {
-    if (!amount) return '$0';
-    return new Intl.NumberFormat('es-MX', {
-        style: 'currency',
-        currency: 'MXN',
-        minimumFractionDigits: 0
-    }).format(amount);
-}
-
-// Make utilities available globally
-window.showToast = showToast;
+export { showLoading, showToast, formatDate, formatCurrency } from './ui-helpers.js';

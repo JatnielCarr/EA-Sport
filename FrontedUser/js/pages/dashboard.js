@@ -4,7 +4,7 @@
 
 import API from '../api.js';
 import { getStoredUser, isAuthenticated } from '../auth.js';
-import { showLoading, formatDate, formatCurrency } from '../app.js';
+import { showLoading, formatDate, formatCurrency } from '../ui-helpers.js';
 
 export async function renderDashboard(container) {
     if (!isAuthenticated()) {

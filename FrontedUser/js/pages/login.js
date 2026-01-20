@@ -4,7 +4,7 @@
 
 import API from '../api.js';
 import { handleLoginSuccess } from '../auth.js';
-import { showLoading } from '../app.js';
+import { showLoading } from '../ui-helpers.js';
 
 export async function renderLogin(container) {
     container.innerHTML = `

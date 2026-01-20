@@ -3,7 +3,7 @@
 // =====================================================
 
 import API from '../api.js';
-import { showLoading } from '../app.js';
+import { showLoading } from '../ui-helpers.js';
 
 export async function renderLive(container) {
     showLoading(container);

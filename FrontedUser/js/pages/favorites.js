@@ -3,7 +3,7 @@
 // =====================================================
 
 import API from '../api.js';
-import { showLoading, formatDate } from '../app.js';
+import { showLoading, formatDate } from '../ui-helpers.js';
 import { getAllFavorites, removeFavorite, initFavoriteButtons, createFavoriteButton } from '../favorites.js';
 
 export async function renderFavorites(container) {

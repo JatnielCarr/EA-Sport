@@ -5,10 +5,10 @@ const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
 async function startServer() {
   try {
-    // Connect to database first
+    // Connect to MySQL database (Prisma)
     const dbConnected = await connectDatabase();
     if (!dbConnected) {
-      console.warn('⚠️  Starting server without database connection. Some features may not work.');
+      console.warn('⚠️  Starting server without MySQL connection. Some features may not work.');
     }
 
     const app = await buildApp();
@@ -16,11 +16,11 @@ async function startServer() {
     await app.listen({ port: PORT, host: '0.0.0.0' });
 
     console.log('');
-    console.log('='.repeat(50));
+    console.log('='.repeat(60));
     console.log(`🚀 Server running on http://localhost:${PORT}`);
     console.log(`📚 API Documentation: http://localhost:${PORT}/docs`);
     console.log(`❤️  Health Check: http://localhost:${PORT}/health`);
-    console.log('='.repeat(50));
+    console.log('='.repeat(60));
     console.log('');
 
     // Graceful shutdown

@@ -1,0 +1,45 @@
+{
+  "name": "apex-tournament-mobile",
+  "version": "1.0.0",
+  "description": "ApexTournament - App móvil nativa para iOS optimizada para iPhone 15",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "cap:init": "cap init ApexTournament com.apextournament.app --web-dir dist",
+    "cap:add:ios": "cap add ios",
+    "cap:sync": "cap sync",
+    "cap:open:ios": "cap open ios",
+    "build:ios": "npm run build && cap sync ios",
+    "run:ios": "npm run build && cap run ios",
+    "run:ios:live": "cap run ios --livereload --external",
+    "icons": "capacitor-assets generate"
+  },
+  "dependencies": {
+    "@capacitor/app": "^6.0.0",
+    "@capacitor/core": "^6.0.0",
+    "@capacitor/haptics": "^6.0.0",
+    "@capacitor/keyboard": "^6.0.0",
+    "@capacitor/network": "^6.0.0",
+    "@capacitor/preferences": "^6.0.0",
+    "@capacitor/push-notifications": "^6.0.0",
+    "@capacitor/splash-screen": "^6.0.0",
+    "@capacitor/status-bar": "^6.0.0",
+    "qr-code-styling": "^1.9.2"
+  },
+  "devDependencies": {
+    "@capacitor/assets": "^3.0.0",
+    "@capacitor/cli": "^6.0.0",
+    "@capacitor/ios": "^6.0.0",
+    "terser": "^5.46.0",
+    "vite": "^5.0.0"
+  },
+  "capacitor": {
+    "appId": "com.apextournament.app",
+    "appName": "ApexTournament",
+    "webDir": "dist",
+    "bundledWebRuntime": false
+  }
+}

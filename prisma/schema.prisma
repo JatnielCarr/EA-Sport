@@ -52,7 +52,25 @@ enum UserRole {
   ADMIN
 }
 
+// ====================== CLAN ENUMS ======================
 
+enum ClanAccessType {
+  OPEN
+  INVITE_ONLY
+  CLOSED
+}
+
+enum ClanMemberRole {
+  LEADER
+  OFFICER
+  MEMBER
+}
+
+enum ClanRequestStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
 
 // ====================== MODELS ======================
 
@@ -74,6 +92,12 @@ model User {
   reported_results      MatchResult[]      @relation("ResultReporter")
   validated_results     MatchResult[]      @relation("ResultValidator")
   player_stats          PlayerStats[]
+  
+  // Clan Relations
+  led_clans             Clan[]             @relation("ClanLeader")
+  clan_memberships      ClanMember[]
+  clan_requests         ClanRequest[]
+  clan_messages         ClanMessage[]
   
   @@index([email])
   @@index([username])
@@ -320,4 +344,84 @@ model PlayerStats {
   @@map("player_stats")
 }
 
+// ====================== CLAN MODELS ======================
 
+model Clan {
+  id            String         @id @default(cuid())
+  name          String         @unique
+  tag           String         @unique
+  banner_url    String?
+  description   String?        @db.Text
+  location      String?
+  access_type   ClanAccessType @default(OPEN)
+  requirements  String?        @db.Text
+  max_members   Int            @default(50)
+  leader_id     String
+  created_at    DateTime       @default(now())
+  updated_at    DateTime       @updatedAt
+
+  // Relations
+  leader        User           @relation("ClanLeader", fields: [leader_id], references: [id], onDelete: Cascade)
+  members       ClanMember[]
+  requests      ClanRequest[]
+  messages      ClanMessage[]
+
+  @@index([name])
+  @@index([leader_id])
+  @@index([access_type])
+  @@map("clans")
+}
+
+model ClanMember {
+  id         String         @id @default(cuid())
+  clan_id    String
+  user_id    String
+  role       ClanMemberRole @default(MEMBER)
+  joined_at  DateTime       @default(now())
+
+  // Relations
+  clan       Clan           @relation(fields: [clan_id], references: [id], onDelete: Cascade)
+  user       User           @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([clan_id, user_id])
+  @@index([clan_id])
+  @@index([user_id])
+  @@map("clan_members")
+}
+
+model ClanRequest {
+  id         String            @id @default(cuid())
+  clan_id    String
+  user_id    String
+  title      String
+  message    String            @db.Text
+  status     ClanRequestStatus @default(PENDING)
+  created_at DateTime          @default(now())
+  updated_at DateTime          @updatedAt
+
+  // Relations
+  clan       Clan              @relation(fields: [clan_id], references: [id], onDelete: Cascade)
+  user       User              @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([clan_id])
+  @@index([user_id])
+  @@index([status])
+  @@map("clan_requests")
+}
+
+model ClanMessage {
+  id              String   @id @default(cuid())
+  clan_id         String
+  user_id         String
+  content         String   @db.Text
+  is_announcement Boolean  @default(false)
+  created_at      DateTime @default(now())
+
+  // Relations
+  clan            Clan     @relation(fields: [clan_id], references: [id], onDelete: Cascade)
+  user            User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([clan_id])
+  @@index([clan_id, created_at])
+  @@map("clan_messages")
+}

@@ -4,7 +4,7 @@
 
 import API from '../api.js';
 import { isAuthenticated, getStoredUser } from '../auth.js';
-import { showLoading, formatDate } from '../app.js';
+import { showLoading, formatDate } from '../ui-helpers.js';
 
 export async function renderHistory(container) {
     if (!isAuthenticated()) {

@@ -280,6 +280,34 @@ function setupEventListeners() {
     sidebarToggle.addEventListener('click', toggleSidebar);
   }
 
+  // Notification button toggle
+  const notificationBtn = document.getElementById('notificationBtn');
+  const notificationPanel = document.getElementById('notificationPanel');
+  if (notificationBtn && notificationPanel) {
+    notificationBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      notificationPanel.classList.toggle('show');
+    });
+
+    // Close panel when clicking outside
+    document.addEventListener('click', (e) => {
+      if (!notificationPanel.contains(e.target) && !notificationBtn.contains(e.target)) {
+        notificationPanel.classList.remove('show');
+      }
+    });
+
+    // Mark all as read
+    const markAllBtn = document.getElementById('markAllRead');
+    if (markAllBtn) {
+      markAllBtn.addEventListener('click', () => {
+        document.querySelectorAll('.notification-item.unread').forEach(item => {
+          item.classList.remove('unread');
+        });
+        const badge = document.getElementById('notificationBadge');
+        if (badge) badge.textContent = '0';
+      });
+    }
+  }
 
   // Keyboard shortcuts
   document.addEventListener('keydown', (e) => {
@@ -295,6 +323,8 @@ function setupEventListeners() {
       if (modal && modal.classList.contains('active')) {
         window.closeModal?.();
       }
+      // Close notification panel
+      notificationPanel?.classList.remove('show');
     }
   });
 }

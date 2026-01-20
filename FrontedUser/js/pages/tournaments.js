@@ -3,7 +3,7 @@
 // =====================================================
 
 import API from '../api.js';
-import { showLoading, formatDate, formatCurrency } from '../app.js';
+import { showLoading, formatDate, formatCurrency } from '../ui-helpers.js';
 
 let allTournaments = [];
 let allGames = [];

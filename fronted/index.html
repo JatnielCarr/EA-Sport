@@ -363,10 +363,53 @@
             <kbd
               style="background: rgba(0,212,255,0.2); color: #00d4ff; padding: 2px 6px; border-radius: 4px; font-size: 10px;">⌘K</kbd>
           </div>
-          <button class="notification-btn">
-            <i class="fas fa-bell"></i>
-            <span class="badge">5</span>
-          </button>
+          <div class="notification-wrapper">
+            <button class="notification-btn" id="notificationBtn">
+              <i class="fas fa-bell"></i>
+              <span class="badge" id="notificationBadge">5</span>
+            </button>
+            <div class="notification-panel" id="notificationPanel">
+              <div class="notification-header">
+                <h4><i class="fas fa-bell"></i> Notificaciones</h4>
+                <button class="btn btn-sm btn-secondary" id="markAllRead">Marcar todas</button>
+              </div>
+              <div class="notification-list" id="notificationList">
+                <div class="notification-item unread">
+                  <div class="notification-icon success">
+                    <i class="fas fa-trophy"></i>
+                  </div>
+                  <div class="notification-content">
+                    <p><strong>Nuevo torneo</strong></p>
+                    <span>El torneo "Liga Apertura 2026" ha sido creado</span>
+                    <small>Hace 5 min</small>
+                  </div>
+                </div>
+                <div class="notification-item unread">
+                  <div class="notification-icon info">
+                    <i class="fas fa-users"></i>
+                  </div>
+                  <div class="notification-content">
+                    <p><strong>Nuevo equipo registrado</strong></p>
+                    <span>Team Alpha se ha inscrito al torneo</span>
+                    <small>Hace 15 min</small>
+                  </div>
+                </div>
+                <div class="notification-item">
+                  <div class="notification-icon warning">
+                    <i class="fas fa-exclamation"></i>
+                  </div>
+                  <div class="notification-content">
+                    <p><strong>Partida próxima</strong></p>
+                    <span>La partida comienza en 30 minutos</span>
+                    <small>Hace 1 hora</small>
+                  </div>
+                </div>
+              </div>
+              <div class="notification-footer">
+                <a href="#/notifications" class="btn btn-primary btn-block">Ver todas</a>
+              </div>
+            </div>
+          </div>
           <div class="badge-live" style="margin-left: 10px;">
             <span>3 LIVE</span>
           </div>
