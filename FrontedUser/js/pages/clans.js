@@ -34,7 +34,7 @@ export async function renderClansPage(container) {
                             </div>
                         ` : `
                             <p class="clans-hero-login">
-                                <a href="#login" class="btn btn-primary">Inicia sesión</a> para crear o unirte a un clan
+                                <a href="#/login" class="btn btn-primary">Inicia sesión</a> para crear o unirte a un clan
                             </p>
                         `}
                     </div>
@@ -136,7 +136,7 @@ function renderClansGrid() {
                 </div>
             </div>
             <div class="clan-footer">
-                <a href="#clan/${clan.id}" class="btn btn-primary btn-block">
+                <a href="#/clan/${clan.id}" class="btn btn-primary btn-block">
                     <i class="fas fa-eye"></i> Ver Clan
                 </a>
             </div>
@@ -180,7 +180,7 @@ function setupEventListeners() {
 
     // Create clan button
     document.getElementById('btnCreateClan')?.addEventListener('click', () => {
-        window.location.hash = '#create-clan';
+        window.location.hash = '#/crear-clan';
     });
 
     // My clan button
@@ -193,7 +193,7 @@ function setupEventListeners() {
         try {
             const response = await API.users.getClan(user.id);
             if (response.data) {
-                window.location.hash = `#clan/${response.data.id}`;
+                window.location.hash = `#/clan/${response.data.id}`;
             } else {
                 showToast('info', 'No perteneces a ningún clan');
             }

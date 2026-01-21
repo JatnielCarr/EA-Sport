@@ -15,7 +15,7 @@ export async function renderCreateClanPage(container) {
                         <i class="fas fa-lock"></i>
                         <h2>Inicia sesión</h2>
                         <p>Debes iniciar sesión para crear un clan</p>
-                        <a href="#login" class="btn btn-primary">Iniciar Sesión</a>
+                        <a href="#/login" class="btn btn-primary">Iniciar Sesión</a>
                     </div>
                 </div>
             </div>
@@ -29,7 +29,7 @@ export async function renderCreateClanPage(container) {
         const response = await API.users.getClan(user.id);
         if (response.data) {
             showToast('info', 'Ya perteneces a un clan');
-            window.location.hash = `#clan/${response.data.id}`;
+            window.location.hash = `#/clan/${response.data.id}`;
             return;
         }
     } catch (error) {
@@ -40,7 +40,7 @@ export async function renderCreateClanPage(container) {
         <div class="section">
             <div class="container">
                 <div class="create-clan-page">
-                    <a href="#clans" class="btn btn-secondary back-link">
+                    <a href="#/clanes" class="btn btn-secondary back-link">
                         <i class="fas fa-arrow-left"></i> Volver a Clanes
                     </a>
 
@@ -127,7 +127,7 @@ export async function renderCreateClanPage(container) {
                         </div>
 
                         <div class="form-actions">
-                            <button type="button" class="btn btn-secondary" onclick="window.location.hash='#clans'">
+                            <button type="button" class="btn btn-secondary" onclick="window.location.hash='#/clanes'">
                                 Cancelar
                             </button>
                             <button type="submit" class="btn btn-primary btn-lg">
@@ -186,7 +186,7 @@ function setupEventListeners() {
         try {
             const response = await API.clans.create(data);
             showToast('success', '¡Clan creado exitosamente!');
-            window.location.hash = `#clan/${response.data.id}`;
+            window.location.hash = `#/clan/${response.data.id}`;
         } catch (error) {
             showToast('error', error.message || 'Error al crear el clan');
             submitBtn.disabled = false;

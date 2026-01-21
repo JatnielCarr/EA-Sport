@@ -9,9 +9,11 @@ import QRService from './qr-service.js';
 // =====================================================
 // APP CONFIGURATION
 // =====================================================
+const NETWORK_URL = 'http://localhost:3000';
+
 const CONFIG = {
-  API_BASE_URL: 'http://localhost:3000',
-  WS_URL: 'ws://localhost:3000',
+  API_BASE_URL: NETWORK_URL,
+  WS_URL: NETWORK_URL.replace('http', 'ws'),
   VERSION: '1.0.0',
   CACHE_TTL: 5 * 60 * 1000, // 5 minutes
 };
@@ -42,11 +44,11 @@ const api = {
     try {
       const response = await fetch(url, { ...options, headers });
       const data = await response.json();
-      
+
       if (!response.ok) {
         throw new Error(data.error || 'Request failed');
       }
-      
+
       return data;
     } catch (error) {
       console.error('API Error:', error);
@@ -80,25 +82,25 @@ function router() {
   const hash = window.location.hash.slice(1) || '/';
   const [path, ...params] = hash.split('/').filter(Boolean);
   const route = routes[`/${path}`] || routes['/'];
-  
+
   // Update tab bar active state
   updateTabBar(`/${path}`);
-  
+
   // Render page with animation
   const app = document.getElementById('app');
   app.classList.add('page-exit');
-  
+
   setTimeout(() => {
     route.render(params);
     app.classList.remove('page-exit');
     app.classList.add('page-enter');
-    
+
     // Scroll to top
     app.scrollTo({ top: 0, behavior: 'instant' });
-    
+
     setTimeout(() => app.classList.remove('page-enter'), 300);
   }, 150);
-  
+
   // Haptic feedback
   triggerHaptic('selection');
 }
@@ -120,13 +122,30 @@ function navigate(path) {
 
 async function renderHome() {
   const app = document.getElementById('app');
-  
+
   app.innerHTML = `
-    <div class="section animate-fadeIn">
-      <div class="hero-banner">
-        <div class="hero-content">
-          <h1 class="hero-title">¡Bienvenido a<br><span class="text-primary">ApexTournament!</span></h1>
-          <p class="hero-subtitle">Compite, gana y conviértete en leyenda</p>
+    <!-- Hero Section -->
+    <div class="hero animate-fadeIn">
+      <div class="hero-content">
+        <div class="hero-badge">
+          <span class="pulse-dot"></span>
+          Temporada Activa
+        </div>
+        <h1 class="hero-title">Bienvenido a<br><span class="gradient-text">ApexTournament</span></h1>
+        <p class="hero-subtitle">Compite en los mejores torneos de esports</p>
+        <div class="hero-stats">
+          <div class="hero-stat">
+            <div class="hero-stat-value" id="stat-tournaments">--</div>
+            <div class="hero-stat-label">Torneos</div>
+          </div>
+          <div class="hero-stat">
+            <div class="hero-stat-value" id="stat-players">--</div>
+            <div class="hero-stat-label">Jugadores</div>
+          </div>
+          <div class="hero-stat">
+            <div class="hero-stat-value" id="stat-live">--</div>
+            <div class="hero-stat-label">En Vivo</div>
+          </div>
         </div>
       </div>
     </div>
@@ -170,15 +189,26 @@ async function loadHomeData() {
   try {
     // Load live matches
     const liveResponse = await api.get('/matches/live');
-    renderLiveMatches(liveResponse.data || []);
+    const liveMatches = liveResponse.data || [];
+    renderLiveMatches(liveMatches);
 
     // Load tournaments
     const tournamentsResponse = await api.get('/tournaments?status=IN_PROGRESS&limit=4');
-    renderTournamentCards(tournamentsResponse.data || []);
+    const tournaments = tournamentsResponse.data || [];
+    renderTournamentCards(tournaments);
 
     // Load top players
     const rankingResponse = await api.get('/players/stats?limit=5');
     renderTopPlayers(rankingResponse.data || []);
+
+    // Update hero stats
+    const statTournaments = document.getElementById('stat-tournaments');
+    const statPlayers = document.getElementById('stat-players');
+    const statLive = document.getElementById('stat-live');
+
+    if (statTournaments) statTournaments.textContent = tournaments.length || '0';
+    if (statPlayers) statPlayers.textContent = (rankingResponse.data?.length || 0) + '+';
+    if (statLive) statLive.textContent = liveMatches.length || '0';
   } catch (error) {
     console.error('Error loading home data:', error);
   }
@@ -186,7 +216,7 @@ async function loadHomeData() {
 
 function renderLiveMatches(matches) {
   const container = document.getElementById('live-matches');
-  
+
   if (!matches.length) {
     container.innerHTML = `
       <div class="empty-card">
@@ -199,7 +229,7 @@ function renderLiveMatches(matches) {
 
   container.innerHTML = matches.map(match => `
     <a href="#/matches/${match.matchId}/live" class="live-match-card animate-slideInRight" data-haptic="light">
-      <div class="live-badge"><i class="fas fa-circle"></i> LIVE</div>
+      <div class="live-badge"><span class="dot"></span> LIVE</div>
       <div class="match-teams">
         <div class="team">
           <span class="team-name">${match.homeTeam?.name || 'TBD'}</span>
@@ -212,7 +242,7 @@ function renderLiveMatches(matches) {
         </div>
       </div>
       <div class="match-viewers">
-        <i class="fas fa-eye"></i> ${match.viewers || 0}
+        <i class="fas fa-eye"></i> ${match.viewers || 0} viendo
       </div>
     </a>
   `).join('');
@@ -220,10 +250,10 @@ function renderLiveMatches(matches) {
 
 function renderTournamentCards(tournaments) {
   const container = document.getElementById('active-tournaments');
-  
+
   if (!tournaments.length) {
     container.innerHTML = `
-      <div class="empty-state">
+      <div class="empty-state" style="grid-column: 1 / -1;">
         <i class="fas fa-trophy empty-state-icon"></i>
         <h3 class="empty-state-title">No hay torneos activos</h3>
         <p class="empty-state-description">Los próximos torneos aparecerán aquí</p>
@@ -233,16 +263,29 @@ function renderTournamentCards(tournaments) {
   }
 
   container.innerHTML = tournaments.map((t, i) => `
-    <a href="#/torneos/${t.id}" class="card animate-slideUp stagger-${i + 1}" data-haptic="light">
-      <div class="card-content">
-        <div class="tournament-game badge badge-primary">${t.game?.name || 'Game'}</div>
-        <h3 class="card-title">${t.name}</h3>
-        <p class="card-description text-secondary">
-          <i class="fas fa-users"></i> ${t.teams?.length || 0}/${t.max_participants} equipos
-        </p>
-        <div class="tournament-prize">
-          <i class="fas fa-coins text-warning"></i> 
-          <span>$${Number(t.prize_pool).toLocaleString()}</span>
+    <a href="#/torneos/${t.id}" class="tournament-card animate-slideUp stagger-${(i % 5) + 1}" data-haptic="light">
+      <div class="tournament-banner">
+        <i class="fas fa-gamepad"></i>
+        <span class="tournament-status ${getStatusClass(t.status)}">${getStatusText(t.status)}</span>
+      </div>
+      <div class="tournament-content">
+        <div class="tournament-game"><i class="fas fa-gamepad"></i> ${t.game?.name || 'Game'}</div>
+        <h3 class="tournament-name">${t.name}</h3>
+        <div class="tournament-meta">
+          <span><i class="fas fa-users"></i> ${t.teams?.length || 0}/${t.max_participants}</span>
+          <span><i class="fas fa-calendar"></i> ${new Date(t.start_date).toLocaleDateString('es', { day: 'numeric', month: 'short' })}</span>
+        </div>
+        <div class="tournament-footer">
+          <div class="tournament-prize">
+            <i class="fas fa-coins"></i>
+            $${Number(t.prize_pool || 0).toLocaleString()}
+          </div>
+          <div class="tournament-teams">
+            <div class="tournament-teams-avatars">
+              ${(t.teams || []).slice(0, 3).map(() => '<span><i class="fas fa-user"></i></span>').join('')}
+              ${(t.teams?.length || 0) > 3 ? `<span>+${t.teams.length - 3}</span>` : ''}
+            </div>
+          </div>
         </div>
       </div>
     </a>
@@ -251,7 +294,7 @@ function renderTournamentCards(tournaments) {
 
 function renderTopPlayers(players) {
   const container = document.getElementById('top-players');
-  
+
   if (!players.length) {
     container.innerHTML = `<p class="text-center text-secondary p-3">No hay datos de ranking</p>`;
     return;
@@ -277,7 +320,7 @@ function renderTopPlayers(players) {
 
 async function renderTournaments() {
   const app = document.getElementById('app');
-  
+
   app.innerHTML = `
     <div class="section">
       <h1 class="page-title animate-fadeIn">Torneos</h1>
@@ -297,7 +340,7 @@ async function renderTournaments() {
 
   // Load tournaments
   await loadTournaments();
-  
+
   // Filter tabs
   document.querySelectorAll('.filter-tab').forEach(tab => {
     tab.addEventListener('click', () => {
@@ -311,15 +354,15 @@ async function renderTournaments() {
 
 async function loadTournaments(status = 'all') {
   try {
-    const endpoint = status === 'all' 
-      ? '/tournaments' 
+    const endpoint = status === 'all'
+      ? '/tournaments'
       : `/tournaments?status=${status}`;
-    
+
     const response = await api.get(endpoint);
     const tournaments = response.data || [];
-    
+
     const container = document.getElementById('tournaments-list');
-    
+
     if (!tournaments.length) {
       container.innerHTML = `
         <div class="empty-state">
@@ -354,7 +397,7 @@ async function loadTournaments(status = 'all') {
 async function renderTournamentDetail(params) {
   const id = params[0];
   const app = document.getElementById('app');
-  
+
   app.innerHTML = `
     <div class="section">
       <div class="skeleton skeleton-card" style="height: 300px;"></div>
@@ -434,7 +477,7 @@ async function renderTournamentDetail(params) {
 
 async function renderLive() {
   const app = document.getElementById('app');
-  
+
   app.innerHTML = `
     <div class="section">
       <h1 class="page-title animate-fadeIn">
@@ -450,9 +493,9 @@ async function renderLive() {
   try {
     const response = await api.get('/matches/live');
     const matches = response.data || [];
-    
+
     const container = document.getElementById('live-list');
-    
+
     if (!matches.length) {
       container.innerHTML = `
         <div class="empty-state">
@@ -496,7 +539,7 @@ async function renderLive() {
 
 async function renderClans() {
   const app = document.getElementById('app');
-  
+
   app.innerHTML = `
     <div class="section">
       <h1 class="page-title animate-fadeIn">
@@ -512,9 +555,9 @@ async function renderClans() {
   try {
     const response = await api.get('/clans');
     const clans = response.data || [];
-    
+
     const container = document.getElementById('clans-list');
-    
+
     if (!clans.length) {
       container.innerHTML = `
         <div class="empty-state">
@@ -545,7 +588,7 @@ async function renderClans() {
 
 async function renderRanking() {
   const app = document.getElementById('app');
-  
+
   app.innerHTML = `
     <div class="section">
       <h1 class="page-title animate-fadeIn">
@@ -561,9 +604,9 @@ async function renderRanking() {
   try {
     const response = await api.get('/players/stats?limit=50');
     const players = response.data || [];
-    
+
     const container = document.getElementById('ranking-list');
-    
+
     container.innerHTML = players.map((player, i) => `
       <div class="list-item ranking-item animate-slideUp stagger-${(i % 5) + 1}" data-haptic="light">
         <div class="rank-position rank-${i < 3 ? i + 1 : 'default'}">${i + 1}</div>
@@ -590,7 +633,7 @@ async function renderRanking() {
 
 async function renderProfile() {
   const app = document.getElementById('app');
-  
+
   if (!state.token) {
     app.innerHTML = `
       <div class="section">
@@ -652,7 +695,7 @@ async function renderProfile() {
 
 function renderLogin() {
   const app = document.getElementById('app');
-  
+
   app.innerHTML = `
     <div class="auth-page animate-fadeIn">
       <div class="auth-header">
@@ -690,7 +733,7 @@ function renderLogin() {
 
 function renderRegister() {
   const app = document.getElementById('app');
-  
+
   app.innerHTML = `
     <div class="auth-page animate-fadeIn">
       <div class="auth-header">
@@ -737,18 +780,18 @@ function renderRegister() {
 async function handleLogin(e) {
   e.preventDefault();
   triggerHaptic('medium');
-  
+
   const formData = new FormData(e.target);
   const data = Object.fromEntries(formData);
-  
+
   try {
     const response = await api.post('/auth/login', data);
-    
+
     if (response.success) {
       state.token = response.data.token;
       state.user = response.data.user;
       localStorage.setItem('token', state.token);
-      
+
       triggerHaptic('success');
       navigate('/');
     }
@@ -761,13 +804,13 @@ async function handleLogin(e) {
 async function handleRegister(e) {
   e.preventDefault();
   triggerHaptic('medium');
-  
+
   const formData = new FormData(e.target);
   const data = Object.fromEntries(formData);
-  
+
   try {
     const response = await api.post('/auth/register', data);
-    
+
     if (response.success) {
       triggerHaptic('success');
       alert('¡Cuenta creada! Ahora puedes iniciar sesión.');
@@ -781,7 +824,7 @@ async function handleRegister(e) {
 
 function logout() {
   triggerHaptic('warning');
-  
+
   if (confirm('¿Cerrar sesión?')) {
     state.token = null;
     state.user = null;
@@ -793,6 +836,28 @@ function logout() {
 // =====================================================
 // HELPER FUNCTIONS
 // =====================================================
+function getStatusText(status) {
+  const statusMap = {
+    'REGISTRATION_OPEN': 'Inscripción',
+    'REGISTRATION_CLOSED': 'Cerrado',
+    'IN_PROGRESS': 'En Curso',
+    'COMPLETED': 'Finalizado',
+    'CANCELLED': 'Cancelado'
+  };
+  return statusMap[status] || status;
+}
+
+function getStatusClass(status) {
+  const classMap = {
+    'REGISTRATION_OPEN': 'open',
+    'IN_PROGRESS': 'live',
+    'COMPLETED': 'closed',
+    'REGISTRATION_CLOSED': 'closed',
+    'CANCELLED': 'closed'
+  };
+  return classMap[status] || '';
+}
+
 function skeletonCards(count, className) {
   return Array(count).fill(`<div class="skeleton ${className}"></div>`).join('');
 }
@@ -844,7 +909,7 @@ window.navigate = navigate;
 
 async function renderQRPage() {
   const app = document.getElementById('app');
-  
+
   app.innerHTML = `
     <div class="page-header">
       <h1 class="page-title">Código QR</h1>
@@ -976,7 +1041,7 @@ function initQRPage() {
 
     try {
       let qrData;
-      
+
       switch (type) {
         case 'profile':
           qrData = qrService.generateProfileLink(state.user?.userId || 'guest');
@@ -996,7 +1061,7 @@ function initQRPage() {
 
       currentQRData = qrData;
       await qrService.renderQRCode(container, qrData);
-      
+
     } catch (error) {
       container.innerHTML = `
         <div class="empty-state">
@@ -1030,7 +1095,7 @@ function getQRSubtitle(type) {
 
 function renderQRHistory() {
   const history = JSON.parse(localStorage.getItem('qr_history') || '[]');
-  
+
   if (!history.length) {
     return `
       <div class="empty-card" style="padding: 24px; text-align: center;">
@@ -1069,7 +1134,7 @@ function formatTimeAgo(timestamp) {
   const minutes = Math.floor(diff / 60000);
   const hours = Math.floor(diff / 3600000);
   const days = Math.floor(diff / 86400000);
-  
+
   if (minutes < 1) return 'Ahora mismo';
   if (minutes < 60) return `Hace ${minutes} min`;
   if (hours < 24) return `Hace ${hours}h`;
@@ -1081,7 +1146,7 @@ async function openQRScanner(qrService) {
     await qrService.startQRScanner((result) => {
       // Add to history
       saveToQRHistory(result);
-      
+
       // Handle the deep link
       handleQRResult(result);
     });
@@ -1094,7 +1159,7 @@ async function openQRScanner(qrService) {
 function saveToQRHistory(data) {
   const history = JSON.parse(localStorage.getItem('qr_history') || '[]');
   const parsed = new QRService().parseDeepLink(data);
-  
+
   history.unshift({
     url: data,
     type: parsed?.type || 'unknown',
@@ -1109,7 +1174,7 @@ function saveToQRHistory(data) {
 function handleQRResult(data) {
   const qrService = new QRService();
   const parsed = qrService.parseDeepLink(data);
-  
+
   if (parsed) {
     switch (parsed.type) {
       case 'profile':
@@ -1167,7 +1232,7 @@ function showShareModal() {
   `;
 
   document.body.appendChild(modal);
-  
+
   requestAnimationFrame(() => modal.classList.add('active'));
 
   // Close on backdrop click
@@ -1194,7 +1259,7 @@ function closeShareModal(modal) {
 
 function handleShareAction(action) {
   const currentQRData = document.getElementById('qr-container').dataset.url || window.location.href;
-  
+
   switch (action) {
     case 'copy':
       navigator.clipboard.writeText(currentQRData);
@@ -1258,8 +1323,8 @@ function showToast(message, type = 'info') {
     right: '16px',
     padding: '16px',
     borderRadius: '12px',
-    background: type === 'success' ? 'var(--color-success)' : 
-                type === 'error' ? 'var(--color-error)' : 'var(--color-bg-elevated)',
+    background: type === 'success' ? 'var(--color-success)' :
+      type === 'error' ? 'var(--color-error)' : 'var(--color-bg-elevated)',
     color: 'white',
     display: 'flex',
     alignItems: 'center',
@@ -1287,7 +1352,7 @@ function getToastIcon(type) {
 window.addEventListener('hashchange', router);
 window.addEventListener('DOMContentLoaded', () => {
   router();
-  
+
   // Load user if token exists
   if (state.token) {
     api.get('/auth/me')

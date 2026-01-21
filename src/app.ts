@@ -5,6 +5,8 @@ import fastifyJwt from '@fastify/jwt';
 import bcrypt from 'bcrypt';
 import { swaggerConfig } from './config/swagger';
 import { prisma } from './config/database';
+import { firebaseAuthRoutes } from './routes/firebase-auth.routes';
+import { telegramRoutes } from './routes/telegram.routes';
 
 
 const JWT_SECRET = process.env.JWT_SECRET || 'ea-sports-tournament-secret-key-2024';
@@ -63,6 +65,12 @@ export async function buildApp() {
     staticCSP: true,
     transformStaticCSP: (header: string) => header
   });
+
+  // Register Firebase Auth Routes
+  await app.register(firebaseAuthRoutes);
+
+  // Register Telegram Routes
+  await app.register(telegramRoutes);
 
   // =====================================================
   // AUTH ROUTES

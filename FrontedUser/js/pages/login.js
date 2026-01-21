@@ -2,7 +2,7 @@
 // Login Page
 // =====================================================
 
-import API from '../api.js';
+import FirebaseAuth from '../firebase-auth.js';
 import { handleLoginSuccess } from '../auth.js';
 import { showLoading } from '../ui-helpers.js';
 
@@ -79,11 +79,11 @@ export async function renderLogin(container) {
         </div>
 
         <div class="social-login">
-          <button class="btn btn-social discord" disabled>
+          <button class="btn btn-social discord" id="discordBtn" disabled>
             <i class="fab fa-discord"></i>
             Discord
           </button>
-          <button class="btn btn-social google" disabled>
+          <button class="btn btn-social google" id="googleBtn">
             <i class="fab fa-google"></i>
             Google
           </button>
@@ -125,6 +125,7 @@ function initLoginForm() {
     const emailInput = document.getElementById('email');
     const passwordInput = document.getElementById('password');
     const togglePassword = document.querySelector('.toggle-password');
+    const googleBtn = document.getElementById('googleBtn');
 
     // Toggle password visibility
     togglePassword?.addEventListener('click', () => {
@@ -135,7 +136,33 @@ function initLoginForm() {
             : '<i class="fas fa-eye-slash"></i>';
     });
 
-    // Form submission
+    // Google login
+    googleBtn?.addEventListener('click', async () => {
+        googleBtn.disabled = true;
+        googleBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Conectando...';
+        
+        try {
+            const result = await FirebaseAuth.loginWithGoogle();
+            
+            if (result.success) {
+                handleLoginSuccess({
+                    user: result.backendUser || result.user,
+                    token: localStorage.getItem('token')
+                });
+                window.showToast('success', '¡Bienvenido!', 'Has iniciado sesión con Google');
+                window.location.hash = '#/';
+            } else {
+                window.showToast('error', 'Error', result.error || 'No se pudo iniciar sesión con Google');
+            }
+        } catch (error) {
+            window.showToast('error', 'Error', 'Error al conectar con Google');
+        } finally {
+            googleBtn.disabled = false;
+            googleBtn.innerHTML = '<i class="fab fa-google"></i> Google';
+        }
+    });
+
+    // Form submission (Email/Password login with Firebase)
     form?.addEventListener('submit', async (e) => {
         e.preventDefault();
 
@@ -165,12 +192,18 @@ function initLoginForm() {
         btnLoader.style.display = 'inline-block';
 
         try {
-            const response = await API.auth.login(email, password);
+            const result = await FirebaseAuth.loginWithEmail(email, password);
 
-            if (response.success) {
-                handleLoginSuccess(response.data);
+            if (result.success) {
+                handleLoginSuccess({
+                    user: result.backendUser || result.user,
+                    token: localStorage.getItem('token')
+                });
                 window.showToast('success', '¡Bienvenido!', 'Has iniciado sesión correctamente');
                 window.location.hash = '#/';
+            } else {
+                window.showToast('error', 'Error', result.error || 'Credenciales incorrectas');
+                showError('passwordError', result.error || 'Credenciales incorrectas');
             }
         } catch (error) {
             window.showToast('error', 'Error', error.message || 'Credenciales incorrectas');

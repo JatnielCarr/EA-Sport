@@ -2,7 +2,7 @@
 // Register Page
 // =====================================================
 
-import API from '../api.js';
+import FirebaseAuth from '../firebase-auth.js';
 import { handleLoginSuccess } from '../auth.js';
 
 export async function renderRegister(container) {
@@ -123,11 +123,11 @@ export async function renderRegister(container) {
         </div>
 
         <div class="social-login">
-          <button class="btn btn-social discord" disabled>
+          <button class="btn btn-social discord" id="discordBtn" disabled>
             <i class="fab fa-discord"></i>
             Discord
           </button>
-          <button class="btn btn-social google" disabled>
+          <button class="btn btn-social google" id="googleBtn">
             <i class="fab fa-google"></i>
             Google
           </button>
@@ -139,15 +139,69 @@ export async function renderRegister(container) {
       </div>
 
       <div class="auth-decoration">
-        <div class="decoration-content">
-          <h2>Únete a la élite</h2>
-          <p>Crea tu cuenta y comienza a competir</p>
-          <ul class="benefits-list">
-            <li><i class="fas fa-check-circle"></i> Participa en torneos exclusivos</li>
-            <li><i class="fas fa-check-circle"></i> Encuentra compañeros de equipo</li>
-            <li><i class="fas fa-check-circle"></i> Gana premios increíbles</li>
-            <li><i class="fas fa-check-circle"></i> Sube en el ranking global</li>
+        <div class="decoration-content elite-section">
+          <div class="elite-badge">
+            <i class="fas fa-crown"></i>
+            <span>EXCLUSIVO</span>
+          </div>
+          <h2 class="elite-title">
+            <span class="elite-text-gradient">ÚNETE A LA ÉLITE</span>
+            <span class="elite-subtitle">DEL GAMING COMPETITIVO</span>
+          </h2>
+          <p class="elite-description">Forma parte de la comunidad más épica de esports. Miles de jugadores ya están compitiendo.</p>
+          
+          <div class="elite-stats">
+            <div class="elite-stat">
+              <span class="elite-stat-number">10K+</span>
+              <span class="elite-stat-label">Jugadores</span>
+            </div>
+            <div class="elite-stat">
+              <span class="elite-stat-number">$50K</span>
+              <span class="elite-stat-label">En Premios</span>
+            </div>
+            <div class="elite-stat">
+              <span class="elite-stat-number">500+</span>
+              <span class="elite-stat-label">Torneos</span>
+            </div>
+          </div>
+
+          <ul class="benefits-list elite-benefits">
+            <li>
+              <div class="benefit-icon"><i class="fas fa-trophy"></i></div>
+              <div class="benefit-content">
+                <strong>Torneos Exclusivos</strong>
+                <span>Compite en eventos premium con grandes premios</span>
+              </div>
+            </li>
+            <li>
+              <div class="benefit-icon"><i class="fas fa-users"></i></div>
+              <div class="benefit-content">
+                <strong>Equipos & Clanes</strong>
+                <span>Crea tu equipo o únete a los mejores</span>
+              </div>
+            </li>
+            <li>
+              <div class="benefit-icon"><i class="fas fa-medal"></i></div>
+              <div class="benefit-content">
+                <strong>Sistema de Ranking</strong>
+                <span>Escala posiciones y demuestra tu habilidad</span>
+              </div>
+            </li>
+            <li>
+              <div class="benefit-icon"><i class="fas fa-bolt"></i></div>
+              <div class="benefit-content">
+                <strong>Recompensas Épicas</strong>
+                <span>Gana premios, badges y reconocimiento</span>
+              </div>
+            </li>
           </ul>
+
+          <div class="elite-cta">
+            <div class="elite-cta-text">
+              <i class="fas fa-fire"></i>
+              <span>¡El siguiente campeón podrías ser TÚ!</span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -161,6 +215,7 @@ function initRegisterForm() {
     const passwordInput = document.getElementById('password');
     const confirmPasswordInput = document.getElementById('confirmPassword');
     const toggleButtons = document.querySelectorAll('.toggle-password');
+    const googleBtn = document.getElementById('googleBtn');
 
     // Toggle password visibility
     toggleButtons.forEach(btn => {
@@ -179,7 +234,41 @@ function initRegisterForm() {
         updatePasswordStrength(passwordInput.value);
     });
 
-    // Form submission
+    // Google registration
+    googleBtn?.addEventListener('click', async () => {
+        const acceptTerms = document.getElementById('acceptTerms').checked;
+        
+        if (!acceptTerms) {
+            showError('termsError', 'Debes aceptar los términos para continuar');
+            window.showToast('error', 'Error', 'Debes aceptar los términos de servicio');
+            return;
+        }
+        
+        googleBtn.disabled = true;
+        googleBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Conectando...';
+        
+        try {
+            const result = await FirebaseAuth.loginWithGoogle();
+            
+            if (result.success) {
+                handleLoginSuccess({
+                    user: result.backendUser || result.user,
+                    token: localStorage.getItem('token')
+                });
+                window.showToast('success', '¡Cuenta creada!', 'Bienvenido a ApexTournament');
+                window.location.hash = '#/';
+            } else {
+                window.showToast('error', 'Error', result.error || 'No se pudo registrar con Google');
+            }
+        } catch (error) {
+            window.showToast('error', 'Error', 'Error al conectar con Google');
+        } finally {
+            googleBtn.disabled = false;
+            googleBtn.innerHTML = '<i class="fab fa-google"></i> Google';
+        }
+    });
+
+    // Form submission (Email/Password registration with Firebase)
     form?.addEventListener('submit', async (e) => {
         e.preventDefault();
 
@@ -236,17 +325,25 @@ function initRegisterForm() {
         btnLoader.style.display = 'inline-block';
 
         try {
-            const response = await API.auth.register({ username, email, password });
+            const result = await FirebaseAuth.registerWithEmail(email, password, username);
 
-            if (response.success) {
-                handleLoginSuccess(response.data);
+            if (result.success) {
+                handleLoginSuccess({
+                    user: result.backendUser || result.user,
+                    token: localStorage.getItem('token')
+                });
                 window.showToast('success', '¡Cuenta creada!', 'Bienvenido a ApexTournament');
                 window.location.hash = '#/';
+            } else {
+                window.showToast('error', 'Error', result.error || 'No se pudo crear la cuenta');
+                if (result.error && result.error.includes('email')) {
+                    showError('emailError', result.error);
+                }
             }
         } catch (error) {
             window.showToast('error', 'Error', error.message || 'No se pudo crear la cuenta');
             if (error.message.includes('exists')) {
-                showError('emailError', 'Este correo o usuario ya está registrado');
+                showError('emailError', 'Este correo ya está registrado');
             }
         } finally {
             registerBtn.disabled = false;

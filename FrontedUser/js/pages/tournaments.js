@@ -20,14 +20,113 @@ export async function renderTournaments(container) {
     allTournaments = tournamentsRes.data || [];
     allGames = gamesRes.data || [];
 
+    // Torneos destacados (con mayor premio o en progreso)
+    const featuredTournaments = allTournaments
+      .filter(t => t.status === 'REGISTRATION_OPEN' || t.status === 'IN_PROGRESS')
+      .sort((a, b) => (b.prize_pool || 0) - (a.prize_pool || 0))
+      .slice(0, 3);
+
     container.innerHTML = `
+      <!-- Hero de Torneos -->
+      <section class="tournaments-hero">
+        <div class="tournaments-hero-bg"></div>
+        <div class="container">
+          <div class="tournaments-hero-content">
+            <span class="hero-badge-small">
+              <i class="fas fa-trophy"></i>
+              Competición
+            </span>
+            <h1 class="tournaments-hero-title">
+              <i class="fas fa-trophy"></i>
+              Torneos <span class="gradient-text">Épicos</span>
+            </h1>
+            <p class="tournaments-hero-subtitle">
+              Encuentra tu próximo desafío entre cientos de torneos activos. 
+              <strong>¡Compite y gana premios reales!</strong>
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Torneos Destacados -->
+      ${featuredTournaments.length > 0 ? `
+        <section class="featured-tournaments-section">
+          <div class="container">
+            <div class="featured-header">
+              <div class="featured-title-group">
+                <span class="featured-badge">
+                  <i class="fas fa-fire"></i>
+                  HOT
+                </span>
+                <h2 class="featured-title">Torneos Destacados</h2>
+              </div>
+              <p class="featured-subtitle">Los torneos más populares y con mejores premios</p>
+            </div>
+            
+            <div class="featured-tournaments-grid">
+              ${featuredTournaments.map((tournament, index) => {
+                const game = allGames.find(g => g.id === tournament.game_id);
+                const isLive = tournament.status === 'IN_PROGRESS';
+                return `
+                  <a href="#/torneo/${tournament.id}" class="featured-tournament-card ${index === 0 ? 'featured-main' : ''}" style="--delay: ${index * 0.1}s">
+                    <div class="featured-card-glow"></div>
+                    <div class="featured-card-content">
+                      ${isLive ? `
+                        <div class="featured-live-badge">
+                          <span class="live-dot"></span>
+                          EN VIVO
+                        </div>
+                      ` : `
+                        <div class="featured-status-badge">
+                          <i class="fas fa-door-open"></i>
+                          Inscripciones Abiertas
+                        </div>
+                      `}
+                      
+                      <div class="featured-game-tag">
+                        <i class="fas fa-gamepad"></i>
+                        ${game?.name || 'Juego'}
+                      </div>
+                      
+                      <h3 class="featured-tournament-name">${tournament.name}</h3>
+                      
+                      <div class="featured-tournament-info">
+                        <span><i class="fas fa-calendar"></i> ${formatDate(tournament.start_date)}</span>
+                        <span><i class="fas fa-users"></i> ${tournament.max_participants || '∞'} equipos</span>
+                      </div>
+                      
+                      ${tournament.prize_pool ? `
+                        <div class="featured-prize">
+                          <i class="fas fa-coins"></i>
+                          ${formatCurrency(tournament.prize_pool)}
+                        </div>
+                      ` : ''}
+                      
+                      <div class="featured-cta">
+                        <span class="btn btn-featured">
+                          ${isLive ? 'Ver Partidas' : 'Inscribirse'}
+                          <i class="fas fa-arrow-right"></i>
+                        </span>
+                      </div>
+                    </div>
+                    <div class="featured-card-decoration">
+                      <i class="fas fa-trophy"></i>
+                    </div>
+                  </a>
+                `;
+              }).join('')}
+            </div>
+          </div>
+        </section>
+      ` : ''}
+
       <div class="container section">
         <div class="page-header">
-          <h1 class="page-title">
-            <i class="fas fa-trophy"></i>
+          <h2 class="page-title">
+            <i class="fas fa-list"></i>
             Todos los Torneos
-          </h1>
-          <p class="page-subtitle">Encuentra y participa en los mejores torneos de esports</p>
+          </h2>
+          <p class="page-subtitle">Explora todos los torneos disponibles y encuentra tu próxima competición</p>
         </div>
         
         <!-- Advanced Filters -->
@@ -93,9 +192,306 @@ export async function renderTournaments(container) {
       </div>
       
       <style>
+        /* Hero de Torneos */
+        .tournaments-hero {
+          position: relative;
+          padding: 100px 0 60px;
+          text-align: center;
+          overflow: hidden;
+        }
+        
+        .tournaments-hero-bg {
+          position: absolute;
+          inset: 0;
+          background: linear-gradient(180deg, rgba(0, 212, 255, 0.05) 0%, transparent 100%);
+        }
+        
+        .tournaments-hero-bg::before {
+          content: '';
+          position: absolute;
+          top: -50%;
+          left: 50%;
+          width: 600px;
+          height: 600px;
+          background: radial-gradient(circle, rgba(0, 212, 255, 0.15) 0%, transparent 70%);
+          transform: translateX(-50%);
+          filter: blur(60px);
+        }
+        
+        .tournaments-hero-content {
+          position: relative;
+          z-index: 1;
+        }
+        
+        .hero-badge-small {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          padding: 8px 20px;
+          background: rgba(0, 212, 255, 0.1);
+          border: 1px solid rgba(0, 212, 255, 0.2);
+          border-radius: 100px;
+          font-size: 13px;
+          font-weight: 600;
+          color: var(--primary);
+          margin-bottom: 20px;
+        }
+        
+        .tournaments-hero-title {
+          font-family: var(--font-display);
+          font-size: 48px;
+          font-weight: 900;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 16px;
+          margin-bottom: 16px;
+        }
+        
+        .tournaments-hero-title i {
+          color: var(--warning);
+        }
+        
+        .tournaments-hero-subtitle {
+          font-size: 18px;
+          color: var(--text-secondary);
+          max-width: 600px;
+          margin: 0 auto;
+        }
+        
+        .tournaments-hero-subtitle strong {
+          color: var(--secondary);
+        }
+        
+        /* Torneos Destacados */
+        .featured-tournaments-section {
+          padding: 40px 0 60px;
+          background: linear-gradient(180deg, transparent, rgba(0, 212, 255, 0.02), transparent);
+        }
+        
+        .featured-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-bottom: 32px;
+          flex-wrap: wrap;
+          gap: 16px;
+        }
+        
+        .featured-title-group {
+          display: flex;
+          align-items: center;
+          gap: 16px;
+        }
+        
+        .featured-badge {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          padding: 6px 14px;
+          background: linear-gradient(135deg, var(--danger), var(--accent));
+          border-radius: 100px;
+          font-size: 11px;
+          font-weight: 800;
+          color: white;
+          text-transform: uppercase;
+          animation: pulse-badge 2s infinite;
+        }
+        
+        @keyframes pulse-badge {
+          0%, 100% { box-shadow: 0 0 0 0 rgba(255, 51, 102, 0.4); }
+          50% { box-shadow: 0 0 20px 5px rgba(255, 51, 102, 0.2); }
+        }
+        
+        .featured-title {
+          font-family: var(--font-display);
+          font-size: 28px;
+          font-weight: 800;
+        }
+        
+        .featured-subtitle {
+          color: var(--text-secondary);
+          font-size: 15px;
+        }
+        
+        .featured-tournaments-grid {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 24px;
+        }
+        
+        .featured-tournament-card {
+          position: relative;
+          background: var(--bg-card);
+          border: 1px solid var(--border-color);
+          border-radius: 20px;
+          overflow: hidden;
+          transition: all 0.4s ease;
+          animation: fade-in-up 0.6s ease forwards;
+          animation-delay: var(--delay);
+          opacity: 0;
+          transform: translateY(20px);
+        }
+        
+        @keyframes fade-in-up {
+          to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .featured-tournament-card:hover {
+          transform: translateY(-8px);
+          border-color: var(--primary);
+          box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+        }
+        
+        .featured-tournament-card.featured-main {
+          border-color: rgba(0, 212, 255, 0.3);
+          background: linear-gradient(180deg, rgba(0, 212, 255, 0.05), var(--bg-card));
+        }
+        
+        .featured-card-glow {
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          height: 100px;
+          background: linear-gradient(180deg, rgba(0, 212, 255, 0.1), transparent);
+          pointer-events: none;
+        }
+        
+        .featured-card-content {
+          position: relative;
+          padding: 24px;
+          z-index: 1;
+        }
+        
+        .featured-live-badge {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          padding: 6px 14px;
+          background: rgba(255, 51, 102, 0.2);
+          border: 1px solid rgba(255, 51, 102, 0.3);
+          border-radius: 100px;
+          font-size: 11px;
+          font-weight: 700;
+          color: var(--danger);
+          margin-bottom: 16px;
+          animation: live-pulse 2s infinite;
+        }
+        
+        .live-dot {
+          width: 6px;
+          height: 6px;
+          background: var(--danger);
+          border-radius: 50%;
+          animation: blink 1s infinite;
+        }
+        
+        .featured-status-badge {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          padding: 6px 14px;
+          background: rgba(0, 255, 136, 0.1);
+          border: 1px solid rgba(0, 255, 136, 0.2);
+          border-radius: 100px;
+          font-size: 11px;
+          font-weight: 600;
+          color: var(--secondary);
+          margin-bottom: 16px;
+        }
+        
+        .featured-game-tag {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          padding: 4px 12px;
+          background: rgba(0, 212, 255, 0.1);
+          border-radius: 6px;
+          font-size: 12px;
+          color: var(--primary);
+          margin-bottom: 12px;
+        }
+        
+        .featured-tournament-name {
+          font-family: var(--font-display);
+          font-size: 20px;
+          font-weight: 700;
+          margin-bottom: 12px;
+          line-height: 1.3;
+        }
+        
+        .featured-tournament-info {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 16px;
+          font-size: 13px;
+          color: var(--text-secondary);
+          margin-bottom: 16px;
+        }
+        
+        .featured-tournament-info span {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+        }
+        
+        .featured-tournament-info i {
+          color: var(--text-muted);
+        }
+        
+        .featured-prize {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          font-family: var(--font-display);
+          font-size: 24px;
+          font-weight: 800;
+          color: var(--warning);
+          margin-bottom: 20px;
+        }
+        
+        .featured-cta .btn-featured {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          padding: 12px 24px;
+          background: linear-gradient(135deg, var(--primary), var(--secondary));
+          color: #000;
+          font-weight: 700;
+          font-size: 14px;
+          border-radius: 10px;
+          transition: all 0.3s ease;
+        }
+        
+        .featured-cta .btn-featured:hover {
+          gap: 12px;
+        }
+        
+        .featured-card-decoration {
+          position: absolute;
+          bottom: -20px;
+          right: -20px;
+          font-size: 120px;
+          color: var(--primary);
+          opacity: 0.05;
+          pointer-events: none;
+        }
+
         .page-header {
           text-align: center;
           margin-bottom: 40px;
+        }
+        
+        .page-title {
+          font-family: var(--font-display);
+          font-size: 32px;
+          font-weight: 800;
+          margin-bottom: 12px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 16px;
         }
         
         .page-title {
@@ -181,7 +577,41 @@ export async function renderTournaments(container) {
           font-size: 13px;
         }
         
+        @media (max-width: 1024px) {
+          .featured-tournaments-grid {
+            grid-template-columns: repeat(2, 1fr);
+          }
+          
+          .featured-tournament-card.featured-main {
+            grid-column: span 2;
+          }
+        }
+
         @media (max-width: 768px) {
+          .tournaments-hero-title {
+            font-size: 32px;
+            flex-direction: column;
+            gap: 8px;
+          }
+          
+          .featured-tournaments-grid {
+            grid-template-columns: 1fr;
+          }
+          
+          .featured-tournament-card.featured-main {
+            grid-column: span 1;
+          }
+          
+          .featured-header {
+            flex-direction: column;
+            text-align: center;
+          }
+          
+          .featured-title-group {
+            flex-direction: column;
+            gap: 8px;
+          }
+          
           .filters-bar {
             flex-direction: column;
             gap: 16px;

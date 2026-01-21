@@ -45,6 +45,7 @@
     "fastify": "^4.28.1",
     "fire": "^0.55.1",
     "firebase": "^12.8.0",
+    "firebase-admin": "^13.6.0",
     "jsonwebtoken": "^9.0.2",
     "pino": "^9.4.0",
     "pino-pretty": "^11.2.2",

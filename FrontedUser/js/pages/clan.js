@@ -48,7 +48,7 @@ export async function renderClanPage(container, clanId) {
                         <i class="fas fa-exclamation-triangle"></i>
                         <h3>Clan no encontrado</h3>
                         <p>${error.message}</p>
-                        <a href="#clans" class="btn btn-primary">Volver a Clanes</a>
+                        <a href="#/clanes" class="btn btn-primary">Volver a Clanes</a>
                     </div>
                 </div>
             </div>
@@ -68,7 +68,7 @@ function renderClanDetail(container) {
             <!-- Banner -->
             <div class="clan-detail-banner" style="${clan.banner_url ? `background-image: url('${clan.banner_url}')` : ''}">
                 <div class="clan-detail-banner-overlay">
-                    <a href="#clans" class="btn btn-secondary back-btn">
+                    <a href="#/clanes" class="btn btn-secondary back-btn">
                         <i class="fas fa-arrow-left"></i> Volver
                     </a>
                     <div class="clan-detail-header">
@@ -390,32 +390,18 @@ function setupEventListeners() {
     });
 
     // Leave clan
-    document.getElementById('btnLeaveClan')?.addEventListener('click', async () => {
-        if (!confirm('¿Estás seguro de abandonar el clan?')) return;
-        try {
-            await API.clans.removeMember(currentClan.id, user.id);
-            showToast('success', 'Has abandonado el clan');
-            window.location.hash = '#clans';
-        } catch (error) {
-            showToast('error', error.message || 'Error al abandonar');
-        }
+    document.getElementById('btnLeaveClan')?.addEventListener('click', () => {
+        showLeaveClanModal();
     });
 
     // Delete clan
-    document.getElementById('btnDeleteClan')?.addEventListener('click', async () => {
-        if (!confirm('¿Estás seguro de eliminar el clan? Esta acción no se puede deshacer.')) return;
-        try {
-            await API.clans.delete(currentClan.id);
-            showToast('success', 'Clan eliminado');
-            window.location.hash = '#clans';
-        } catch (error) {
-            showToast('error', error.message || 'Error al eliminar');
-        }
+    document.getElementById('btnDeleteClan')?.addEventListener('click', () => {
+        showDeleteClanModal();
     });
 
     // Edit clan
     document.getElementById('btnEditClan')?.addEventListener('click', () => {
-        window.location.hash = `#edit-clan/${currentClan.id}`;
+        showEditClanModal();
     });
 
     // Send message
@@ -551,6 +537,240 @@ export function cleanup() {
         clearInterval(chatInterval);
         chatInterval = null;
     }
+}
+
+// =====================================================
+// Modal de Edición de Clan
+// =====================================================
+function showEditClanModal() {
+    const clan = currentClan;
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.innerHTML = `
+        <div class="modal edit-clan-modal">
+            <div class="modal-header">
+                <h3><i class="fas fa-edit"></i> Editar Clan</h3>
+                <button class="modal-close" id="closeModal">&times;</button>
+            </div>
+            <form id="editClanForm" class="edit-clan-form">
+                <div class="form-group">
+                    <label class="form-label">Nombre del Clan *</label>
+                    <input type="text" class="form-control" name="name" value="${clan.name}" required minlength="3" maxlength="30">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Tag del Clan *</label>
+                    <input type="text" class="form-control" name="tag" value="${clan.tag}" required minlength="2" maxlength="5">
+                    <span class="form-hint">2-5 caracteres, ej: [APEX]</span>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Descripción</label>
+                    <textarea class="form-control" name="description" rows="4" maxlength="500">${clan.description || ''}</textarea>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Requisitos para unirse</label>
+                    <textarea class="form-control" name="requirements" rows="3" maxlength="300">${clan.requirements || ''}</textarea>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Tipo de Acceso</label>
+                    <select class="form-control" name="access_type">
+                        <option value="OPEN" ${clan.access_type === 'OPEN' ? 'selected' : ''}>🔓 Abierto - Cualquiera puede unirse</option>
+                        <option value="INVITE_ONLY" ${clan.access_type === 'INVITE_ONLY' ? 'selected' : ''}>📧 Por Invitación - Requiere aprobación</option>
+                        <option value="CLOSED" ${clan.access_type === 'CLOSED' ? 'selected' : ''}>🔒 Cerrado - No acepta miembros</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Máximo de Miembros</label>
+                    <select class="form-control" name="max_members">
+                        <option value="25" ${clan.max_members === 25 ? 'selected' : ''}>25 miembros</option>
+                        <option value="50" ${clan.max_members === 50 ? 'selected' : ''}>50 miembros</option>
+                        <option value="100" ${clan.max_members === 100 ? 'selected' : ''}>100 miembros</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">URL del Banner (opcional)</label>
+                    <input type="url" class="form-control" name="banner_url" value="${clan.banner_url || ''}" placeholder="https://...">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" id="cancelEdit">Cancelar</button>
+                    <button type="submit" class="btn btn-primary" id="saveEditBtn">
+                        <i class="fas fa-save"></i> Guardar Cambios
+                    </button>
+                </div>
+            </form>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    // Close modal
+    const closeModal = () => modal.remove();
+    modal.querySelector('#closeModal').addEventListener('click', closeModal);
+    modal.querySelector('#cancelEdit').addEventListener('click', closeModal);
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) closeModal();
+    });
+
+    // Submit form
+    modal.querySelector('#editClanForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const formData = new FormData(e.target);
+        const saveBtn = modal.querySelector('#saveEditBtn');
+        
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
+
+        try {
+            await API.clans.update(clan.id, {
+                name: formData.get('name'),
+                tag: formData.get('tag'),
+                description: formData.get('description'),
+                requirements: formData.get('requirements'),
+                access_type: formData.get('access_type'),
+                max_members: parseInt(formData.get('max_members')),
+                banner_url: formData.get('banner_url') || null
+            });
+            showToast('success', '¡Clan actualizado correctamente!');
+            closeModal();
+            location.reload();
+        } catch (error) {
+            showToast('error', error.message || 'Error al actualizar el clan');
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = '<i class="fas fa-save"></i> Guardar Cambios';
+        }
+    });
+}
+
+// =====================================================
+// Modal de Confirmación para Eliminar Clan
+// =====================================================
+function showDeleteClanModal() {
+    const clan = currentClan;
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.innerHTML = `
+        <div class="modal confirm-modal danger-modal">
+            <div class="confirm-modal-icon danger">
+                <i class="fas fa-exclamation-triangle"></i>
+            </div>
+            <h3 class="confirm-modal-title">¿Eliminar ${clan.name}?</h3>
+            <p class="confirm-modal-text">
+                Esta acción <strong>no se puede deshacer</strong>. Se eliminará:
+            </p>
+            <ul class="confirm-modal-list">
+                <li><i class="fas fa-times-circle"></i> El clan y toda su información</li>
+                <li><i class="fas fa-times-circle"></i> Todos los ${clan.members.length} miembros serán removidos</li>
+                <li><i class="fas fa-times-circle"></i> El historial de chat completo</li>
+                <li><i class="fas fa-times-circle"></i> Todas las solicitudes pendientes</li>
+            </ul>
+            <div class="confirm-modal-input">
+                <label>Escribe <strong>${clan.tag}</strong> para confirmar:</label>
+                <input type="text" id="confirmDeleteInput" placeholder="Escribe el tag del clan" autocomplete="off">
+            </div>
+            <div class="confirm-modal-actions">
+                <button class="btn btn-secondary" id="cancelDelete">
+                    <i class="fas fa-arrow-left"></i> Cancelar
+                </button>
+                <button class="btn btn-danger" id="confirmDelete" disabled>
+                    <i class="fas fa-trash"></i> Eliminar Clan
+                </button>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    const confirmInput = modal.querySelector('#confirmDeleteInput');
+    const confirmBtn = modal.querySelector('#confirmDelete');
+
+    // Enable button only when tag matches
+    confirmInput.addEventListener('input', () => {
+        confirmBtn.disabled = confirmInput.value.toUpperCase() !== clan.tag.toUpperCase();
+    });
+
+    // Close modal
+    const closeModal = () => modal.remove();
+    modal.querySelector('#cancelDelete').addEventListener('click', closeModal);
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) closeModal();
+    });
+
+    // Confirm delete
+    confirmBtn.addEventListener('click', async () => {
+        confirmBtn.disabled = true;
+        confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Eliminando...';
+        
+        try {
+            await API.clans.delete(clan.id);
+            showToast('success', 'Clan eliminado permanentemente');
+            closeModal();
+            window.location.hash = '#/clanes';
+        } catch (error) {
+            showToast('error', error.message || 'Error al eliminar el clan');
+            confirmBtn.disabled = false;
+            confirmBtn.innerHTML = '<i class="fas fa-trash"></i> Eliminar Clan';
+        }
+    });
+}
+
+// =====================================================
+// Modal de Confirmación para Abandonar Clan
+// =====================================================
+function showLeaveClanModal() {
+    const clan = currentClan;
+    const user = getStoredUser();
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.innerHTML = `
+        <div class="modal confirm-modal warning-modal">
+            <div class="confirm-modal-icon warning">
+                <i class="fas fa-door-open"></i>
+            </div>
+            <h3 class="confirm-modal-title">¿Abandonar ${clan.name}?</h3>
+            <p class="confirm-modal-text">
+                Estás a punto de abandonar el clan. Ten en cuenta que:
+            </p>
+            <ul class="confirm-modal-list warning">
+                <li><i class="fas fa-info-circle"></i> Perderás acceso al chat del clan</li>
+                <li><i class="fas fa-info-circle"></i> Tu historial de mensajes permanecerá</li>
+                <li><i class="fas fa-info-circle"></i> Podrás volver a unirte si el clan es abierto</li>
+            </ul>
+            <div class="confirm-modal-actions">
+                <button class="btn btn-secondary" id="cancelLeave">
+                    <i class="fas fa-times"></i> Cancelar
+                </button>
+                <button class="btn btn-warning" id="confirmLeave">
+                    <i class="fas fa-door-open"></i> Sí, Abandonar
+                </button>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    // Close modal
+    const closeModal = () => modal.remove();
+    modal.querySelector('#cancelLeave').addEventListener('click', closeModal);
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) closeModal();
+    });
+
+    // Confirm leave
+    modal.querySelector('#confirmLeave').addEventListener('click', async () => {
+        const confirmBtn = modal.querySelector('#confirmLeave');
+        confirmBtn.disabled = true;
+        confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saliendo...';
+        
+        try {
+            await API.clans.removeMember(clan.id, user.id);
+            showToast('success', 'Has abandonado el clan');
+            closeModal();
+            window.location.hash = '#/clanes';
+        } catch (error) {
+            showToast('error', error.message || 'Error al abandonar el clan');
+            confirmBtn.disabled = false;
+            confirmBtn.innerHTML = '<i class="fas fa-door-open"></i> Sí, Abandonar';
+        }
+    });
 }
 
 export default { renderClanPage, cleanup };
