@@ -1,0 +1,288 @@
+{
+  "name": "ApexTournament - Telegram Bot",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": ["message"]
+      },
+      "id": "a1b2c3d4-1111-2222-3333-444455556666",
+      "name": "Telegram Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.1,
+      "position": [250, 300],
+      "webhookId": "telegram-apex-webhook"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "condition-start",
+              "leftValue": "={{ $json.message.text }}",
+              "rightValue": "/start",
+              "operator": {
+                "type": "string",
+                "operation": "startsWith"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "a1b2c3d4-2222-3333-4444-555566667777",
+      "name": "Es /start?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "🎮 <b>¡Bienvenido a ApexTournament!</b>\n\nSoy el bot oficial de torneos de eSports.\n\n<b>📋 Comandos disponibles:</b>\n/start - Este mensaje\n/torneos - Ver torneos activos\n/ranking - Top 10 jugadores\n/ayuda - Mostrar ayuda\n/vincular - Vincular tu cuenta\n\n¡Buena suerte en tus competencias! 🏆",
+        "additionalFields": {
+          "parse_mode": "HTML"
+        }
+      },
+      "id": "a1b2c3d4-3333-4444-5555-666677778888",
+      "name": "Enviar Bienvenida",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [720, 200]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "condition-torneos",
+              "leftValue": "={{ $json.message.text }}",
+              "rightValue": "/torneos",
+              "operator": {
+                "type": "string",
+                "operation": "startsWith"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "a1b2c3d4-4444-5555-6666-777788889999",
+      "name": "Es /torneos?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [480, 500]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "🏆 <b>Torneos Disponibles</b>\n\nPara ver todos los torneos activos y registrarte, visita nuestra plataforma:\n\n🔗 <a href=\"http://localhost:5173\">ApexTournament</a>\n\n¡No te pierdas ninguna competencia!",
+        "additionalFields": {
+          "parse_mode": "HTML"
+        }
+      },
+      "id": "a1b2c3d4-5555-6666-7777-88889999aaaa",
+      "name": "Enviar Torneos",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [720, 400]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "condition-ayuda",
+              "leftValue": "={{ $json.message.text }}",
+              "rightValue": "/ayuda",
+              "operator": {
+                "type": "string",
+                "operation": "startsWith"
+              }
+            },
+            {
+              "id": "condition-help",
+              "leftValue": "={{ $json.message.text }}",
+              "rightValue": "/help",
+              "operator": {
+                "type": "string",
+                "operation": "startsWith"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "id": "a1b2c3d4-6666-7777-8888-9999aaaabbbb",
+      "name": "Es /ayuda?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [480, 700]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "📖 <b>Ayuda - ApexTournament Bot</b>\n\n<b>🎮 Comandos de Torneos:</b>\n/torneos - Ver torneos activos\n/ranking - Ver top 10 jugadores\n\n<b>⚙️ Cuenta:</b>\n/vincular - Conectar tu cuenta\n/stats - Ver tus estadísticas\n\n<b>💡 ¿Cómo vincular mi cuenta?</b>\n1. Usa el comando /vincular\n2. Copia tu Chat ID\n3. Pégalo en Configuración → Telegram\n\n¿Dudas? Visita nuestra web.",
+        "additionalFields": {
+          "parse_mode": "HTML"
+        }
+      },
+      "id": "a1b2c3d4-7777-8888-9999-aaaabbbbcccc",
+      "name": "Enviar Ayuda",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [720, 600]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "condition-vincular",
+              "leftValue": "={{ $json.message.text }}",
+              "rightValue": "/vincular",
+              "operator": {
+                "type": "string",
+                "operation": "startsWith"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "a1b2c3d4-8888-9999-aaaa-bbbbccccdddd",
+      "name": "Es /vincular?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [480, 900]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "🔗 <b>Vincular tu Cuenta</b>\n\nTu Chat ID es:\n<code>{{ $('Telegram Trigger').item.json.message.chat.id }}</code>\n\n<b>Pasos para vincular:</b>\n1. Inicia sesión en ApexTournament\n2. Ve a Configuración → Notificaciones\n3. Pega este Chat ID\n4. ¡Listo! Recibirás notificaciones aquí\n\n✅ Una vez vinculado recibirás:\n• Invitaciones a torneos\n• Notificaciones de partidas\n• Resultados en tiempo real",
+        "additionalFields": {
+          "parse_mode": "HTML"
+        }
+      },
+      "id": "a1b2c3d4-9999-aaaa-bbbb-ccccddddeeeee",
+      "name": "Enviar Vincular",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [720, 800]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "condition-ranking",
+              "leftValue": "={{ $json.message.text }}",
+              "rightValue": "/ranking",
+              "operator": {
+                "type": "string",
+                "operation": "startsWith"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "a1b2c3d4-aaaa-bbbb-cccc-ddddeeeeffff",
+      "name": "Es /ranking?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [480, 1100]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "🏅 <b>Top 10 Jugadores</b>\n\n🥇 ProGamer123 - 2,500 pts\n🥈 ElitePlayer - 2,350 pts\n🥉 ChampionX - 2,200 pts\n4. NinjaWarrior - 2,100 pts\n5. MasterMind - 2,000 pts\n6. SpeedDemon - 1,900 pts\n7. ShadowKing - 1,850 pts\n8. ThunderBolt - 1,800 pts\n9. IceQueen - 1,750 pts\n10. FireStorm - 1,700 pts\n\n<i>Actualizado en tiempo real</i>",
+        "additionalFields": {
+          "parse_mode": "HTML"
+        }
+      },
+      "id": "a1b2c3d4-bbbb-cccc-dddd-eeeeffffgggg",
+      "name": "Enviar Ranking",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [720, 1000]
+    }
+  ],
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          { "node": "Es /start?", "type": "main", "index": 0 },
+          { "node": "Es /torneos?", "type": "main", "index": 0 },
+          { "node": "Es /ayuda?", "type": "main", "index": 0 },
+          { "node": "Es /vincular?", "type": "main", "index": 0 },
+          { "node": "Es /ranking?", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Es /start?": {
+      "main": [
+        [{ "node": "Enviar Bienvenida", "type": "main", "index": 0 }],
+        []
+      ]
+    },
+    "Es /torneos?": {
+      "main": [
+        [{ "node": "Enviar Torneos", "type": "main", "index": 0 }],
+        []
+      ]
+    },
+    "Es /ayuda?": {
+      "main": [
+        [{ "node": "Enviar Ayuda", "type": "main", "index": 0 }],
+        []
+      ]
+    },
+    "Es /vincular?": {
+      "main": [
+        [{ "node": "Enviar Vincular", "type": "main", "index": 0 }],
+        []
+      ]
+    },
+    "Es /ranking?": {
+      "main": [
+        [{ "node": "Enviar Ranking", "type": "main", "index": 0 }],
+        []
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "pinData": {}
+}
