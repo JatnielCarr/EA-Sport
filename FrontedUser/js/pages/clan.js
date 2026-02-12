@@ -105,14 +105,16 @@ function renderClanDetail(container) {
                             <div class="clan-members-list">
                                 ${clan.members.map(member => `
                                     <div class="clan-member-item">
-                                        <div class="clan-member-avatar">
-                                            ${member.user.username.charAt(0).toUpperCase()}
-                                        </div>
-                                        <div class="clan-member-info">
-                                            <span class="clan-member-name">${member.user.username}</span>
-                                            <span class="clan-member-role ${member.role.toLowerCase()}">
-                                                ${getRoleLabel(member.role)}
-                                            </span>
+                                        <div class="clan-member-profile-click" data-user-id="${member.user_id}" style="display:flex; align-items:center; flex-grow:1; cursor:pointer;" title="Ver perfil de ${member.user.username}">
+                                            <div class="clan-member-avatar">
+                                                ${member.user.username.charAt(0).toUpperCase()}
+                                            </div>
+                                            <div class="clan-member-info">
+                                                <span class="clan-member-name">${member.user.username}</span>
+                                                <span class="clan-member-role ${member.role.toLowerCase()}">
+                                                    ${getRoleLabel(member.role)}
+                                                </span>
+                                            </div>
                                         </div>
                                         ${canManage && member.role !== 'LEADER' ? `
                                             <div class="clan-member-actions">
@@ -452,11 +454,21 @@ function setupEventListeners() {
             }
         });
     });
+    // View Member Profile
+    document.querySelectorAll('.clan-member-profile-click').forEach(item => {
+        item.addEventListener('click', (e) => {
+            const userId = item.dataset.userId;
+            if (window.showPlayerProfile) {
+                window.showPlayerProfile(userId);
+            }
+        });
+    });
 }
 
 async function sendChatMessage(isAnnouncement) {
     const input = document.getElementById('chatInput');
-    const content = input?.value.trim();
+    if (!input) return;
+    const content = input.value.trim();
 
     if (!content) return;
 
@@ -615,7 +627,7 @@ function showEditClanModal() {
         e.preventDefault();
         const formData = new FormData(e.target);
         const saveBtn = modal.querySelector('#saveEditBtn');
-        
+
         saveBtn.disabled = true;
         saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
 
@@ -698,7 +710,7 @@ function showDeleteClanModal() {
     confirmBtn.addEventListener('click', async () => {
         confirmBtn.disabled = true;
         confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Eliminando...';
-        
+
         try {
             await API.clans.delete(clan.id);
             showToast('success', 'Clan eliminado permanentemente');
@@ -759,7 +771,7 @@ function showLeaveClanModal() {
         const confirmBtn = modal.querySelector('#confirmLeave');
         confirmBtn.disabled = true;
         confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saliendo...';
-        
+
         try {
             await API.clans.removeMember(clan.id, user.id);
             showToast('success', 'Has abandonado el clan');

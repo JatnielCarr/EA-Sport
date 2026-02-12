@@ -21,7 +21,7 @@ async function getUsers() {
     console.log('---');
   });
   
-  await prisma.$disconnect();
+  process.exit(0);
 }
 
 getUsers().catch(console.error);

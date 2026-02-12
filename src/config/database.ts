@@ -9,15 +9,9 @@ export const prisma = new PrismaClient({
 });
 
 // Function to connect to database
-export async function connectDatabase(): Promise<boolean> {
-  try {
-    await prisma.$connect();
-    console.log('✅ Database connected successfully');
-    return true;
-  } catch (error) {
-    console.error('❌ Database connection failed:', error);
-    return false;
-  }
+export async function connectDatabase(): Promise<void> {
+  await prisma.$connect();
+  console.log('✅ Database connected successfully');
 }
 
 // Function to disconnect from database

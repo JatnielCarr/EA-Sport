@@ -3,7 +3,7 @@
 // =====================================================
 
 export function getBracketsStyles() {
-    return `
+  return `
     /* =====================================================
        BRACKETS PAGE - Enhanced Styles
        ===================================================== */
@@ -227,25 +227,36 @@ export function getBracketsStyles() {
     /* Bracket Container with relative positioning */
     .bracket-wrapper {
       position: relative;
+      overflow-x: auto;
+      padding: 10px 0;
+    }
+
+    .bracket-view-container {
+      min-height: 400px;
+      overflow: visible;
     }
 
     /* Tournament Header */
     .bracket-tournament-header {
-      background: var(--bg-card);
+      background: linear-gradient(135deg, var(--bg-card), var(--bg-tertiary));
       border-radius: var(--border-radius);
       border: 1px solid var(--border-color);
-      padding: 24px;
+      padding: 20px 24px;
       margin-bottom: 20px;
       display: flex;
       justify-content: space-between;
       align-items: center;
+      flex-wrap: wrap;
+      gap: 15px;
     }
 
     .bracket-tournament-header h2 {
-      font-size: 22px;
+      font-size: 20px;
+      font-weight: 700;
       display: flex;
       align-items: center;
       gap: 10px;
+      margin: 0;
     }
 
     .bracket-tournament-header h2 i {
@@ -255,6 +266,7 @@ export function getBracketsStyles() {
     .bracket-meta {
       display: flex;
       gap: 20px;
+      flex-wrap: wrap;
     }
 
     .bracket-meta span {
@@ -262,61 +274,33 @@ export function getBracketsStyles() {
       align-items: center;
       gap: 6px;
       color: var(--text-secondary);
-      font-size: 14px;
+      font-size: 13px;
     }
 
-    /* Title Banner */
+    /* Title Banner - Fixed */
     .bracket-title-banner {
-      background: linear-gradient(135deg, #1a365d, #2a4a7f);
-      padding: 20px 40px;
-      border-radius: var(--border-radius);
-      margin-bottom: 30px;
-      text-align: right;
-      position: relative;
-      overflow: hidden;
-    }
-
-    .bracket-title-banner::before {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background: repeating-linear-gradient(
-        135deg,
-        transparent,
-        transparent 20px,
-        rgba(255,255,255,0.03) 20px,
-        rgba(255,255,255,0.03) 40px
-      );
-    }
-
-    .bracket-title-banner h1 {
-      font-family: 'Orbitron', sans-serif;
-      font-size: 48px;
-      font-weight: 900;
-      color: white;
-      text-shadow: 0 4px 20px rgba(0,0,0,0.5);
-      margin: 0;
-      letter-spacing: 8px;
+      display: none; /* Hide the broken banner */
     }
 
     /* Bracket Sections */
     .bracket-section {
-      margin-bottom: 40px;
+      margin-bottom: 30px;
     }
 
     .bracket-section-header {
-      margin-bottom: 20px;
+      margin-bottom: 15px;
     }
 
     .bracket-section-header h3 {
       font-family: 'Orbitron', sans-serif;
-      font-size: 18px;
+      font-size: 16px;
       font-weight: 700;
       display: flex;
       align-items: center;
       gap: 10px;
-      padding: 12px 20px;
+      padding: 10px 16px;
       border-radius: var(--border-radius-sm);
+      margin: 0;
     }
 
     .upper-bracket .bracket-section-header h3 {
@@ -343,41 +327,74 @@ export function getBracketsStyles() {
       align-items: center;
       gap: 20px;
       padding: 20px;
+      background: var(--bg-card);
+      border-radius: var(--border-radius);
+      border: 1px solid var(--border-color);
     }
 
     .grand-final-container .match-box {
       min-width: 280px;
+      max-width: 350px;
     }
 
-    /* Bracket Grid */
+    .bracket-reset-section {
+      margin-top: 15px;
+      padding-top: 15px;
+      border-top: 1px dashed var(--border-color);
+    }
+
+    .bracket-reset-label {
+      font-size: 11px;
+      color: var(--text-muted);
+      text-align: center;
+      margin-bottom: 10px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    /* Bracket Grid - FIXED */
     .bracket-grid {
       display: flex;
-      gap: 30px;
+      gap: 40px;
       overflow-x: auto;
-      padding: 20px 0;
+      padding: 20px;
+      background: var(--bg-card);
+      border-radius: var(--border-radius);
+      border: 1px solid var(--border-color);
+      min-height: 300px;
+    }
+
+    .bracket-grid.single-elimination {
+      justify-content: flex-start;
     }
 
     .bracket-column {
-      min-width: 220px;
+      min-width: 240px;
+      max-width: 280px;
+      flex-shrink: 0;
       display: flex;
       flex-direction: column;
     }
 
     .round-title {
       font-family: 'Orbitron', sans-serif;
-      font-size: 12px;
+      font-size: 11px;
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 1px;
-      color: var(--text-secondary);
+      color: var(--primary);
       margin-bottom: 15px;
       text-align: center;
+      padding: 8px 12px;
+      background: var(--bg-tertiary);
+      border-radius: var(--border-radius-sm);
+      border: 1px solid var(--border-color);
     }
 
     .round-matches {
       display: flex;
       flex-direction: column;
-      gap: 15px;
+      gap: 20px;
       justify-content: space-around;
       flex: 1;
     }
@@ -643,6 +660,73 @@ export function getBracketsStyles() {
       padding: 30px;
     }
 
+    /* Bracket Empty State */
+    .bracket-empty-state {
+      display: flex;
+      flex-direction: column;
+      gap: 30px;
+      padding: 20px;
+    }
+
+    .generate-bracket-section {
+      text-align: center;
+      padding: 50px 30px;
+      background: var(--bg-card);
+      border-radius: var(--border-radius);
+      border: 2px dashed var(--border-color);
+    }
+
+    .generate-bracket-section i {
+      font-size: 48px;
+      color: var(--primary);
+      margin-bottom: 20px;
+    }
+
+    .generate-bracket-section h3 {
+      font-size: 20px;
+      margin-bottom: 10px;
+    }
+
+    .generate-bracket-section p {
+      color: var(--text-secondary);
+      margin-bottom: 20px;
+    }
+
+    .tournament-info-card {
+      background: linear-gradient(135deg, var(--bg-card), var(--bg-tertiary));
+      border-radius: var(--border-radius);
+      border: 1px solid var(--border-color);
+      padding: 24px;
+      text-align: center;
+    }
+
+    .tournament-info-card h2 {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+
+    .tournament-info-card h2 i {
+      color: #ffd700;
+    }
+
+    .tournament-meta {
+      display: flex;
+      gap: 20px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .tournament-meta span {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--text-secondary);
+      font-size: 14px;
+    }
+
     /* Responsive */
     @media (max-width: 768px) {
       .brackets-header {
@@ -650,9 +734,13 @@ export function getBracketsStyles() {
         align-items: flex-start;
       }
 
-      .bracket-title-banner h1 {
-        font-size: 28px;
-        letter-spacing: 4px;
+      .bracket-grid {
+        padding: 15px;
+        gap: 20px;
+      }
+
+      .bracket-column {
+        min-width: 200px;
       }
 
       .match-versus {
@@ -661,6 +749,15 @@ export function getBracketsStyles() {
 
       .tournament-stats-panel {
         grid-template-columns: repeat(2, 1fr);
+      }
+
+      .bracket-tournament-header {
+        flex-direction: column;
+        text-align: center;
+      }
+
+      .bracket-meta {
+        justify-content: center;
       }
     }
 

@@ -6,10 +6,7 @@ const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 async function startServer() {
   try {
     // Connect to MySQL database (Prisma)
-    const dbConnected = await connectDatabase();
-    if (!dbConnected) {
-      console.warn('⚠️  Starting server without MySQL connection. Some features may not work.');
-    }
+    await connectDatabase();
 
     const app = await buildApp();
 

@@ -4,8 +4,53 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ApexTournament | Elite Gaming Platform �</title>
+  <title>ApexTournament | Elite Gaming Platform 🎮</title>
   <meta name="description" content="Professional Esports Tournament Management - The Ultimate Gaming Platform">
+
+  <!-- 🔒 Auth Check - Redirect to landing if not logged in -->
+  <script>
+    (function () {
+      var token = localStorage.getItem('apex_tournament_token');
+      var user = localStorage.getItem('apex_tournament_user');
+
+      // Check token exists
+      if (!token || !user) {
+        window.location.replace('/landing.html');
+        return;
+      }
+
+      try {
+        // Check token expiry (same logic as Auth.isLoggedIn)
+        var payload = JSON.parse(atob(token.split('.')[1]));
+        if (payload.exp * 1000 <= Date.now()) {
+          // Token expired - clear and redirect
+          localStorage.removeItem('apex_tournament_token');
+          localStorage.removeItem('apex_tournament_user');
+          window.location.replace('/landing.html');
+          return;
+        }
+
+        // Verify role
+        var userData = JSON.parse(user);
+        if (userData.role !== 'ADMIN' && userData.role !== 'ORGANIZER') {
+          localStorage.removeItem('apex_tournament_token');
+          localStorage.removeItem('apex_tournament_user');
+          window.location.replace('/landing.html');
+          return;
+        }
+      } catch (e) {
+        localStorage.removeItem('apex_tournament_token');
+        localStorage.removeItem('apex_tournament_user');
+        window.location.replace('/landing.html');
+      }
+    })();
+  </script>
+
+  <!-- PWA Meta Tags -->
+  <meta name="theme-color" content="#0a0e17">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="manifest" href="/manifest.json">
 
   <!-- Favicon Gaming -->
   <link rel="icon" type="image/svg+xml"
@@ -23,6 +68,7 @@
 
   <!-- Custom Styles -->
   <link rel="stylesheet" href="/css/styles.css">
+  <link rel="stylesheet" href="/css/clan-leader-epic.css">
 
   <style>
     /* 🎮 EPIC GAMING PRELOADER */
@@ -274,82 +320,29 @@
 
       <nav class="sidebar-nav">
         <ul>
-          <li>
-            <a href="#/dashboard" class="nav-link active icon-bounce" data-page="dashboard">
-              <i class="fas fa-chart-line"></i>
-              <span>Dashboard</span>
-            </a>
-          </li>
-          <li>
-            <a href="#/leaderboard" class="nav-link icon-bounce" data-page="leaderboard">
-              <i class="fas fa-crown" style="color: #ffd700;"></i>
-              <span>Leaderboard</span>
-              <span class="badge-new">NEW</span>
-            </a>
-          </li>
-          <li>
-            <a href="#/users" class="nav-link icon-bounce" data-page="users">
-              <i class="fas fa-users"></i>
-              <span>Jugadores</span>
-            </a>
-          </li>
-          <li>
-            <a href="#/tournaments" class="nav-link icon-bounce" data-page="tournaments">
-              <i class="fas fa-trophy trophy-icon"></i>
-              <span>Torneos</span>
-              <span class="badge-live">LIVE</span>
-            </a>
-          </li>
-          <li>
-            <a href="#/teams" class="nav-link icon-bounce" data-page="teams">
-              <i class="fas fa-shield-halved"></i>
-              <span>Equipos</span>
-            </a>
-          </li>
-          <li>
-            <a href="#/matches" class="nav-link icon-bounce" data-page="matches">
-              <i class="fas fa-crosshairs"></i>
-              <span>Partidas</span>
-            </a>
-          </li>
-          <li>
-            <a href="#/games" class="nav-link icon-bounce" data-page="games">
-              <i class="fas fa-gamepad"></i>
-              <span>Juegos</span>
-            </a>
-          </li>
-          <li>
-            <a href="#/brackets" class="nav-link icon-bounce" data-page="brackets">
-              <i class="fas fa-sitemap" style="color: var(--primary);"></i>
-              <span>Brackets</span>
-              <span class="badge-new">NEW</span>
-            </a>
-          </li>
+          <!-- Dynamic Content loaded by Sidebar.js -->
         </ul>
       </nav>
 
       <div class="sidebar-footer">
         <div class="user-info gradient-border-card">
-          <div class="avatar pulse-glow-pro">
-            <i class="fas fa-crown"></i>
-          </div>
-          <div class="user-details">
-            <span class="user-name">Admin</span>
-            <span class="user-role"><i class="fas fa-star" style="color: #ffd700; font-size: 10px;"></i> Super
-              Admin</span>
-          </div>
-          <button class="logout-btn" onclick="logout()" title="Cerrar sesión">
-            <i class="fas fa-power-off"></i>
-          </button>
+          <!-- Dynamic Content loaded by Sidebar.js -->
         </div>
       </div>
     </aside>
+
+    <!-- Sidebar Overlay for Mobile -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
     <!-- Main Content -->
     <main class="main-content">
       <!-- Header -->
       <header class="header">
         <div class="header-left">
+          <!-- Mobile Menu Toggle -->
+          <button class="mobile-menu-toggle" id="mobileMenuToggle">
+            <i class="fas fa-bars"></i>
+          </button>
 
           <h1 class="page-title" id="pageTitle">
             <i class="fas fa-bolt" style="color: #00d4ff; margin-right: 10px;"></i>
@@ -420,6 +413,11 @@
       <div class="page-content" id="pageContent">
         <!-- Content will be loaded here dynamically -->
       </div>
+
+      <footer class="admin-footer"
+        style="text-align: center; padding: 20px; color: #64748b; font-size: 0.8rem; border-top: 1px solid rgba(255,255,255,0.05); margin-top: auto;">
+        <p>© 2026 ApexTournament (Proyecto EA Sports). Todos los derechos reservados.</p>
+      </footer>
     </main>
   </div>
 
@@ -459,7 +457,11 @@
   <!-- Sortable.js for drag-drop scheduling -->
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
 
+  <!-- Main app module -->
   <script type="module" src="/js/app.js"></script>
+
+  <!-- Cache helpers (development only) -->
+  <script type="module" src="/js/cache-helpers.js"></script>
 
   <script>
     // Create floating particles

@@ -5,13 +5,26 @@ import fastifyJwt from '@fastify/jwt';
 import bcrypt from 'bcrypt';
 import { swaggerConfig } from './config/swagger';
 import { prisma } from './config/database';
+import { initializeFirebase } from './config/firebase';
 import { firebaseAuthRoutes } from './routes/firebase-auth.routes';
 import { telegramRoutes } from './routes/telegram.routes';
-
+import { paymentRoutes } from './routes/payment.routes';
+import { subscriptionRoutes } from './routes/subscription.routes';
+import { userRoutes } from './routes/user.routes';
+import { liveUpdatesRoutes } from './routes/live-updates';
+import { monetizationRoutes } from './routes/monetization.routes';
+import { stripeWebhookRoutes } from './routes/stripe-webhook.routes';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'ea-sports-tournament-secret-key-2024';
 
 export async function buildApp() {
+  // Inicializar Firebase al arrancar la app
+  try {
+    initializeFirebase();
+  } catch (error) {
+    console.warn('⚠️ Firebase no pudo inicializarse. Las funciones en tiempo real no estarán disponibles.');
+  }
+
   const app = Fastify({
     logger: true,
     disableRequestLogging: process.env.NODE_ENV === 'test'
@@ -25,15 +38,26 @@ export async function buildApp() {
       'http://localhost:5173',
       'http://localhost:5174',
       'http://localhost:5175',
+      'http://localhost:5176',
+      'http://localhost:5177',
+      'http://localhost:5178',
+      'http://localhost:5179',
+      'http://localhost:5180',
       'http://127.0.0.1:5173',
       'http://127.0.0.1:5174',
       'http://127.0.0.1:5175',
+      'http://127.0.0.1:5176',
+      'http://127.0.0.1:5177',
+      'http://127.0.0.1:5178',
       'http://localhost:4173', // Vite preview
       'http://127.0.0.1:4173'
     ];
 
   // Register plugins
-  await app.register(helmet);
+  await app.register(helmet, {
+    crossOriginOpenerPolicy: false, // Permitir popups de Firebase Auth
+    contentSecurityPolicy: false // Deshabilitar CSP para desarrollo
+  });
   await app.register(cors, {
     origin: CORS_ORIGINS,
     credentials: true,
@@ -71,6 +95,24 @@ export async function buildApp() {
 
   // Register Telegram Routes
   await app.register(telegramRoutes);
+
+  // Register Payment Routes
+  await app.register(paymentRoutes);
+
+  // Register Subscription Routes
+  await app.register(subscriptionRoutes);
+
+  // Register User Routes
+  await app.register(userRoutes);
+
+  // Register Live Updates Routes (Firebase)
+  await app.register(liveUpdatesRoutes);
+
+  // Register Monetization Routes
+  await app.register(monetizationRoutes);
+
+  // Register Stripe Webhook Routes
+  await app.register(stripeWebhookRoutes);
 
   // =====================================================
   // AUTH ROUTES
@@ -521,7 +563,23 @@ export async function buildApp() {
       }
     }
   }, async (request) => {
-    const tournament = await prisma.tournament.create({ data: request.body as any });
+    const data = request.body as any;
+
+    // Ensure required fields have defaults if not provided
+    if (!data.max_participants) {
+      data.max_participants = 32;
+    }
+    if (!data.region) {
+      data.region = 'LATAM';
+    }
+    if (!data.registration_deadline) {
+      // Default: 1 day before start_date
+      const startDate = new Date(data.start_date);
+      startDate.setDate(startDate.getDate() - 1);
+      data.registration_deadline = startDate.toISOString();
+    }
+
+    const tournament = await prisma.tournament.create({ data });
     return { success: true, data: tournament };
   });
 
@@ -1000,15 +1058,31 @@ export async function buildApp() {
       }
     }
   }, async (request) => {
-    const { tournament_id, status } = request.query as any;
-    const matches = await prisma.match.findMany({
-      where: {
-        tournament_id,
-        status
-      },
-      include: { home_team: true, away_team: true, winner: true }
-    });
-    return { success: true, data: matches };
+    try {
+      const { tournament_id, status } = request.query as any;
+      const whereClause: any = {};
+
+      if (tournament_id) whereClause.tournament_id = tournament_id;
+      // Only add status if it's a valid string and not empty
+      if (status && typeof status === 'string' && status.trim() !== '') {
+        whereClause.status = status;
+      }
+
+      console.log('Fetching matches with where:', whereClause);
+
+      const matches = await prisma.match.findMany({
+        where: whereClause,
+        include: { home_team: true, away_team: true, winner: true }
+      });
+      return { success: true, data: matches };
+    } catch (error) {
+      console.error('Error fetching matches:', error);
+      return reply.code(500).send({
+        success: false,
+        error: 'Error al obtener las partidas',
+        details: (error as Error).message
+      });
+    }
   });
 
   app.post('/matches', {
@@ -1107,12 +1181,19 @@ export async function buildApp() {
       },
       body: {
         type: 'object',
+        additionalProperties: true,
         properties: {
           status: { type: 'string', enum: ['SCHEDULED', 'CHECK_IN', 'LIVE', 'COMPLETED', 'DISPUTED', 'CANCELLED'] },
-          home_score: { type: 'integer' },
-          away_score: { type: 'integer' },
-          winner_id: { type: 'string' },
-          scheduled_datetime: { type: 'string', format: 'date-time' }
+          home_score: { type: ['integer', 'null'] },
+          away_score: { type: ['integer', 'null'] },
+          winner_id: { type: ['string', 'null'], nullable: true },
+          scheduled_datetime: { type: ['string', 'null'], format: 'date-time' },
+          home_team_id: { type: ['string', 'null'], nullable: true },
+          away_team_id: { type: ['string', 'null'], nullable: true },
+          round: { type: ['integer', 'null'] },
+          match_number: { type: ['integer', 'null'] },
+          bracket_position: { type: ['integer', 'null'] },
+          best_of: { type: ['integer', 'null'] }
         }
       },
       response: {
@@ -1125,10 +1206,56 @@ export async function buildApp() {
         }
       }
     }
-  }, async (request) => {
+  }, async (request, reply) => {
     const { id } = request.params as { id: string };
-    const match = await prisma.match.update({ where: { id }, data: request.body as any });
-    return { success: true, data: match };
+    const body = request.body as any;
+
+    // Filter out null/undefined values and build update data
+    const updateData: any = {};
+
+    if (body.status !== undefined && body.status !== null) {
+      updateData.status = body.status;
+    }
+    if (body.home_score !== undefined && body.home_score !== null) {
+      updateData.home_score = body.home_score;
+    }
+    if (body.away_score !== undefined && body.away_score !== null) {
+      updateData.away_score = body.away_score;
+    }
+    if (body.scheduled_datetime !== undefined && body.scheduled_datetime !== null) {
+      updateData.scheduled_datetime = new Date(body.scheduled_datetime);
+    }
+    if (body.home_team_id !== undefined) {
+      updateData.home_team_id = body.home_team_id || null;
+    }
+    if (body.away_team_id !== undefined) {
+      updateData.away_team_id = body.away_team_id || null;
+    }
+
+    // Only set winner_id if it's a valid non-empty string
+    if (body.winner_id && typeof body.winner_id === 'string' && body.winner_id.trim() !== '') {
+      // Verify the team exists
+      const team = await prisma.team.findUnique({ where: { id: body.winner_id } });
+      if (!team) {
+        return reply.code(400).send({
+          success: false,
+          error: 'El winner_id especificado no existe'
+        });
+      }
+      updateData.winner_id = body.winner_id;
+    }
+
+    try {
+      const match = await prisma.match.update({ where: { id }, data: updateData });
+      return { success: true, data: match };
+    } catch (error) {
+      console.error('Error updating match:', error);
+      return reply.code(500).send({
+        success: false,
+        error: 'Error al actualizar el partido',
+        details: (error as Error).message
+      });
+    }
   });
 
   app.delete('/matches/:id', {
@@ -1459,6 +1586,26 @@ export async function buildApp() {
           search: { type: 'string' },
           location: { type: 'string' }
         }
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            data: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  id: { type: 'string' },
+                  name: { type: 'string' },
+                  tag: { type: 'string' },
+                  member_count: { type: 'integer' }
+                }
+              }
+            }
+          }
+        }
       }
     }
   }, async (request) => {
@@ -1500,7 +1647,29 @@ export async function buildApp() {
   app.get('/clans/:id', {
     schema: {
       tags: ['Clans'],
-      description: 'Get clan details by ID'
+      description: 'Get clan details by ID',
+      params: {
+        type: 'object',
+        properties: {
+          id: { type: 'string' }
+        }
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            data: { type: 'object' }
+          }
+        },
+        404: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean', example: false },
+            error: { type: 'string' }
+          }
+        }
+      }
     }
   }, async (request, reply) => {
     const { id } = request.params as { id: string };
@@ -1549,6 +1718,15 @@ export async function buildApp() {
           requirements: { type: 'string' },
           max_members: { type: 'integer', minimum: 5, maximum: 100 },
           leader_id: { type: 'string' }
+        }
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            data: { type: 'object' }
+          }
         }
       }
     }
@@ -1604,6 +1782,15 @@ export async function buildApp() {
           requirements: { type: 'string' },
           max_members: { type: 'integer' }
         }
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            data: { type: 'object' }
+          }
+        }
       }
     }
   }, async (request) => {
@@ -1619,7 +1806,22 @@ export async function buildApp() {
   app.delete('/clans/:id', {
     schema: {
       tags: ['Clans'],
-      description: 'Delete a clan'
+      description: 'Delete a clan',
+      params: {
+        type: 'object',
+        properties: {
+          id: { type: 'string' }
+        }
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            message: { type: 'string' }
+          }
+        }
+      }
     }
   }, async (request) => {
     const { id } = request.params as { id: string };
@@ -1637,6 +1839,15 @@ export async function buildApp() {
         required: ['user_id'],
         properties: {
           user_id: { type: 'string' }
+        }
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            data: { type: 'object' }
+          }
         }
       }
     }
@@ -1700,6 +1911,15 @@ export async function buildApp() {
           title: { type: 'string', minLength: 5, maxLength: 100 },
           message: { type: 'string', minLength: 10, maxLength: 500 }
         }
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            data: { type: 'object' }
+          }
+        }
       }
     }
   }, async (request, reply) => {
@@ -1747,7 +1967,22 @@ export async function buildApp() {
   app.get('/clans/:id/requests', {
     schema: {
       tags: ['Clans'],
-      description: 'Get pending requests for a clan'
+      description: 'Get pending requests for a clan',
+      params: {
+        type: 'object',
+        properties: {
+          id: { type: 'string' }
+        }
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            data: { type: 'array' }
+          }
+        }
+      }
     }
   }, async (request) => {
     const { id } = request.params as { id: string };
@@ -1765,7 +2000,24 @@ export async function buildApp() {
   app.post('/clans/:id/requests/:requestId/:action', {
     schema: {
       tags: ['Clans'],
-      description: 'Approve or reject a join request'
+      description: 'Approve or reject a join request',
+      params: {
+        type: 'object',
+        properties: {
+          id: { type: 'string' },
+          requestId: { type: 'string' },
+          action: { type: 'string', enum: ['approve', 'reject'] }
+        }
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            message: { type: 'string' }
+          }
+        }
+      }
     }
   }, async (request, reply) => {
     const { id, requestId, action } = request.params as {
@@ -1812,7 +2064,23 @@ export async function buildApp() {
   app.delete('/clans/:id/members/:userId', {
     schema: {
       tags: ['Clans'],
-      description: 'Remove a member from clan or leave clan'
+      description: 'Remove a member from clan or leave clan',
+      params: {
+        type: 'object',
+        properties: {
+          id: { type: 'string' },
+          userId: { type: 'string' }
+        }
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            message: { type: 'string' }
+          }
+        }
+      }
     }
   }, async (request, reply) => {
     const { id, userId } = request.params as { id: string; userId: string };
@@ -1849,6 +2117,15 @@ export async function buildApp() {
         properties: {
           role: { type: 'string', enum: ['OFFICER', 'MEMBER'] }
         }
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            data: { type: 'object' }
+          }
+        }
       }
     }
   }, async (request) => {
@@ -1873,6 +2150,15 @@ export async function buildApp() {
         properties: {
           limit: { type: 'integer', default: 50 },
           before: { type: 'string' }
+        }
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            data: { type: 'array' }
+          }
         }
       }
     }
@@ -1907,6 +2193,15 @@ export async function buildApp() {
           user_id: { type: 'string' },
           content: { type: 'string', minLength: 1, maxLength: 1000 },
           is_announcement: { type: 'boolean', default: false }
+        }
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            data: { type: 'object' }
+          }
         }
       }
     }
@@ -1955,7 +2250,22 @@ export async function buildApp() {
   app.get('/users/:userId/clan', {
     schema: {
       tags: ['Clans'],
-      description: 'Get the clan a user belongs to'
+      description: 'Get the clan a user belongs to',
+      params: {
+        type: 'object',
+        properties: {
+          userId: { type: 'string' }
+        }
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            data: { type: 'object', nullable: true }
+          }
+        }
+      }
     }
   }, async (request) => {
     const { userId } = request.params as { userId: string };

@@ -4,15 +4,27 @@
 
 import Auth from './auth.js';
 import { API_BASE } from './config.js';
+import CacheManager from './cache.js';
 
-class ApiClient {
+export class ApiClient {
   constructor(baseUrl) {
     this.baseUrl = baseUrl;
+    this.enableCache = true; // Enable/disable cache globally
   }
 
   async request(endpoint, options = {}) {
     const url = `${this.baseUrl}${endpoint}`;
     const token = Auth.getToken();
+    const method = options.method || 'GET';
+    const useCache = this.enableCache && options.cache !== false && method === 'GET';
+
+    // Try cache for GET requests
+    if (useCache) {
+      const cached = CacheManager.get(endpoint, options.params);
+      if (cached) {
+        return cached;
+      }
+    }
 
     const config = {
       headers: {
@@ -24,7 +36,7 @@ class ApiClient {
     };
 
     try {
-      console.log(`🔗 API Request: ${config.method || 'GET'} ${url}`);
+      console.log(`🔗 API Request: ${method} ${url}`);
       const response = await fetch(url, config);
 
       // Manejar respuestas no-JSON
@@ -45,6 +57,11 @@ class ApiClient {
         throw new Error(data.error?.message || data.message || `Error HTTP: ${response.status}`);
       }
 
+      // Cache successful GET responses
+      if (useCache && response.ok) {
+        CacheManager.set(endpoint, data, options.params);
+      }
+
       return data;
     } catch (error) {
       console.error('❌ API Error:', error);
@@ -56,30 +73,52 @@ class ApiClient {
     }
   }
 
+  // Invalidate cache for specific endpoint
+  invalidateCache(endpoint, params = {}) {
+    CacheManager.invalidate(endpoint, params);
+  }
+
+  // Invalidate cache pattern (e.g., all tournaments)
+  invalidateCachePattern(pattern) {
+    CacheManager.invalidatePattern(pattern);
+  }
+
   // GET request
   get(endpoint) {
     return this.request(endpoint, { method: 'GET' });
   }
 
-  // POST request
-  post(endpoint, data) {
-    return this.request(endpoint, {
+  // POST request (invalidate cache after mutation)
+  async post(endpoint, data) {
+    const result = await this.request(endpoint, {
       method: 'POST',
       body: JSON.stringify(data)
     });
+    // Invalidate related cache
+    const resource = endpoint.split('/')[1];
+    this.invalidateCachePattern(resource);
+    return result;
   }
 
-  // PUT request
-  put(endpoint, data) {
-    return this.request(endpoint, {
+  // PUT request (invalidate cache after mutation)
+  async put(endpoint, data) {
+    const result = await this.request(endpoint, {
       method: 'PUT',
       body: JSON.stringify(data)
     });
+    // Invalidate related cache
+    const resource = endpoint.split('/')[1];
+    this.invalidateCachePattern(resource);
+    return result;
   }
 
-  // DELETE request
-  delete(endpoint) {
-    return this.request(endpoint, { method: 'DELETE' });
+  // DELETE request (invalidate cache after mutation)
+  async delete(endpoint) {
+    const result = await this.request(endpoint, { method: 'DELETE' });
+    // Invalidate related cache
+    const resource = endpoint.split('/')[1];
+    this.invalidateCachePattern(resource);
+    return result;
   }
 }
 
@@ -98,7 +137,24 @@ export const API = {
     create: (data) => api.post('/users', data),
     update: (id, data) => api.put(`/users/${id}`, data),
     delete: (id) => api.delete(`/users/${id}`),
-    getGameAccounts: (userId) => api.get(`/users/${userId}/game-accounts`)
+    getGameAccounts: (userId) => api.get(`/users/${userId}/game-accounts`),
+    // Clan methods for organizers
+    getClan: (userId) => api.get(`/users/${userId}/clan`),
+    getMyClan: () => api.get('/users/me/clan')
+  },
+
+  // Clans (for Organizers/Leaders)
+  clans: {
+    getAll: () => api.get('/teams'), // Clans are teams
+    getById: (id) => api.get(`/teams/${id}`),
+    create: (data) => api.post('/teams', data),
+    update: (id, data) => api.put(`/teams/${id}`, data),
+    delete: (id) => api.delete(`/teams/${id}`),
+    getMembers: (clanId) => api.get(`/teams/${clanId}/players`),
+    addMember: (clanId, data) => api.post(`/teams/${clanId}/players`, data),
+    removeMember: (clanId, playerId) => api.delete(`/teams/${clanId}/players/${playerId}`),
+    getMatches: (clanId) => api.get(`/matches?team_id=${clanId}`),
+    getTournaments: (clanId) => api.get(`/tournaments?team_id=${clanId}`)
   },
 
   // Tournaments

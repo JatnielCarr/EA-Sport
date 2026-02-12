@@ -1,57 +1,32 @@
-# 📮 Postman - Colección AUTOMATIZADA EA Sports Tournament API
+# Pruebas Automatizadas de Postman - Proyecto EA Sports
 
-## 🚀 100% AUTOMATIZADA - Sin escribir nada!
+Esta carpeta contiene todo lo necesario para probar la API de forma automatizada.
 
-Esta colección está **totalmente automatizada**. Solo tienes que ejecutar los requests EN ORDEN y todos los IDs se guardan automáticamente.
+## 1. ¿Qué está automatizado?
 
-## 📁 Archivos
+El archivo `EA_Sports_Project.postman_collection.json` incluye scripts en la pestaña "Tests" que automatizan el flujo:
 
-| Archivo | Descripción |
-|---------|-------------|
-| `EA_Sports_Tournament_API.postman_collection.json` | Colección automatizada |
-| `EA_Sports_Local.postman_environment.json` | Variables de entorno |
+*   **Autenticación Automática**: Al ejecutar la petición **"Auth > Login"**, el sistema captura automáticamente el `token` y el `id` del usuario.
+*   **Variables de Entorno**: Estos valores se guardan en el entorno `EA_Sports_Env`, por lo que **no necesitas copiar y pegar el token** manualmente en las siguientes peticiones. Todas las peticiones de la colección ya están configuradas para usar `{{jwt_token}}` automáticamente.
 
-## 🎯 Cómo Usar (3 pasos)
+## 2. Cómo ejecutar las pruebas
 
-### 1. Importar en Postman
-1. Abre Postman
-2. Click en **Import**
-3. Arrastra los 2 archivos JSON
-4. Selecciona environment **"EA Sports Local"**
+### Opción A: Desde Postman (Interfaz Gráfica)
+1.  Importa los dos archivos `.json` en Postman.
+2.  Selecciona el entorno **"EA Sports Local Env"** (arriba a la derecha).
+3.  Haz clic en el nombre de la colección **"Proyecto EA Sports API"**.
+4.  Haz clic en el botón **"Run"** (o "Runner").
+5.  Asegúrate de que la petición **"Login"** esté seleccionada y sea la primera.
+6.  Haz clic en **"Run Proyecto EA Sports API"**.
+    *   Postman ejecutará todas las peticiones en orden.
+    *   El login guardará el token y las siguientes peticiones funcionarán correctamente.
 
-### 2. Ejecutar TODO automáticamente
-1. Abre la carpeta **"� FLUJO COMPLETO AUTOMATIZADO"**
-2. Click derecho → **Run folder**
-3. Click en **Run EA Sports Tournament API**
-4. ¡Listo! Todo se ejecuta automáticamente
+### Opción B: Desde la Terminal (Totalmente Automatizado)
+Si quieres correr todo con un solo comando sin abrir Postman, puedes usar el script incluido `run-tests.bat` (requiere Node.js instalado).
 
-### 3. O ejecutar uno por uno
-Ejecuta los requests del 1 al 17 en orden. Cada uno guarda automáticamente los IDs necesarios para el siguiente.
-
-## ✨ Qué hace cada paso
-
-| # | Request | Qué guarda |
-|---|---------|------------|
-| 1 | Health Check | Verifica servidor |
-| 2 | Registrar Usuario | `token`, `userId` |
-| 3 | Login | `token`, `userId` (si ya existe) |
-| 4 | Crear Juego | `gameId` |
-| 5 | Crear Juego Robots | `robotGameId` |
-| 6 | Crear Torneo | `tournamentId` |
-| 7 | Crear Equipo 1 | `team1Id`, `teamId` |
-| 8 | Crear Usuario 2 | `user2Id` |
-| 9 | Crear Equipo 2 | `team2Id` |
-| 10 | Crear Partida | `matchId` |
-| 11 | Actualizar a LIVE | - |
-| 12 | Completar Partida | - |
-| 13-17 | Ver datos | - |
-
-## 🧹 Limpieza
-
-Usa la carpeta **"🧹 LIMPIEZA"** para eliminar los datos de prueba.
-
-## � Tips
-
-- **{{$timestamp}}** se usa para generar slugs únicos (evita duplicados)
-- Los tests muestran logs en la consola de Postman
-- Si algo falla, revisa la consola (View → Show Postman Console)
+1.  Abre una terminal en esta carpeta.
+2.  Ejecuta:
+    ```bash
+    ./run-tests.bat
+    ```
+    *   Esto usará `npx newman` para ejecutar la colección reportar los resultados en la consola.

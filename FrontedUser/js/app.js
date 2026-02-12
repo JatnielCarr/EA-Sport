@@ -34,6 +34,11 @@ import { launchConfetti, launchConfettiBurst } from './confetti.js';
 import { renderClansPage } from './pages/clans.js';
 import { renderClanPage } from './pages/clan.js';
 import { renderCreateClanPage } from './pages/create-clan.js';
+import { renderPayment } from './pages/payment.js';
+import { renderSubscription } from './pages/subscription.js';
+import { renderPaymentSuccess } from './pages/payment-success.js';
+
+import { initChatbot } from './components/chatbot.js';
 
 // Initialize app
 document.addEventListener('DOMContentLoaded', () => {
@@ -50,6 +55,23 @@ document.addEventListener('DOMContentLoaded', () => {
     initBreadcrumbs();
     initPageTransitions();
     initSounds();
+
+    // Initialize Chatbot AFTER page has fully loaded and rendered
+    // Use requestIdleCallback for best performance, fallback to setTimeout
+    const initChatbotDeferred = () => {
+        if ('requestIdleCallback' in window) {
+            requestIdleCallback(() => initChatbot(), { timeout: 2000 });
+        } else {
+            setTimeout(() => initChatbot(), 1500);
+        }
+    };
+
+    // Wait for window.load to ensure all resources are ready
+    if (document.readyState === 'complete') {
+        initChatbotDeferred();
+    } else {
+        window.addEventListener('load', initChatbotDeferred);
+    }
 
     // Listen for auth changes
     window.addEventListener('authChanged', updateNavbarAuth);
@@ -99,6 +121,24 @@ async function handleRoute() {
     const hash = window.location.hash || '#/';
     const app = document.getElementById('app');
 
+    // Handle anchor-only hashes (like #pricing-section) that don't start with #/
+    // These are in-page scroll anchors, not SPA routes
+    if (hash && !hash.startsWith('#/')) {
+        // First ensure home page is loaded
+        await renderHome(app);
+        updateActiveNav('#/');
+
+        // Then scroll to the anchor element after a brief delay
+        setTimeout(() => {
+            const anchorId = hash.substring(1);
+            const anchorElement = document.getElementById(anchorId);
+            if (anchorElement) {
+                anchorElement.scrollIntoView({ behavior: 'smooth' });
+            }
+        }, 100);
+        return;
+    }
+
     // Update active nav link
     updateActiveNav(hash);
 
@@ -137,7 +177,11 @@ async function handleRoute() {
         '#/terminos': () => renderTerms(app),
         '#/favoritos': () => renderFavorites(app),
         '#/historial': () => renderHistory(app),
-        '#/logros': () => renderBadges(app)
+        '#/logros': () => renderBadges(app),
+        '#/pagos': () => renderPayment(app),
+        '#/pago': () => renderPayment(app),
+        '#/pago/exito': () => renderPaymentSuccess(app),
+        '#/suscripcion': () => renderSubscription(app)
     };
 
     // Check for tournament detail route

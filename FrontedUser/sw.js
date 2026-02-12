@@ -2,15 +2,17 @@
 // Service Worker for ApexTournament PWA
 // =====================================================
 
-const CACHE_NAME = 'apex-tournament-v1';
+const CACHE_NAME = 'apex-tournament-v2';
 const STATIC_ASSETS = [
     '/',
     '/index.html',
     '/css/styles.css',
+    '/css/chatbot.css',
     '/js/app.js',
     '/js/api.js',
     '/js/auth.js',
     '/js/notifications.js',
+    '/js/pages/home.js',
     '/manifest.json'
 ];
 

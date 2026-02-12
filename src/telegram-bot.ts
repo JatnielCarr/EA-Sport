@@ -23,7 +23,7 @@ async function registerDatabaseCommands() {
     telegramService.registerCommand('torneos', async (chatId) => {
         try {
             const tournaments = await prisma.tournament.findMany({
-                where: { 
+                where: {
                     status: { in: ['REGISTRATION_OPEN', 'PUBLISHED', 'IN_PROGRESS'] }
                 },
                 include: { game: true },
@@ -41,13 +41,13 @@ async function registerDatabaseCommands() {
             }
 
             let msg = '🏆 <b>Torneos Disponibles:</b>\n\n';
-            
+
             for (const t of tournaments) {
-                const statusEmoji = t.status === 'IN_PROGRESS' ? '🔴' : 
-                                   t.status === 'REGISTRATION_OPEN' ? '🟢' : '🟡';
+                const statusEmoji = t.status === 'IN_PROGRESS' ? '🔴' :
+                    t.status === 'REGISTRATION_OPEN' ? '🟢' : '🟡';
                 const statusText = t.status === 'IN_PROGRESS' ? 'En Curso' :
-                                  t.status === 'REGISTRATION_OPEN' ? 'Registro Abierto' : 'Próximamente';
-                
+                    t.status === 'REGISTRATION_OPEN' ? 'Registro Abierto' : 'Próximamente';
+
                 msg += `${statusEmoji} <b>${t.name}</b>\n`;
                 msg += `   🎮 ${t.game?.name || 'Varios'}\n`;
                 msg += `   📅 ${t.start_date.toLocaleDateString('es-MX')}\n`;
@@ -90,14 +90,14 @@ async function registerDatabaseCommands() {
             }
 
             let msg = '🏅 <b>Top 10 Jugadores:</b>\n\n';
-            
+
             const medals = ['🥇', '🥈', '🥉'];
             topStats.forEach((stat, index) => {
                 const medal = medals[index] || `${index + 1}.`;
-                const winRate = stat.wins + stat.losses > 0 
-                    ? Math.round((stat.wins / (stat.wins + stat.losses)) * 100) 
+                const winRate = stat.wins + stat.losses > 0
+                    ? Math.round((stat.wins / (stat.wins + stat.losses)) * 100)
                     : 0;
-                
+
                 msg += `${medal} <b>${stat.user.username}</b>\n`;
                 msg += `    ⭐ ${stat.rating} rating | 🏆 ${stat.wins}W/${stat.losses}L (${winRate}%)\n`;
                 msg += `    🎮 ${stat.game.name}\n\n`;
@@ -131,7 +131,7 @@ async function registerDatabaseCommands() {
             }
 
             let msg = '🎮 <b>Juegos Disponibles:</b>\n\n';
-            
+
             games.forEach(game => {
                 msg += `• <b>${game.name}</b>\n`;
                 msg += `   👥 Equipos de ${game.team_size_default} jugadores\n`;
@@ -177,7 +177,7 @@ async function registerDatabaseCommands() {
             }
 
             let msg = '⚔️ <b>Próximas Partidas:</b>\n\n';
-            
+
             for (const match of matches) {
                 const team1 = match.home_team?.name || 'TBD';
                 const team2 = match.away_team?.name || 'TBD';
@@ -225,7 +225,7 @@ async function registerDatabaseCommands() {
             }
 
             let msg = '🔴 <b>Partidas EN VIVO:</b>\n\n';
-            
+
             for (const match of matches) {
                 const team1 = match.home_team?.name || 'TBD';
                 const team2 = match.away_team?.name || 'TBD';
@@ -286,7 +286,7 @@ async function registerDatabaseCommands() {
         try {
             // Buscar usuario por telegram_chat_id
             const user = await prisma.user.findFirst({
-                where: { 
+                where: {
                     telegram_chat_id: {
                         equals: chatId.toString()
                     }
@@ -321,7 +321,7 @@ async function registerDatabaseCommands() {
 
             const teamMemberships = await prisma.teamPlayer.findMany({
                 where: { user_id: user.id },
-                include: { 
+                include: {
                     team: { include: { tournament: true } }
                 }
             });
@@ -334,8 +334,8 @@ async function registerDatabaseCommands() {
                 totalRating = Math.max(totalRating, stat.rating);
             });
 
-            const winRate = totalWins + totalLosses > 0 
-                ? Math.round((totalWins / (totalWins + totalLosses)) * 100) 
+            const winRate = totalWins + totalLosses > 0
+                ? Math.round((totalWins / (totalWins + totalLosses)) * 100)
                 : 0;
 
             let statsMsg = `
@@ -356,8 +356,8 @@ async function registerDatabaseCommands() {
             if (playerStats.length > 0) {
                 statsMsg += '\n\n<b>📊 Por Juego:</b>';
                 playerStats.forEach(stat => {
-                    const gameWinRate = stat.wins + stat.losses > 0 
-                        ? Math.round((stat.wins / (stat.wins + stat.losses)) * 100) 
+                    const gameWinRate = stat.wins + stat.losses > 0
+                        ? Math.round((stat.wins / (stat.wins + stat.losses)) * 100)
                         : 0;
                     statsMsg += `\n• ${stat.game.name}: ${stat.wins}W/${stat.losses}L (${gameWinRate}%)`;
                 });
@@ -375,6 +375,99 @@ async function registerDatabaseCommands() {
             await telegramService.sendMessage({
                 chatId,
                 text: '❌ Error al obtener tus estadísticas. Intenta más tarde.',
+                parseMode: 'HTML'
+            });
+        }
+    });
+
+    // /clanes - Ver clanes registrados
+    telegramService.registerCommand('clanes', async (chatId) => {
+        try {
+            const clans = await prisma.clan.findMany({
+                take: 10,
+                orderBy: { created_at: 'desc' },
+                include: {
+                    leader: { select: { username: true } },
+                    _count: { select: { members: true } }
+                }
+            });
+
+            if (clans.length === 0) {
+                await telegramService.sendMessage({
+                    chatId,
+                    text: '😔 No hay clanes registrados todavía.\n\n<i>¡Sé el primero en crear uno desde la web!</i>',
+                    parseMode: 'HTML'
+                });
+                return;
+            }
+
+            let msg = '🛡️ <b>Clanes Registrados:</b>\n\n';
+
+            clans.forEach(clan => {
+                msg += `🔹 <b>${clan.name}</b> [${clan.tag || ''}]\n`;
+                msg += `   👑 Líder: ${clan.leader.username}\n`;
+                msg += `   👥 Miembros: ${clan._count.members}\n\n`;
+            });
+
+            msg += '<i>Únete a un clan desde la plataforma web para competir.</i>';
+
+            await telegramService.sendMessage({ chatId, text: msg, parseMode: 'HTML' });
+        } catch (error) {
+            console.error('Error en comando /clanes:', error);
+            await telegramService.sendMessage({
+                chatId,
+                text: '❌ Error al obtener los clanes. Intenta más tarde.',
+                parseMode: 'HTML'
+            });
+        }
+    });
+
+    // /miclan - Ver información de mi clan
+    telegramService.registerCommand('miclan', async (chatId) => {
+        try {
+            const user = await prisma.user.findFirst({
+                where: { telegram_chat_id: chatId.toString() },
+                include: {
+                    clan_memberships: {
+                        include: { clan: true }
+                    }
+                }
+            });
+
+            if (!user) {
+                await telegramService.sendMessage({
+                    chatId,
+                    text: '⚠️ No has vinculado tu cuenta de Telegram.\nVe a la web para conectarla.',
+                    parseMode: 'HTML'
+                });
+                return;
+            }
+
+            const membership = user.clan_memberships[0];
+
+            if (!membership) {
+                await telegramService.sendMessage({
+                    chatId,
+                    text: '❌ No perteneces a ningún clan.\n\nUsa /clanes para ver los disponibles o crea uno en la web.',
+                    parseMode: 'HTML'
+                });
+                return;
+            }
+
+            const clan = membership.clan;
+
+            let msg = `🛡️ <b>Mi Clan: ${clan.name}</b>\n\n`;
+            msg += `🏷️ Tag: [${clan.tag || 'Sin Tag'}]\n`;
+            msg += `📅 Unido: ${membership.joined_at.toLocaleDateString()}\n`;
+            msg += `👮 Rol: ${membership.role}\n`;
+
+            await telegramService.sendMessage({ chatId, text: msg, parseMode: 'HTML' });
+
+        } catch (error) {
+            console.error('Error en comando /miclan:', error);
+            await telegramService.sendMessage({
+                chatId,
+                text: '❌ Error al obtener información de tu clan.',
                 parseMode: 'HTML'
             });
         }

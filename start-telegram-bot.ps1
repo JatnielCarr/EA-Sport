@@ -32,7 +32,7 @@ if ($Mode -eq "polling") {
 else {
     # Modo n8n original
     Write-Host "🚀 Iniciando n8n y túnel Cloudflare..." -ForegroundColor Cyan
-
+    
     # Iniciar contenedores
     docker-compose up -d
 

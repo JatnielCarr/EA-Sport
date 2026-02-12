@@ -134,6 +134,10 @@ function renderBracketView() {
   // Organize matches by rounds
   const rounds = organizeMatchesByRound(tournamentMatches);
 
+  if (currentTournament.format === 'ROUND_ROBIN') {
+    return renderRoundRobinStandings(tournamentTeams, tournamentMatches);
+  }
+
   return `
     <div class="bracket-wrapper">
       ${rounds.map((round, index) => `
@@ -146,6 +150,73 @@ function renderBracketView() {
           </div>
         </div>
       `).join('')}
+    </div>
+  `;
+}
+
+function renderRoundRobinStandings(teams, matches) {
+  // Calculate stats
+  const stats = teams.map(team => {
+    const teamMatches = matches.filter(m =>
+      (m.home_team_id === team.id || m.away_team_id === team.id) &&
+      m.status === 'COMPLETED'
+    );
+
+    let wins = 0;
+    let losses = 0;
+    let points = 0;
+
+    teamMatches.forEach(m => {
+      if (m.winner_id === team.id) {
+        wins++;
+        points += 3;
+      } else {
+        losses++;
+      }
+    });
+
+    return { ...team, played: teamMatches.length, wins, losses, points };
+  });
+
+  stats.sort((a, b) => b.points - a.points || b.wins - a.wins);
+
+  return `
+    <div class="standings-view" style="padding: 20px;">
+      <h3 style="margin-bottom: 20px;">Tabla de Posiciones</h3>
+      <table class="table table-dark table-striped">
+        <thead>
+          <tr>
+            <th>Pos</th>
+            <th>Equipo</th>
+            <th>PJ</th>
+            <th>G</th>
+            <th>P</th>
+            <th>Pts</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${stats.map((team, index) => `
+            <tr>
+              <td>${index + 1}</td>
+              <td>
+                 <div style="display: flex; align-items: center; gap: 10px;">
+                    ${team.logo_url ? `<img src="${team.logo_url}" style="width: 24px; height: 24px; border-radius: 50%;">` : ''}
+                    ${team.name}
+                 </div>
+              </td>
+              <td>${team.played}</td>
+              <td class="text-success">${team.wins}</td>
+              <td class="text-danger">${team.losses}</td>
+              <td><strong>${team.points}</strong></td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+
+      <h3 style="margin: 30px 0 20px;">Partidas</h3>
+      <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px;">
+        ${matches.map(match => renderMatchCard(match)).join('')}
+      </div>
     </div>
   `;
 }
@@ -178,8 +249,8 @@ function getRoundName(roundIndex, totalRounds) {
 }
 
 function renderMatchCard(match) {
-  const team1 = tournamentTeams.find(t => t.id === match.team1_id);
-  const team2 = tournamentTeams.find(t => t.id === match.team2_id);
+  const team1 = tournamentTeams.find(t => t.id === match.home_team_id);
+  const team2 = tournamentTeams.find(t => t.id === match.away_team_id);
 
   const isCompleted = match.status === 'COMPLETED';
   const isLive = match.status === 'LIVE' || match.status === 'IN_PROGRESS';
@@ -219,28 +290,28 @@ function renderMatchCard(match) {
       ${timerHtml}
       
       <div class="match-teams">
-        <div class="team-slot ${winner === match.team1_id ? 'winner' : ''} ${!team1 ? 'tbd' : ''}">
+        <div class="team-slot ${winner === match.home_team_id ? 'winner' : ''} ${!team1 ? 'tbd' : ''}">
           <div class="team-info">
             <span class="team-logo">
               ${team1 ? `<i class="fas fa-shield-alt"></i>` : `<i class="fas fa-question"></i>`}
             </span>
             <span class="team-name">${team1?.name || 'Por definir'}</span>
           </div>
-          <span class="team-score">${isCompleted && match.score_team1 !== null ? match.score_team1 : '-'}</span>
+          <span class="team-score">${isCompleted && match.home_score !== null ? match.home_score : '-'}</span>
         </div>
         
         <div class="vs-divider">
           <span>VS</span>
         </div>
         
-        <div class="team-slot ${winner === match.team2_id ? 'winner' : ''} ${!team2 ? 'tbd' : ''}">
+        <div class="team-slot ${winner === match.away_team_id ? 'winner' : ''} ${!team2 ? 'tbd' : ''}">
           <div class="team-info">
             <span class="team-logo">
               ${team2 ? `<i class="fas fa-shield-alt"></i>` : `<i class="fas fa-question"></i>`}
             </span>
             <span class="team-name">${team2?.name || 'Por definir'}</span>
           </div>
-          <span class="team-score">${isCompleted && match.score_team2 !== null ? match.score_team2 : '-'}</span>
+          <span class="team-score">${isCompleted && match.away_score !== null ? match.away_score : '-'}</span>
         </div>
       </div>
       
@@ -312,9 +383,10 @@ async function generateBracket() {
         tournament_id: currentTournament.id,
         round: 1,
         match_number: matchNumber++,
-        team1_id: team1?.id || null,
-        team2_id: team2?.id || null,
-        status: team1 && team2 ? 'PENDING' : 'COMPLETED',
+        bracket_position: i + 1,
+        home_team_id: team1?.id || null,
+        away_team_id: team2?.id || null,
+        status: team1 && team2 ? 'SCHEDULED' : 'COMPLETED',
         // If one team has a bye, they automatically win
         winner_id: (!team1 && team2) ? team2.id : ((!team2 && team1) ? team1.id : null)
       };
@@ -331,9 +403,10 @@ async function generateBracket() {
           tournament_id: currentTournament.id,
           round: round,
           match_number: matchNumber++,
-          team1_id: null,
-          team2_id: null,
-          status: 'PENDING'
+          bracket_position: i + 1,
+          home_team_id: null,
+          away_team_id: null,
+          status: 'SCHEDULED'
         });
       }
       prevRoundMatches = roundMatches;
@@ -374,8 +447,8 @@ function showResultModal(matchId) {
   const match = tournamentMatches.find(m => m.id === matchId);
   if (!match) return;
 
-  const team1 = tournamentTeams.find(t => t.id === match.team1_id);
-  const team2 = tournamentTeams.find(t => t.id === match.team2_id);
+  const team1 = tournamentTeams.find(t => t.id === match.home_team_id);
+  const team2 = tournamentTeams.find(t => t.id === match.away_team_id);
 
   const modal = document.createElement('div');
   modal.className = 'modal-overlay active';
@@ -425,11 +498,11 @@ function showResultModal(matchId) {
     }
 
     try {
-      const winnerId = score1 > score2 ? match.team1_id : match.team2_id;
+      const winnerId = score1 > score2 ? match.home_team_id : match.away_team_id;
 
       await API.matches.update(matchId, {
-        score_team1: score1,
-        score_team2: score2,
+        home_score: score1,
+        away_score: score2,
         winner_id: winnerId,
         status: 'COMPLETED'
       });
@@ -472,8 +545,8 @@ async function updateNextRoundMatch(currentMatch, winnerId) {
 
   // Update the next match with the winner
   const updateData = isFirstTeam
-    ? { team1_id: winnerId }
-    : { team2_id: winnerId };
+    ? { home_team_id: winnerId }
+    : { away_team_id: winnerId };
 
   await API.matches.update(nextMatch.id, updateData);
 }

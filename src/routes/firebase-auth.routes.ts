@@ -11,7 +11,84 @@ interface FirebaseAuthBody {
     username?: string;
 }
 
+interface FirebaseLoginBody {
+    firebaseUid: string;
+    email: string;
+    displayName?: string;
+}
+
 export async function firebaseAuthRoutes(app: FastifyInstance) {
+
+    /**
+     * POST /auth/firebase-login
+     * Login with Firebase UID (for Google Sign-In users)
+     */
+    app.post('/auth/firebase-login', {
+        schema: {
+            tags: ['Auth'],
+            description: 'Login with Firebase UID',
+            body: {
+                type: 'object',
+                required: ['firebaseUid', 'email'],
+                properties: {
+                    firebaseUid: { type: 'string' },
+                    email: { type: 'string' },
+                    displayName: { type: 'string' }
+                }
+            }
+        }
+    }, async (request: FastifyRequest<{ Body: FirebaseLoginBody }>, reply: FastifyReply) => {
+        try {
+            const { firebaseUid, email, displayName } = request.body;
+
+            // Find user by Firebase UID or email
+            let user = await prisma.user.findFirst({
+                where: {
+                    OR: [
+                        { id: firebaseUid },
+                        { email: email.toLowerCase() }
+                    ]
+                }
+            });
+
+            if (!user) {
+                return reply.status(404).send({
+                    success: false,
+                    error: 'Usuario no encontrado. Por favor, regístrate primero.'
+                });
+            }
+
+            // Generate JWT token
+            const token = app.jwt.sign(
+                {
+                    id: user.id,
+                    email: user.email,
+                    username: user.username,
+                    role: user.role,
+                    firebaseUid
+                },
+                { expiresIn: '7d' }
+            );
+
+            return {
+                success: true,
+                token,
+                user: {
+                    id: user.id,
+                    email: user.email,
+                    username: user.username,
+                    role: user.role
+                }
+            };
+
+        } catch (error: any) {
+            console.error('Firebase login error:', error);
+            return reply.status(500).send({
+                success: false,
+                error: 'Error en el servidor'
+            });
+        }
+    });
     /**
      * POST /auth/firebase
      * Authenticate with Firebase token and sync with MySQL

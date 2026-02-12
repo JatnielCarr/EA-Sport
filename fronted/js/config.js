@@ -13,8 +13,8 @@ export const IS_PRODUCTION = window.location.hostname !== 'localhost' &&
 export const APP_CONFIG = {
   name: 'EA Sports Tournament Hub',
   version: '1.0.0',
-  tokenKey: 'ea_sports_token',
-  userKey: 'ea_sports_user',
+  tokenKey: 'apex_tournament_token',
+  userKey: 'apex_tournament_user',
   
   // UI Settings
   toastDuration: 5000,

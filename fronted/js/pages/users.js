@@ -22,6 +22,11 @@ export async function renderUsers(container) {
             Gestión de Usuarios (${allUsers.length})
           </h2>
           <div class="card-actions">
+            <select class="form-control" id="statusFilter" style="width: 150px; margin-right: 10px;">
+              <option value="all">Todos</option>
+              <option value="active">Activos</option>
+              <option value="inactive">Inactivos</option>
+            </select>
             <input type="text" class="form-control" placeholder="Buscar usuarios..." 
                    id="searchUsers" style="width: 250px;">
             <button class="btn btn-primary" id="btnNewUser">
@@ -37,8 +42,8 @@ export async function renderUsers(container) {
                 <th>Usuario</th>
                 <th>Email</th>
                 <th>Rol</th>
-                <th>Verificado</th>
-                <th>Fecha Registro</th>
+                <th>Estado</th>
+                <th>Actividad</th>
                 <th>Acciones</th>
               </tr>
             </thead>
@@ -52,7 +57,8 @@ export async function renderUsers(container) {
 
     // Event Listeners
     document.getElementById('btnNewUser').addEventListener('click', () => showUserForm());
-    document.getElementById('searchUsers').addEventListener('input', handleSearch);
+    document.getElementById('searchUsers').addEventListener('input', handleSortAndFilter);
+    document.getElementById('statusFilter').addEventListener('change', handleSortAndFilter);
 
     // Delegate click events for action buttons
     document.getElementById('usersTableBody').addEventListener('click', handleTableActions);
@@ -69,23 +75,59 @@ export async function renderUsers(container) {
   }
 }
 
+function getDaysInactive(dateString) {
+  if (!dateString) return 999;
+  const lastActive = new Date(dateString);
+  const now = new Date();
+  const diffTime = Math.abs(now - lastActive);
+  return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+}
+
 function renderUsersRows(users) {
   if (users.length === 0) {
     return `<tr><td colspan="7" class="text-center text-muted">No hay usuarios</td></tr>`;
   }
 
-  return users.map(user => `
+  return users.map(user => {
+    // Assuming updated_at is the last activity proxy
+    const daysInactive = getDaysInactive(user.updated_at);
+    const isActive = daysInactive <= 30;
+
+    // Status Badge
+    let statusBadge = '';
+    if (isActive) {
+      statusBadge = '<span class="badge badge-success"><i class="fas fa-check"></i> Activo</span>';
+    } else {
+      statusBadge = '<span class="badge badge-warning"><i class="fas fa-exclamation-triangle"></i> Inactivo</span>';
+    }
+
+    // Activity Text with intervals
+    let activityText = '';
+    if (daysInactive === 0) activityText = 'Hoy';
+    else if (daysInactive === 1) activityText = 'Ayer';
+    else activityText = `Hace ${daysInactive} días`;
+
+    // Color code intervals
+    let intervalColor = 'text-muted';
+    if (daysInactive > 21) intervalColor = 'text-danger';
+    else if (daysInactive > 14) intervalColor = 'text-warning';
+
+    return `
     <tr data-id="${user.id}">
       <td><code>${user.id.substring(0, 8)}...</code></td>
-      <td><strong>${user.username}</strong></td>
+      <td>
+        <div class="d-flex align-items-center">
+             <strong>${user.username}</strong>
+        </div>
+      </td>
       <td>${user.email}</td>
       <td>${getRoleBadge(user.role)}</td>
+      <td>${statusBadge}</td>
       <td>
-        ${user.verified
-      ? '<span class="text-success"><i class="fas fa-check-circle"></i></span>'
-      : '<span class="text-muted"><i class="fas fa-times-circle"></i></span>'}
+        <span class="${intervalColor}">
+          <i class="far fa-clock"></i> ${activityText}
+        </span>
       </td>
-      <td>${formatDate(user.created_at)}</td>
       <td>
         <button class="btn btn-secondary btn-sm btn-icon" data-action="edit" title="Editar">
           <i class="fas fa-edit"></i>
@@ -95,7 +137,7 @@ function renderUsersRows(users) {
         </button>
       </td>
     </tr>
-  `).join('');
+  `}).join('');
 }
 
 function getRoleBadge(role) {
@@ -103,13 +145,27 @@ function getRoleBadge(role) {
   return `<span class="role-badge ${roleClass}">${role}</span>`;
 }
 
-function handleSearch(e) {
-  const query = e.target.value.toLowerCase();
-  const filtered = allUsers.filter(user =>
-    user.username.toLowerCase().includes(query) ||
-    user.email.toLowerCase().includes(query) ||
-    user.role.toLowerCase().includes(query)
-  );
+function handleSortAndFilter() {
+  const query = document.getElementById('searchUsers').value.toLowerCase();
+  const statusFilter = document.getElementById('statusFilter').value; // all, active, inactive
+
+  const filtered = allUsers.filter(user => {
+    // Search Text
+    const matchesSearch = user.username.toLowerCase().includes(query) ||
+      user.email.toLowerCase().includes(query) ||
+      user.role.toLowerCase().includes(query);
+
+    // Status Filter
+    const daysInactive = getDaysInactive(user.updated_at);
+    const isActive = daysInactive <= 30;
+
+    let matchesStatus = true;
+    if (statusFilter === 'active') matchesStatus = isActive;
+    if (statusFilter === 'inactive') matchesStatus = !isActive;
+
+    return matchesSearch && matchesStatus;
+  });
+
   document.getElementById('usersTableBody').innerHTML = renderUsersRows(filtered);
 }
 
@@ -154,13 +210,7 @@ function showUserForm(user = null) {
         <input type="text" class="form-control" name="username" 
                value="${user?.username || ''}" required>
       </div>
-      ${!isEdit ? `
-        <div class="form-group">
-          <label class="form-label">Contraseña *</label>
-          <input type="password" class="form-control" name="password" 
-                 placeholder="Mínimo 6 caracteres" required minlength="6">
-        </div>
-      ` : ''}
+      
       <div class="form-group">
         <label class="form-label">Rol</label>
         <select class="form-control" name="role">
@@ -191,6 +241,10 @@ function showUserForm(user = null) {
         await API.users.update(user.id, data);
         showToast('success', 'Éxito', 'Usuario actualizado correctamente');
       } else {
+        // Inject default password (backend requires it, but user doesn't set it)
+        // We use a generic one or random. User implies "Admin sets leader info", likely to invite them.
+        data.password = "ApexSports2026!";
+
         await API.users.create(data);
         showToast('success', 'Éxito', 'Usuario creado correctamente');
       }

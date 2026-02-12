@@ -3,6 +3,7 @@
 // =====================================================
 
 import { API_BASE, APP_CONFIG } from './config.js';
+import CacheManager from './cache.js';
 
 class Auth {
   constructor() {
@@ -35,10 +36,22 @@ class Auth {
     }
   }
 
-  // Check if user is admin
+  // Check if user is logged in
   isAdmin() {
     const user = this.getUser();
     return user && (user.role === 'ADMIN' || user.role === 'ORGANIZER');
+  }
+
+  // Check if user is Super Admin (Platform Owner)
+  isSuperAdmin() {
+    const user = this.getUser();
+    return user && user.role === 'ADMIN';
+  }
+
+  // Check if user is Clan Leader (Organizer)
+  isClanLeader() {
+    const user = this.getUser();
+    return user && user.role === 'ORGANIZER';
   }
 
   // Login
@@ -63,11 +76,16 @@ class Auth {
   }
 
   // Register
-  async register(email, username, password) {
+  async register(email, username, password, firebaseUid = null) {
     const response = await fetch(`${API_BASE}/auth/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, username, password })
+      body: JSON.stringify({ 
+        email, 
+        username, 
+        password,
+        firebaseUid
+      })
     });
 
     const data = await response.json();
@@ -76,9 +94,15 @@ class Auth {
       throw new Error(data.error || 'Registration failed');
     }
 
-    // Store token and user
-    localStorage.setItem(this.tokenKey, data.data.token);
-    localStorage.setItem(this.userKey, JSON.stringify(data.data.user));
+    // Solo guardar token si el usuario tiene permisos de admin
+    const user = data.data.user;
+    if (user.role === 'ADMIN' || user.role === 'ORGANIZER') {
+      localStorage.setItem(this.tokenKey, data.data.token);
+      localStorage.setItem(this.userKey, JSON.stringify(user));
+    } else {
+      // Usuario normal, no guardar en el panel de admin
+      console.log('Usuario registrado pero sin permisos de admin');
+    }
 
     return data.data;
   }
@@ -87,6 +111,12 @@ class Auth {
   logout() {
     localStorage.removeItem(this.tokenKey);
     localStorage.removeItem(this.userKey);
+    
+    // Clear all cache on logout for security
+    if (typeof CacheManager !== 'undefined') {
+      CacheManager.clearAll();
+    }
+    
     window.location.hash = '#/login';
     window.location.reload();
   }

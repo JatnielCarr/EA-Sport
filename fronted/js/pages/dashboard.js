@@ -3,6 +3,7 @@
 // =====================================================
 
 import API from '../api.js';
+import Auth from '../auth.js';
 import { showLoading, formatCurrency, showToast } from '../ui.js';
 
 // Store chart instances for cleanup
@@ -16,6 +17,16 @@ export async function renderDashboard(container) {
   chartInstances.forEach(chart => chart.destroy());
   chartInstances = [];
 
+  // Role-based rendering
+  if (Auth.isClanLeader()) {
+    await renderClanDashboard(container);
+  } else {
+    await renderAdminDashboard(container);
+  }
+}
+
+async function renderAdminDashboard(container) {
+  // Existing logic moved here
   try {
     console.log('📡 Dashboard: Fetching data from API...');
     // Fetch all data in parallel
@@ -2123,4 +2134,372 @@ function showStatsModal(team1, team2, score1, score2) {
     }
   };
   document.addEventListener('keydown', escHandler);
+}
+
+// =====================================================
+// CLAN DASHBOARD (For Clan Leaders)
+// =====================================================
+
+async function renderClanDashboard(container) {
+  try {
+    const user = Auth.getUser();
+    console.log('📡 Clan Dashboard: Fetching specific data...');
+
+    // Fetch all data needed
+    const allTeamsRes = await API.teams.getAll().catch(() => ({ data: [] }));
+    const allTournamentsRes = await API.tournaments.getAll();
+    const allMatchesRes = await API.matches.getAll();
+
+    const allTeams = allTeamsRes.data || [];
+    const allTournaments = allTournamentsRes.data || [];
+    const allMatches = allMatchesRes.data || [];
+
+    // Find clans managed by this organizer (teams where they are captain/owner)
+    const clan = allTeams.find(t => t.captain_id === user.id) || null;
+
+    // Filter data for this organizer
+    const myTournaments = allTournaments.filter(t => t.organizer_id === user.id);
+    const myTournamentIds = myTournaments.map(t => t.id);
+    const myMatches = allMatches.filter(m => myTournamentIds.includes(m.tournament_id));
+
+    // Calculate Stats
+    const activeTournaments = myTournaments.filter(t => ['REGISTRATION_OPEN', 'IN_PROGRESS'].includes(t.status)).length;
+    const totalRevenue = myTournaments.reduce((sum, t) => sum + (parseFloat(t.entry_fee || 0) * (t.max_participants || 0)), 0); // Estimate
+    const liveMatches = myMatches.filter(m => m.status === 'LIVE').length;
+    const membersCount = clan ? (clan.members_count || clan.members?.length || 1) : 0;
+
+    console.log('📊 Clan Stats:', { activeTournaments, totalRevenue, liveMatches });
+
+    container.innerHTML = `
+      <!-- Gaming Particles Background -->
+      <div class="gaming-particles" id="clanParticles"></div>
+      
+      <!-- Epic Welcome Banner for Clan Leader -->
+      <div class="clan-leader-banner epic-glow-border">
+        <div class="neon-grid-bg"></div>
+        <div class="floating-particles"></div>
+        
+        <div class="clan-banner-content">
+          ${clan ? `
+          <div class="clan-logo-epic">
+            <div class="logo-glow-ring"></div>
+            <div class="logo-container">
+              <img src="${clan.logo_url || 'https://via.placeholder.com/120'}" alt="Clan Logo" class="logo-img-epic">
+            </div>
+            <div class="logo-rank-badge">
+              <i class="fas fa-crown"></i>
+              <span>LÍDER</span>
+            </div>
+          </div>
+          ` : ''}
+          
+          <div class="clan-title-section">
+            <div class="clan-title-glow">PANEL DE COMANDO</div>
+            <h1 class="clan-title-epic">
+              <span class="title-icon"><i class="fas fa-shield-alt"></i></span>
+              <span class="title-text">${clan ? clan.name : 'Tu Clan'}</span>
+              <span class="title-spark">⚡</span>
+            </h1>
+            <p class="clan-subtitle-epic">
+              <span class="subtitle-icon"><i class="fas fa-chart-line"></i></span>
+              Domina la competencia • Gestiona tu imperio • Conquista torneos
+            </p>
+          </div>
+        </div>
+        
+        <div class="clan-stats-overlay">
+          <div class="stat-orb" data-stat="power">
+            <div class="orb-glow"></div>
+            <i class="fas fa-bolt"></i>
+            <span class="orb-label">ACTIVO</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Epic Gaming Stats Grid -->
+      <div class="epic-stats-grid">
+        <!-- Members Stat -->
+        <div class="epic-stat-card cyber-blue" data-animate="slideUp">
+          <div class="stat-background-effect"></div>
+          <div class="stat-icon-epic pulse-glow-epic">
+            <div class="icon-orbit"></div>
+            <i class="fas fa-users"></i>
+          </div>
+          <div class="stat-content-epic">
+            <div class="stat-value-epic counter-animate" data-target="${membersCount}">${membersCount}</div>
+            <div class="stat-label-epic">
+              <span class="label-icon">👥</span>
+              MIEMBROS DEL CLAN
+            </div>
+            <div class="stat-bar-progress">
+              <div class="progress-fill" style="width: ${Math.min((membersCount / 50) * 100, 100)}%"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Revenue Stat -->
+        <div class="epic-stat-card cyber-green" data-animate="slideUp" style="animation-delay: 0.1s">
+          <div class="stat-background-effect"></div>
+          <div class="stat-icon-epic money-rain">
+            <div class="icon-orbit"></div>
+            <i class="fas fa-coins"></i>
+          </div>
+          <div class="stat-content-epic">
+            <div class="stat-trend-badge up">
+              <i class="fas fa-arrow-up"></i> +100%
+            </div>
+            <div class="stat-value-epic money-counter" data-target="${totalRevenue}">${formatCurrency(totalRevenue)}</div>
+            <div class="stat-label-epic">
+              <span class="label-icon">💰</span>
+              INGRESOS GENERADOS
+            </div>
+            <div class="stat-bar-progress green">
+              <div class="progress-fill" style="width: 85%"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tournaments Stat -->
+        <div class="epic-stat-card cyber-gold" data-animate="slideUp" style="animation-delay: 0.2s">
+          <div class="stat-background-effect"></div>
+          <div class="stat-icon-epic trophy-shine">
+            <div class="icon-orbit"></div>
+            <i class="fas fa-trophy"></i>
+          </div>
+          <div class="stat-content-epic">
+            <div class="stat-badge-top">${activeTournaments} ACTIVOS</div>
+            <div class="stat-value-epic counter-animate" data-target="${myTournaments.length}">${myTournaments.length}</div>
+            <div class="stat-label-epic">
+              <span class="label-icon">🏆</span>
+              MIS TORNEOS
+            </div>
+            <div class="stat-bar-progress gold">
+              <div class="progress-fill" style="width: ${Math.min((activeTournaments / 10) * 100, 100)}%"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Live Matches Stat -->
+        <div class="epic-stat-card cyber-red ${liveMatches > 0 ? 'live-active' : ''}" data-animate="slideUp" style="animation-delay: 0.3s">
+          <div class="stat-background-effect"></div>
+          <div class="stat-icon-epic ${liveMatches > 0 ? 'live-pulse-epic' : ''}">
+            <div class="icon-orbit live-ring"></div>
+            <i class="fas fa-gamepad"></i>
+          </div>
+          <div class="stat-content-epic">
+            ${liveMatches > 0 ? '<div class="live-indicator-epic"><span class="live-dot-epic"></span>EN VIVO</div>' : ''}
+            <div class="stat-value-epic counter-animate ${liveMatches > 0 ? 'live-glow' : ''}" data-target="${liveMatches}">${liveMatches}</div>
+            <div class="stat-label-epic">
+              <span class="label-icon">🎮</span>
+              PARTIDAS EN CURSO
+            </div>
+            <div class="stat-bar-progress red ${liveMatches > 0 ? 'live-bar' : ''}">
+              <div class="progress-fill" style="width: ${liveMatches > 0 ? '100' : '0'}%"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Epic Quick Actions Hub -->
+      <div class="epic-actions-container mt-3" data-animate="fadeIn">
+        <div class="actions-header-epic">
+          <h2 class="actions-title-epic">
+            <span class="title-lightning">⚡</span>
+            <span class="title-text-glow">CENTRO DE COMANDO</span>
+            <span class="title-lightning reverse">⚡</span>
+          </h2>
+          <div class="header-pulse-line"></div>
+        </div>
+        
+        <div class="epic-actions-grid">
+          <a href="#/tournaments" class="epic-action-btn btn-create" data-hover="glow">
+            <div class="btn-bg-layer"></div>
+            <div class="btn-icon-container">
+              <i class="fas fa-plus-circle"></i>
+              <div class="icon-particles"></div>
+            </div>
+            <div class="btn-content">
+              <span class="btn-title">CREAR TORNEO</span>
+              <span class="btn-subtitle">Organiza nueva competencia</span>
+            </div>
+            <div class="btn-glow-effect"></div>
+          </a>
+          
+          <a href="#/my-clan" class="epic-action-btn btn-manage" data-hover="glow">
+            <div class="btn-bg-layer"></div>
+            <div class="btn-icon-container">
+              <i class="fas fa-users-cog"></i>
+              <div class="icon-particles"></div>
+            </div>
+            <div class="btn-content">
+              <span class="btn-title">GESTIONAR CLAN</span>
+              <span class="btn-subtitle">Administra tu equipo</span>
+            </div>
+            <div class="btn-glow-effect"></div>
+          </a>
+          
+          <a href="#/my-tournaments" class="epic-action-btn btn-view" data-hover="glow">
+            <div class="btn-bg-layer"></div>
+            <div class="btn-icon-container">
+              <i class="fas fa-list-alt"></i>
+              <div class="icon-particles"></div>
+            </div>
+            <div class="btn-content">
+              <span class="btn-title">MIS TORNEOS</span>
+              <span class="btn-subtitle">Ver competencias activas</span>
+            </div>
+            <div class="btn-glow-effect"></div>
+          </a>
+        </div>
+      </div>
+      
+      <!-- Epic Tournaments Arena -->
+      <!-- Epic Tournaments Arena -->
+      <div class="epic-tournaments-arena mt-3" data-animate="fadeIn">
+        <div class="arena-header-epic">
+          <div class="header-icon-epic">
+            <i class="fas fa-trophy"></i>
+            <div class="icon-shine"></div>
+          </div>
+          <h2 class="arena-title-epic">TORNEOS ACTIVOS</h2>
+          <div class="header-count-badge">${activeTournaments}</div>
+        </div>
+        
+        <div class="tournaments-grid-epic">
+          ${activeTournaments > 0 ? 
+            myTournaments.filter(t => ['REGISTRATION_OPEN', 'IN_PROGRESS'].includes(t.status)).map((t, index) => `
+              <div class="tournament-card-epic" style="animation-delay: ${index * 0.1}s">
+                <div class="tournament-bg-glow"></div>
+                <div class="tournament-header-section">
+                  <div class="tournament-icon-epic">
+                    <i class="fas fa-crown"></i>
+                  </div>
+                  <div class="tournament-info">
+                    <h3 class="tournament-name-epic">${t.name}</h3>
+                    <div class="tournament-meta">
+                      <span class="meta-item">
+                        <i class="fas fa-calendar"></i>
+                        ${new Date(t.start_date).toLocaleDateString()}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                
+                <div class="tournament-stats-section">
+                  <div class="stat-mini">
+                    <div class="stat-mini-icon">
+                      <i class="fas fa-users"></i>
+                    </div>
+                    <div class="stat-mini-content">
+                      <div class="stat-mini-value">${t.teams_count || 0}/${t.max_participants}</div>
+                      <div class="stat-mini-label">Inscritos</div>
+                    </div>
+                  </div>
+                  
+                  <div class="stat-mini">
+                    <div class="stat-mini-icon gold">
+                      <i class="fas fa-trophy"></i>
+                    </div>
+                    <div class="stat-mini-content">
+                      <div class="stat-mini-value">${formatCurrency(t.prize_pool || 0)}</div>
+                      <div class="stat-mini-label">Premio</div>
+                    </div>
+                  </div>
+                </div>
+                
+                <div class="tournament-status-section">
+                  <div class="status-badge-epic ${t.status.toLowerCase()}">
+                    <span class="status-dot"></span>
+                    ${t.status === 'REGISTRATION_OPEN' ? 'INSCRIPCIÓN ABIERTA' : 'EN PROGRESO'}
+                  </div>
+                </div>
+                
+                <div class="tournament-action-section">
+                  <a href="#/tournaments" class="btn-epic-manage">
+                    <i class="fas fa-cog"></i>
+                    <span>GESTIONAR</span>
+                    <div class="btn-shine"></div>
+                  </a>
+                </div>
+              </div>
+            `).join('') 
+          : `
+            <div class="empty-tournaments-epic">
+              <div class="empty-icon-epic">
+                <i class="fas fa-trophy"></i>
+              </div>
+              <p class="empty-text-epic">No hay torneos activos en este momento</p>
+              <a href="#/tournaments" class="btn-epic-create">
+                <i class="fas fa-plus"></i>
+                Crear Primer Torneo
+              </a>
+            </div>
+          `}
+        </div>
+      </div>
+    `;
+
+    // Initialize epic animations for clan dashboard
+    initClanEpicAnimations();
+
+  } catch (error) {
+    console.error('Error rendering clan dashboard', error);
+    container.innerHTML = `<div class="error-msg">Error cargando panel de clan: ${error.message}</div>`;
+  }
+}
+
+// Epic Animations for Clan Leader Dashboard
+function initClanEpicAnimations() {
+  // Counter animations
+  const counterElements = document.querySelectorAll('.counter-animate');
+  counterElements.forEach(el => {
+    const target = parseInt(el.getAttribute('data-target') || el.textContent);
+    animateCounter(el, target);
+  });
+
+  // Create floating particles
+  createGamingParticles();
+}
+
+function animateCounter(element, target) {
+  const duration = 2000;
+  const increment = target / (duration / 16);
+  let current = 0;
+
+  const timer = setInterval(() => {
+    current += increment;
+    if (current >= target) {
+      element.textContent = target;
+      clearInterval(timer);
+    } else {
+      element.textContent = Math.floor(current);
+    }
+  }, 16);
+}
+
+function createGamingParticles() {
+  const particlesContainer = document.getElementById('clanParticles');
+  if (!particlesContainer) return;
+
+  const particleCount = 30;
+  const colors = ['#00d4ff', '#00ff88', '#ffb800', '#ff6b35'];
+
+  for (let i = 0; i < particleCount; i++) {
+    const particle = document.createElement('div');
+    particle.className = 'gaming-particle';
+    particle.style.cssText = `
+      position: absolute;
+      width: ${Math.random() * 4 + 2}px;
+      height: ${Math.random() * 4 + 2}px;
+      background: ${colors[Math.floor(Math.random() * colors.length)]};
+      border-radius: 50%;
+      left: ${Math.random() * 100}%;
+      top: ${Math.random() * 100}%;
+      animation: particleFloat ${Math.random() * 10 + 10}s linear infinite;
+      animation-delay: ${Math.random() * 5}s;
+      opacity: ${Math.random() * 0.5 + 0.3};
+      box-shadow: 0 0 10px currentColor;
+    `;
+    particlesContainer.appendChild(particle);
+  }
 }

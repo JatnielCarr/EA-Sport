@@ -11,12 +11,17 @@ import { renderGames } from './pages/games.js';
 import { renderLeaderboard } from './pages/leaderboard.js';
 import { renderBrackets } from './pages/brackets.js';
 import { renderLogin, cleanupLogin } from './pages/login.js';
+import { renderRegister, cleanupRegister } from './pages/register.js';
 import { renderBracket } from './pages/bracket.js';
+import { renderMyClan } from './pages/my-clan.js';
 
 import { showToast, initGamingEffects, closeModal, initModalHandlers, cleanupModalHandlers } from './ui.js';
 import { getInitials } from './utils.js';
 import { API_BASE } from './config.js';
 import Auth from './auth.js';
+import Sidebar from './components/Sidebar.js';
+import { initBotPro } from './botPro.js';
+import CacheManager from './cache.js';
 
 // =====================================================
 // Router Configuration
@@ -33,7 +38,13 @@ const routes = {
   '/leaderboard': renderLeaderboard,
   '/brackets': renderBrackets,
 
-  '/login': renderLogin
+  // Clan Leader Routes
+  '/my-clan': renderMyClan,
+  '/my-tournaments': renderTournaments,
+  '/my-matches': renderMatches,
+
+  '/login': renderLogin,
+  '/register': renderRegister
 };
 
 // Dynamic routes patterns
@@ -67,22 +78,50 @@ async function navigateTo(route) {
     return;
   }
 
-  // Cleanup previous page (especially login)
+  // Cleanup previous page (especially login/register)
   if (currentRoute === '/login' && route !== '/login') {
     cleanupLogin();
+    // Re-initialize sidebar after successful login
+    if (Auth.isLoggedIn()) {
+      Sidebar.init();
+    }
+  }
+
+  if (currentRoute === '/register' && route !== '/register') {
+    cleanupRegister();
+    // Re-initialize sidebar after successful register (if admin)
+    if (Auth.isLoggedIn()) {
+      Sidebar.init();
+    }
   }
 
   // Check authentication for protected routes
   const isProtectedRoute = protectedRoutes.includes(route) || route.startsWith('/tournaments/');
   if (isProtectedRoute && !Auth.isLoggedIn()) {
-    window.location.hash = '#/login';
+    // Redirect to landing page for non-authenticated users
+    window.location.href = '/landing.html';
     return;
   }
 
-  // Redirect to dashboard if already logged in and trying to access login
-  if (route === '/login' && Auth.isLoggedIn()) {
+  // Redirect to dashboard if already logged in and trying to access login/register
+  if ((route === '/login' || route === '/register') && Auth.isLoggedIn()) {
     window.location.hash = '#/dashboard';
     return;
+  }
+
+  // Redirect ClanLeaders from admin routes to their equivalent routes
+  if (Auth.isClanLeader() && !Auth.isSuperAdmin()) {
+    const adminToLeaderRedirects = {
+      '/teams': '/my-clan',
+      '/users': '/dashboard',
+      '/games': '/dashboard',
+      '/brackets': '/dashboard'
+    };
+
+    if (adminToLeaderRedirects[route]) {
+      window.location.hash = '#' + adminToLeaderRedirects[route];
+      return;
+    }
   }
 
   // Find matching route handler
@@ -230,7 +269,31 @@ function toggleSidebar() {
   }
 }
 
+// =====================================================
+// Mobile Sidebar Management
+// =====================================================
 
+function toggleMobileSidebar() {
+  const sidebar = document.querySelector('.sidebar');
+  const overlay = document.getElementById('sidebarOverlay');
+
+  if (sidebar) {
+    sidebar.classList.toggle('mobile-open');
+    overlay?.classList.toggle('active');
+    document.body.classList.toggle('sidebar-open');
+  }
+}
+
+function closeMobileSidebar() {
+  const sidebar = document.querySelector('.sidebar');
+  const overlay = document.getElementById('sidebarOverlay');
+
+  if (sidebar) {
+    sidebar.classList.remove('mobile-open');
+    overlay?.classList.remove('active');
+    document.body.classList.remove('sidebar-open');
+  }
+}
 
 // =====================================================
 // API Health Check
@@ -266,6 +329,8 @@ function setupEventListeners() {
   // Hash change for routing
   window.addEventListener('hashchange', () => {
     navigateTo(getRouteFromHash());
+    // Close mobile sidebar on navigation
+    closeMobileSidebar();
   });
 
   // Theme toggle
@@ -278,6 +343,18 @@ function setupEventListeners() {
   const sidebarToggle = document.querySelector('.sidebar-toggle');
   if (sidebarToggle) {
     sidebarToggle.addEventListener('click', toggleSidebar);
+  }
+
+  // Mobile menu toggle
+  const mobileMenuToggle = document.getElementById('mobileMenuToggle');
+  const sidebarOverlay = document.getElementById('sidebarOverlay');
+
+  if (mobileMenuToggle) {
+    mobileMenuToggle.addEventListener('click', toggleMobileSidebar);
+  }
+
+  if (sidebarOverlay) {
+    sidebarOverlay.addEventListener('click', closeMobileSidebar);
   }
 
   // Notification button toggle
@@ -372,9 +449,73 @@ function logout() {
 
 window.toggleTheme = toggleTheme;
 window.toggleSidebar = toggleSidebar;
+window.toggleMobileSidebar = toggleMobileSidebar;
+window.closeMobileSidebar = closeMobileSidebar;
 
 window.logout = logout;
 window.closeModal = closeModal;
+
+// Expose cache manager for debugging
+window.CacheManager = CacheManager;
+
+// =====================================================
+// Service Worker Registration
+// =====================================================
+
+async function registerServiceWorker() {
+  if ('serviceWorker' in navigator) {
+    try {
+      // First, clear all old caches to fix corrupted cache issue
+      const cacheNames = await caches.keys();
+      await Promise.all(
+        cacheNames.map(cacheName => {
+          console.log('🗑️ Clearing old cache:', cacheName);
+          return caches.delete(cacheName);
+        })
+      );
+
+      // Unregister old service workers
+      const registrations = await navigator.serviceWorker.getRegistrations();
+      for (const registration of registrations) {
+        await registration.unregister();
+        console.log('🗑️ Unregistered old Service Worker');
+      }
+
+      // Register fresh service worker
+      const registration = await navigator.serviceWorker.register('/sw.js');
+      console.log('✅ Service Worker registered:', registration.scope);
+
+      // Check for updates periodically
+      setInterval(() => {
+        registration.update();
+      }, 60 * 60 * 1000); // Check every hour
+    } catch (error) {
+      console.warn('⚠️ Service Worker registration failed:', error);
+    }
+  }
+}
+
+// =====================================================
+// Cache Maintenance
+// =====================================================
+
+function initCacheMaintenance() {
+  // Clear expired cache on startup
+  CacheManager.clearExpired();
+
+  // Periodic cache cleanup (every 5 minutes)
+  setInterval(() => {
+    CacheManager.clearExpired();
+  }, 5 * 60 * 1000);
+
+  // Log cache stats periodically (development)
+  if (window.location.hostname === 'localhost') {
+    setInterval(() => {
+      const stats = CacheManager.getStats();
+      console.log('📊 Cache Stats:', stats);
+    }, 30 * 1000); // Every 30 seconds
+  }
+}
 
 // =====================================================
 // Application Initialization
@@ -384,11 +525,17 @@ async function init() {
   console.log('🎮 EA Sports Tournament Admin Panel v1.0');
   console.log('📦 Initializing application...');
 
+  // Register Service Worker for offline support
+  registerServiceWorker();
+
+  // Initialize cache maintenance
+  initCacheMaintenance();
+
   // Initialize features
   initTheme();
   initSidebar();
 
-  initUserSession();
+  // initUserSession(); // Replaced by Sidebar.js
   setupEventListeners();
   initModalHandlers();
 
@@ -398,9 +545,18 @@ async function init() {
   // Check API health
   await checkAPIHealth();
 
-  // Navigate to initial route
+  // Init BotPro Admin Assistant
+  initBotPro();
+
+  // Navigate to initial route first (this handles auth redirects)
   const initialRoute = getRouteFromHash();
   await navigateTo(initialRoute);
+
+  // Initialize Dynamic Sidebar AFTER navigation (so we know if user is logged in)
+  // This ensures the sidebar is only rendered when we're on a protected route with a logged-in user
+  if (Auth.isLoggedIn()) {
+    Sidebar.init();
+  }
 
   console.log('✅ Application ready!');
 }

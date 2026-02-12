@@ -3,6 +3,7 @@
 // =====================================================
 
 import API from '../api.js';
+import Auth from '../auth.js';
 import { showLoading, showToast, openModal, closeModal, confirmDialog, formatDate } from '../ui.js';
 
 let allMatches = [];
@@ -22,6 +23,19 @@ export async function renderMatches(container) {
     allMatches = matchesRes.data || [];
     allTournaments = tournamentsRes.data || [];
     allTeams = teamsRes.data || [];
+
+    // Filter for Clan Leaders
+    if (Auth.isClanLeader()) {
+      const userId = Auth.getUser().id;
+      // 1. Filter Tournaments
+      allTournaments = allTournaments.filter(t => t.organizer_id === userId);
+      const myTournamentIds = allTournaments.map(t => t.id);
+
+      // 2. Filter Matches
+      allMatches = allMatches.filter(m => myTournamentIds.includes(m.tournament_id));
+
+      console.log('Filtered matches for Clan Leader:', allMatches.length);
+    }
 
     container.innerHTML = `
       <div class="card">
@@ -109,10 +123,10 @@ function renderMatchesRows(matches) {
         ${getTeamName(m.away_team_id)}
       </td>
       <td class="text-center">
-        ${m.status === 'COMPLETED' ? 
-          `<span class="score">${m.home_score || 0} - ${m.away_score || 0}</span>` : 
-          '-'
-        }
+        ${m.status === 'COMPLETED' ?
+      `<span class="score">${m.home_score || 0} - ${m.away_score || 0}</span>` :
+      '-'
+    }
       </td>
       <td>${getMatchStatusBadge(m.status)}</td>
       <td>${formatDateShort(m.scheduled_datetime)}</td>
@@ -168,16 +182,16 @@ function formatDateShort(dateString) {
 function handleFilter() {
   const tournamentFilter = document.getElementById('filterTournament').value;
   const statusFilter = document.getElementById('filterStatus').value;
-  
+
   let filtered = [...allMatches];
-  
+
   if (tournamentFilter) {
     filtered = filtered.filter(m => m.tournament_id === tournamentFilter);
   }
   if (statusFilter) {
     filtered = filtered.filter(m => m.status === statusFilter);
   }
-  
+
   document.getElementById('matchesTableBody').innerHTML = renderMatchesRows(filtered);
 }
 
@@ -242,7 +256,10 @@ function showScoreModal(match) {
         <label class="form-label">Estado</label>
         <select class="form-control" name="status">
           <option value="COMPLETED" selected>Completada</option>
-          <option value="IN_PROGRESS">En Progreso</option>
+          <option value="LIVE">En Progreso</option>
+          <option value="SCHEDULED">Programada</option>
+          <option value="DISPUTED">Disputada</option>
+          <option value="CANCELLED">Cancelada</option>
         </select>
       </div>
 
@@ -283,12 +300,18 @@ function showScoreModal(match) {
   document.getElementById('scoreForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const formData = new FormData(e.target);
+    const winnerId = formData.get('winner_id');
+    const homeScore = formData.get('home_score');
+    const awayScore = formData.get('away_score');
+    
     const data = {
-      home_score: parseInt(formData.get('home_score')),
-      away_score: parseInt(formData.get('away_score')),
-      winner_id: formData.get('winner_id'),
+      home_score: homeScore ? parseInt(homeScore) : 0,
+      away_score: awayScore ? parseInt(awayScore) : 0,
+      winner_id: winnerId && winnerId.trim() !== '' ? winnerId : null,
       status: formData.get('status')
     };
+
+    console.log('📤 Sending match update:', data);
 
     try {
       await API.matches.update(match.id, data);
@@ -297,6 +320,7 @@ function showScoreModal(match) {
       const container = document.getElementById('pageContent');
       renderMatches(container);
     } catch (error) {
+      console.error('Match update error:', error);
       showToast('error', 'Error', error.message);
     }
   });
@@ -306,11 +330,11 @@ function showMatchForm(match = null) {
   const isEdit = !!match;
   const title = isEdit ? 'Editar Partida' : 'Nueva Partida';
 
-  const tournamentsOptions = allTournaments.map(t => 
+  const tournamentsOptions = allTournaments.map(t =>
     `<option value="${t.id}" ${match?.tournament_id === t.id ? 'selected' : ''}>${t.name}</option>`
   ).join('');
 
-  const teamsOptions = allTeams.map(t => 
+  const teamsOptions = allTeams.map(t =>
     `<option value="${t.id}">${t.name}</option>`
   ).join('');
 
@@ -411,7 +435,7 @@ function showMatchForm(match = null) {
     e.preventDefault();
     const formData = new FormData(e.target);
     const data = Object.fromEntries(formData.entries());
-    
+
     // Convert numeric fields
     data.round = parseInt(data.round) || 1;
     data.match_number = parseInt(data.match_number) || 1;
@@ -421,7 +445,7 @@ function showMatchForm(match = null) {
     // Remove empty optional fields
     if (!data.home_team_id) delete data.home_team_id;
     if (!data.away_team_id) delete data.away_team_id;
-    
+
     // Convert datetime to ISO format if provided
     if (data.scheduled_datetime) {
       data.scheduled_datetime = new Date(data.scheduled_datetime).toISOString();
@@ -437,6 +461,8 @@ function showMatchForm(match = null) {
 
     try {
       if (isEdit) {
+        // When editing, don't send tournament_id (it cannot be changed)
+        delete data.tournament_id;
         await API.matches.update(match.id, data);
         showToast('success', 'Éxito', 'Partida actualizada correctamente');
       } else {

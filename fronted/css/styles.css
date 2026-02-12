@@ -76,8 +76,11 @@ body {
   line-height: 1.6;
   overflow-x: hidden;
   background-image:
-    radial-gradient(ellipse at top left, rgba(0, 212, 255, 0.05) 0%, transparent 50%),
-    radial-gradient(ellipse at bottom right, rgba(255, 107, 53, 0.05) 0%, transparent 50%);
+    radial-gradient(ellipse at 10% 0%, rgba(102, 126, 234, 0.08) 0%, transparent 45%),
+    radial-gradient(ellipse at 90% 0%, rgba(0, 212, 255, 0.06) 0%, transparent 45%),
+    radial-gradient(ellipse at 50% 50%, rgba(240, 147, 251, 0.03) 0%, transparent 50%),
+    radial-gradient(ellipse at 100% 100%, rgba(255, 107, 53, 0.05) 0%, transparent 45%);
+  background-attachment: fixed;
   min-height: 100vh;
 }
 
@@ -142,9 +145,25 @@ textarea {
   left: 0;
   top: 0;
   z-index: 100;
-  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   backdrop-filter: blur(10px);
-  will-change: width;
+  will-change: width, transform;
+}
+
+/* Mobile sidebar styles */
+@media (max-width: 991px) {
+  .sidebar {
+    transform: translateX(-100%);
+    box-shadow: 4px 0 20px rgba(0, 0, 0, 0.5);
+  }
+
+  .sidebar.mobile-open {
+    transform: translateX(0);
+  }
+
+  body.sidebar-open {
+    overflow: hidden;
+  }
 }
 
 .sidebar::before {
@@ -4039,4 +4058,339 @@ select.form-control {
 .notification-footer .btn-block {
   width: 100%;
   text-align: center;
+}
+
+/* =====================================================
+   ENHANCED RESPONSIVE DESIGN
+   ===================================================== */
+
+/* Extra Large Screens (1400px+) */
+@media (min-width: 1400px) {
+  .stats-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  .live-matches-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* Large Screens (1200px - 1399px) */
+@media (max-width: 1399px) and (min-width: 1200px) {
+  .stats-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  .live-matches-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* Medium-Large Screens (992px - 1199px) */
+@media (max-width: 1199px) and (min-width: 992px) {
+  :root {
+    --sidebar-width: 240px;
+  }
+
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .live-matches-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .page-title {
+    font-size: 20px;
+  }
+}
+
+/* Tablets & Small Laptops (768px - 991px) */
+@media (max-width: 991px) {
+  :root {
+    --sidebar-width: 240px;
+    --header-height: 60px;
+  }
+
+  .sidebar {
+    transform: translateX(-100%);
+    z-index: 1000;
+  }
+
+  .sidebar.mobile-open {
+    transform: translateX(0);
+  }
+
+  .main-content {
+    margin-left: 0 !important;
+    width: 100%;
+  }
+
+  .header {
+    padding: 0 16px;
+  }
+
+  .page-title {
+    font-size: 18px;
+  }
+
+  .search-box {
+    display: none;
+  }
+
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+
+  .live-matches-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .page-content {
+    padding: 16px;
+  }
+
+  /* Mobile menu toggle */
+  .mobile-menu-toggle {
+    display: flex !important;
+  }
+
+  /* Overlay for mobile sidebar */
+  .sidebar-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 999;
+  }
+
+  .sidebar-overlay.active {
+    display: block;
+  }
+}
+
+/* Mobile Phones (576px - 767px) */
+@media (max-width: 767px) {
+  :root {
+    --header-height: 56px;
+  }
+
+  .header {
+    padding: 0 12px;
+  }
+
+  .header-left {
+    gap: 12px;
+  }
+
+  .header-right {
+    gap: 8px;
+  }
+
+  .page-title {
+    font-size: 16px;
+  }
+
+  .page-content {
+    padding: 12px;
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .stat-card {
+    padding: 16px;
+  }
+
+  .stat-value {
+    font-size: 24px;
+  }
+
+  .stat-label {
+    font-size: 11px;
+  }
+
+  .welcome-banner {
+    padding: 20px;
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .welcome-title {
+    font-size: 20px;
+  }
+
+  .live-matches-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .card {
+    padding: 16px;
+  }
+
+  .card-header {
+    flex-direction: column;
+    gap: 12px;
+    align-items: flex-start;
+  }
+
+  .btn {
+    padding: 10px 16px;
+    font-size: 13px;
+  }
+
+  .modal {
+    margin: 10px;
+    max-width: calc(100% - 20px);
+    max-height: calc(100vh - 20px);
+  }
+
+  .modal-body {
+    padding: 16px;
+  }
+
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+
+  /* Hide less important elements on mobile */
+  .badge-live,
+  .notification-wrapper {
+    display: none;
+  }
+
+  .notification-btn {
+    display: flex;
+  }
+}
+
+/* Extra Small Phones (< 576px) */
+@media (max-width: 575px) {
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .stat-card {
+    padding: 14px;
+  }
+
+  .stat-value {
+    font-size: 22px;
+  }
+
+  .welcome-banner {
+    padding: 16px;
+  }
+
+  .welcome-title {
+    font-size: 18px;
+  }
+
+  .welcome-subtitle {
+    font-size: 13px;
+  }
+
+  .data-table th,
+  .data-table td {
+    padding: 10px 8px;
+    font-size: 12px;
+  }
+
+  .btn-group {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .btn-group .btn {
+    width: 100%;
+  }
+}
+
+/* Mobile Menu Toggle Button */
+.mobile-menu-toggle {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: none;
+  background: var(--bg-tertiary);
+  border-radius: var(--border-radius-sm);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.mobile-menu-toggle:hover {
+  background: var(--primary);
+  color: var(--bg-primary);
+}
+
+/* Ensure proper height calculations */
+#app {
+  display: flex;
+  min-height: 100vh;
+  width: 100%;
+}
+
+.main-content {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  /* Prevent flex overflow */
+  overflow-x: hidden;
+}
+
+.page-content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* Fix for grids overflow */
+.stats-grid,
+.live-matches-grid,
+.grid-2,
+.grid-3,
+.grid-4 {
+  width: 100%;
+  max-width: 100%;
+}
+
+/* Ensure cards don't overflow */
+.stat-card,
+.card,
+.live-match-card {
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* Text truncation for small screens */
+.truncate {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Print Styles */
+@media print {
+
+  .sidebar,
+  .header,
+  .mobile-menu-toggle,
+  .notification-wrapper {
+    display: none !important;
+  }
+
+  .main-content {
+    margin-left: 0 !important;
+  }
+
+  .page-content {
+    padding: 0;
+  }
 }

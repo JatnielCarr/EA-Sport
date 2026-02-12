@@ -37,8 +37,9 @@ export function isAuthenticated() {
 // Logout
 export function logout() {
     clearToken();
-    window.location.hash = '#/';
     window.dispatchEvent(new CustomEvent('authChanged'));
+    window.location.hash = '#/';
+    window.location.reload();
 }
 
 // Get auth headers

@@ -3,6 +3,7 @@
 // =====================================================
 
 import API from '../api.js';
+import Auth from '../auth.js';
 import { showLoading, showToast, openModal, closeModal, confirmDialog, formatDate, formatCurrency } from '../ui.js';
 
 let allTournaments = [];
@@ -22,6 +23,12 @@ export async function renderTournaments(container) {
     allTournaments = tournamentsRes.data || [];
     allGames = gamesRes.data || [];
     allUsers = usersRes.data || [];
+
+    // Filter for Clan Leaders
+    if (Auth.isClanLeader()) {
+      const userId = Auth.getUser().id;
+      allTournaments = allTournaments.filter(t => t.organizer_id === userId);
+    }
 
     container.innerHTML = `
       <div class="card">
@@ -89,10 +96,19 @@ function renderTournamentsRows(tournaments) {
     return `<tr><td colspan="9" class="text-center text-muted">No hay torneos</td></tr>`;
   }
 
-  return tournaments.map(t => `
+  return tournaments.map(t => {
+    let isExclusive = false;
+    try {
+      if (t.rules_json) {
+        const rules = typeof t.rules_json === 'string' ? JSON.parse(t.rules_json) : t.rules_json;
+        isExclusive = !!rules.is_exclusive;
+      }
+    } catch (e) { }
+
+    return `
     <tr data-id="${t.id}">
       <td>
-        <strong>${t.name}</strong>
+        <strong>${t.name}</strong> ${isExclusive ? '<i class="fas fa-certificate" style="color: #ffd700;" title="Torneo Oficial"></i>' : ''}
         <br><small class="text-muted">${t.slug}</small>
       </td>
       <td>${getGameName(t.game_id)}</td>
@@ -119,7 +135,7 @@ function renderTournamentsRows(tournaments) {
         </button>
       </td>
     </tr>
-  `).join('');
+  `}).join('');
 }
 
 function getGameName(gameId) {
@@ -167,7 +183,7 @@ function formatDateShort(dateString) {
 
 function handleFilter(e) {
   const status = e.target.value;
-  const filtered = status 
+  const filtered = status
     ? allTournaments.filter(t => t.status === status)
     : allTournaments;
   document.getElementById('tournamentsTableBody').innerHTML = renderTournamentsRows(filtered);
@@ -289,7 +305,7 @@ function showTournamentForm(tournament = null) {
   const isEdit = !!tournament;
   const title = isEdit ? 'Editar Torneo' : 'Nuevo Torneo';
 
-  const gamesOptions = allGames.map(g => 
+  const gamesOptions = allGames.map(g =>
     `<option value="${g.id}" ${tournament?.game_id === g.id ? 'selected' : ''}>${g.name}</option>`
   ).join('');
 
@@ -297,6 +313,25 @@ function showTournamentForm(tournament = null) {
     .filter(u => u.role === 'ORGANIZER' || u.role === 'ADMIN')
     .map(u => `<option value="${u.id}" ${tournament?.organizer_id === u.id ? 'selected' : ''}>${u.username}</option>`)
     .join('');
+
+  const isClanLeader = Auth.isClanLeader();
+  const currentUserId = Auth.getUser()?.id;
+
+  // If Clan Leader creating new tournament, default to self
+  if (isClanLeader && !isEdit) {
+    // Logic handled in form render
+  }
+
+  const isSuperAdmin = Auth.isSuperAdmin();
+
+  // Parse existing rules_json to check exclusivity
+  let isExclusive = false;
+  try {
+    if (tournament?.rules_json) {
+      const rules = typeof tournament.rules_json === 'string' ? JSON.parse(tournament.rules_json) : tournament.rules_json;
+      isExclusive = !!rules.is_exclusive;
+    }
+  } catch (e) { console.warn('Error parsing rules', e); }
 
   const formHtml = `
     <form id="tournamentForm">
@@ -323,10 +358,15 @@ function showTournamentForm(tournament = null) {
         </div>
         <div class="form-group">
           <label class="form-label">Organizador *</label>
-          <select class="form-control" name="organizer_id" required>
-            <option value="">Seleccionar organizador</option>
-            ${organizersOptions}
-          </select>
+          ${isClanLeader ?
+      `<input type="hidden" name="organizer_id" value="${tournament?.organizer_id || currentUserId}">
+             <input type="text" class="form-control" value="${allUsers.find(u => u.id === (tournament?.organizer_id || currentUserId))?.username || 'Yo'}" disabled>`
+      :
+      `<select class="form-control" name="organizer_id" required>
+              <option value="">Seleccionar organizador</option>
+              ${organizersOptions}
+            </select>`
+    }
         </div>
       </div>
 
@@ -348,7 +388,7 @@ function showTournamentForm(tournament = null) {
             <option value="REGISTRATION_OPEN" ${tournament?.status === 'REGISTRATION_OPEN' ? 'selected' : ''}>Inscripciones Abiertas</option>
             <option value="IN_PROGRESS" ${tournament?.status === 'IN_PROGRESS' ? 'selected' : ''}>En Progreso</option>
             <option value="COMPLETED" ${tournament?.status === 'COMPLETED' ? 'selected' : ''}>Completado</option>
-          </select>
+           </select>
         </div>
       </div>
 
@@ -375,30 +415,50 @@ function showTournamentForm(tournament = null) {
             <option value="GLOBAL" ${tournament?.region === 'GLOBAL' ? 'selected' : ''}>Global</option>
           </select>
         </div>
-        <div class="form-group">
-          <label class="form-label">Cuota de Entrada</label>
-          <input type="number" class="form-control" name="entry_fee" 
-                 value="${tournament?.entry_fee || 0}" min="0" step="0.01">
+         <div class="form-group">
+            <label class="form-label">Tipo de Torneo</label>
+             ${isSuperAdmin ? `
+            <div class="custom-control custom-switch" style="margin-top: 10px;">
+                <input type="checkbox" class="custom-control-input" id="isExclusive" name="is_exclusive" ${isExclusive ? 'checked' : ''}>
+                <label class="custom-control-label" for="isExclusive">
+                    <i class="fas fa-star" style="color: gold;"></i> Es Exclusivo (Oficial)
+                </label>
+            </div>
+            ` : `
+            <div style="margin-top: 10px; color: var(--text-secondary); font-size: 0.9em;">
+                <i class="fas fa-users"></i> Torneo de Comunidad
+            </div>
+            `}
         </div>
       </div>
 
       <div class="form-row">
         <div class="form-group">
-          <label class="form-label">Premio Total</label>
-          <input type="number" class="form-control" name="prize_pool" 
-                 value="${tournament?.prize_pool || 0}" min="0" step="0.01">
+          <label class="form-label">Cuota de Entrada (MXN)</label>
+          <input type="number" class="form-control" name="entry_fee" 
+                 value="${tournament?.entry_fee || 0}" min="0" step="0.01">
+          <small class="text-muted">0 para gratuito</small>
         </div>
         <div class="form-group">
-          <label class="form-label">Fecha de Inicio *</label>
-          <input type="datetime-local" class="form-control" name="start_date" 
-                 value="${tournament?.start_date ? formatForInput(tournament.start_date) : ''}" required>
+          <label class="form-label">Premio Total (MXN)</label>
+          <input type="number" class="form-control" name="prize_pool" 
+                 value="${tournament?.prize_pool || 0}" min="0" step="0.01">
         </div>
       </div>
 
       <div class="form-group">
-        <label class="form-label">Cierre de Inscripciones *</label>
-        <input type="datetime-local" class="form-control" name="registration_deadline" 
-               value="${tournament?.registration_deadline ? formatForInput(tournament.registration_deadline) : ''}" required>
+        <div class="row">
+             <div class="col-6">
+                <label class="form-label">Fecha de Inicio *</label>
+                <input type="datetime-local" class="form-control" name="start_date" 
+                       value="${tournament?.start_date ? formatForInput(tournament.start_date) : ''}" required>
+             </div>
+             <div class="col-6">
+                <label class="form-label">Cierre de Inscripciones *</label>
+                <input type="datetime-local" class="form-control" name="registration_deadline" 
+                       value="${tournament?.registration_deadline ? formatForInput(tournament.registration_deadline) : ''}" required>
+             </div>
+        </div>
       </div>
 
       <div class="form-group">
@@ -421,7 +481,23 @@ function showTournamentForm(tournament = null) {
     e.preventDefault();
     const formData = new FormData(e.target);
     const data = Object.fromEntries(formData.entries());
-    
+
+    // Check exclusivity manual handling
+    const isExclusiveCheck = document.getElementById('isExclusive')?.checked;
+
+    // Preserve existing rules or create new
+    let currentRules = {};
+    try {
+      if (tournament?.rules_json) {
+        currentRules = typeof tournament.rules_json === 'string' ? JSON.parse(tournament.rules_json) : tournament.rules_json;
+      }
+    } catch (e) { }
+
+    data.rules_json = JSON.stringify({
+      ...currentRules,
+      is_exclusive: !!isExclusiveCheck
+    });
+
     // Convert numeric fields
     data.team_size = parseInt(data.team_size);
     data.max_participants = parseInt(data.max_participants);
@@ -456,7 +532,9 @@ function showTournamentForm(tournament = null) {
 function formatForInput(dateString) {
   if (!dateString) return '';
   const date = new Date(dateString);
-  return date.toISOString().slice(0, 16);
+  // Adjust key to local timezone for input
+  const localIso = new Date(date.getTime() - (date.getTimezoneOffset() * 60000)).toISOString().slice(0, 16);
+  return localIso;
 }
 
 window.closeModal = closeModal;

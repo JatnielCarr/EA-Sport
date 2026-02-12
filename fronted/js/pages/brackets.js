@@ -60,6 +60,8 @@ export async function renderBrackets(container) {
           </div>
         </div>
 
+
+
         <!-- Toolbar -->
         <div class="bracket-toolbar" id="bracketToolbar" style="display: none;">
           <div class="bracket-filter-tabs">
@@ -99,7 +101,10 @@ export async function renderBrackets(container) {
         </div>
       </div>
 
-      <style>${getBracketsStyles()}</style>
+      <style>
+        ${getBracketsStyles()}
+        
+      </style>
     `;
 
     // Event listeners
@@ -161,10 +166,7 @@ async function loadTournamentBracket(tournamentId) {
     const tournamentTeams = allTeams.filter(t => t.tournament_id === tournamentId);
     let tournamentMatches = allMatches.filter(m => m.tournament_id === tournamentId);
 
-    // Apply filter
-    tournamentMatches = filterMatches(tournamentMatches, currentFilter);
-
-    if (allMatches.filter(m => m.tournament_id === tournamentId).length === 0) {
+    if (tournamentMatches.length === 0) {
       container.innerHTML = renderEmptyBracketState(tournamentTeams);
       document.getElementById('btnGenerateBracket')?.addEventListener('click', () => {
         generateBracketForTournament(tournamentId, tournamentTeams);
@@ -172,14 +174,19 @@ async function loadTournamentBracket(tournamentId) {
       return;
     }
 
+    // Apply filter only if not "all"
+    const filteredMatches = currentFilter === 'all' ? tournamentMatches : filterMatches(tournamentMatches, currentFilter);
+
     // Render stats panel + bracket
-    const statsHtml = renderTournamentStats(allMatches.filter(m => m.tournament_id === tournamentId), tournamentTeams);
+    const statsHtml = renderTournamentStats(tournamentMatches, tournamentTeams);
     let bracketHtml = '';
 
     if (selectedTournament.format === 'DOUBLE_ELIMINATION') {
-      bracketHtml = renderDoubleEliminationBracket(tournamentTeams, tournamentMatches);
+      bracketHtml = renderDoubleEliminationBracket(tournamentTeams, filteredMatches, tournamentMatches);
+    } else if (selectedTournament.format === 'ROUND_ROBIN') {
+      bracketHtml = renderRoundRobinStandings(tournamentTeams, filteredMatches);
     } else {
-      bracketHtml = renderSingleEliminationBracket(tournamentTeams, tournamentMatches);
+      bracketHtml = renderSingleEliminationBracket(tournamentTeams, filteredMatches);
     }
 
     container.innerHTML = `
@@ -320,11 +327,12 @@ function renderSingleEliminationBracket(teams, matches) {
 // DOUBLE ELIMINATION BRACKET
 // =====================================================
 
-function renderDoubleEliminationBracket(teams, matches) {
-  const allTournamentMatches = allMatches.filter(m => m.tournament_id === selectedTournament.id);
+function renderDoubleEliminationBracket(teams, matches, allTournamentMatches = null) {
+  // Use all tournament matches if provided, otherwise use matches
+  const fullMatchList = allTournamentMatches || matches;
 
-  const grandFinal = allTournamentMatches.find(m => m.is_grand_final);
-  const bracketReset = allTournamentMatches.find(m => m.is_bracket_reset);
+  const grandFinal = fullMatchList.find(m => m.is_grand_final);
+  const bracketReset = fullMatchList.find(m => m.is_bracket_reset);
 
   const upperBracket = matches.filter(m => !m.is_lower_bracket && !m.is_grand_final && !m.is_bracket_reset);
   const lowerBracket = matches.filter(m => m.is_lower_bracket);
@@ -341,7 +349,7 @@ function renderDoubleEliminationBracket(teams, matches) {
       <div class="bracket-meta">
         <span><i class="fas fa-sitemap"></i> Doble Eliminación</span>
         <span><i class="fas fa-users"></i> ${teams.length} Equipos</span>
-        <span><i class="fas fa-gamepad"></i> ${allTournamentMatches.length} Partidas</span>
+        <span><i class="fas fa-gamepad"></i> ${fullMatchList.length} Partidas</span>
       </div>
     </div>
     
@@ -352,14 +360,14 @@ function renderDoubleEliminationBracket(teams, matches) {
         <h3><i class="fas fa-chevron-up"></i> UPPER BRACKET</h3>
       </div>
       <div class="bracket-grid" id="upperBracketGrid">
-        ${upperRoundNums.map((roundNum, idx) => `
+        ${upperRoundNums.length > 0 ? upperRoundNums.map((roundNum, idx) => `
           <div class="bracket-column" data-round="${roundNum}">
             <div class="round-title">${getUpperRoundNameDE(parseInt(roundNum), upperRoundNums.length)}</div>
             <div class="round-matches">
               ${upperRounds[roundNum].map(match => renderMatchBox(match, teams)).join('')}
             </div>
           </div>
-        `).join('')}
+        `).join('') : '<div class="empty-bracket-message"><p>No hay partidas en el Upper Bracket</p></div>'}
       </div>
     </div>
 
@@ -368,14 +376,14 @@ function renderDoubleEliminationBracket(teams, matches) {
         <h3><i class="fas fa-chevron-down"></i> LOWER BRACKET</h3>
       </div>
       <div class="bracket-grid" id="lowerBracketGrid">
-        ${lowerRoundNums.map((roundNum, idx) => `
+        ${lowerRoundNums.length > 0 ? lowerRoundNums.map((roundNum, idx) => `
           <div class="bracket-column" data-round="${roundNum}">
             <div class="round-title">${getLowerRoundNameDE(parseInt(roundNum), lowerRoundNums.length)}</div>
             <div class="round-matches">
               ${lowerRounds[roundNum].map(match => renderMatchBox(match, teams)).join('')}
             </div>
           </div>
-        `).join('')}
+        `).join('') : '<div class="empty-bracket-message"><p>No hay partidas en el Lower Bracket</p></div>'}
       </div>
     </div>
 
@@ -753,6 +761,113 @@ async function generateBracketForTournament(tournamentId, teams) {
     console.error('Error generating bracket:', error);
     showToast('error', 'Error', error.message);
   }
+}
+
+// =====================================================
+// ROUND ROBIN STANDINGS
+// =====================================================
+
+function renderRoundRobinStandings(teams, matches) {
+  // Calculate stats
+  const stats = teams.map(team => {
+    const teamMatches = matches.filter(m =>
+      (m.home_team_id === team.id || m.away_team_id === team.id) &&
+      m.status === 'COMPLETED'
+    );
+
+    let wins = 0;
+    let losses = 0;
+    let points = 0; // 3 for win, 0 for loss (standard)
+
+    teamMatches.forEach(m => {
+      if (m.winner_id === team.id) {
+        wins++;
+        points += 3;
+      } else {
+        losses++;
+      }
+    });
+
+    return {
+      ...team,
+      played: teamMatches.length,
+      wins,
+      losses,
+      points
+    };
+  });
+
+  // Sort by points desc, then wins desc
+  stats.sort((a, b) => {
+    if (b.points !== a.points) return b.points - a.points;
+    return b.wins - a.wins;
+  });
+
+  return `
+    <div class="bracket-tournament-header">
+      <h2><i class="fas fa-trophy"></i> ${selectedTournament.name}</h2>
+      <div class="bracket-meta">
+        <span><i class="fas fa-table"></i> Round Robin (Liga)</span>
+        <span><i class="fas fa-users"></i> ${teams.length} Equipos</span>
+      </div>
+    </div>
+    
+    <div class="bracket-title-banner"><h1>TABLA DE POSICIONES</h1></div>
+
+    <div class="standings-container">
+      <table class="leaderboard-table">
+        <thead>
+          <tr>
+            <th class="rank-col">Pos</th>
+            <th class="player-col">Equipo</th>
+            <th class="stats-col">PJ</th>
+            <th class="stats-col">G</th>
+            <th class="stats-col">P</th>
+            <th class="rating-col">Puntos</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${stats.map((team, index) => {
+    const rank = index + 1;
+    let rankClass = 'rank-other';
+    if (rank === 1) rankClass = 'rank-1';
+    if (rank === 2) rankClass = 'rank-2';
+    if (rank === 3) rankClass = 'rank-3';
+
+    return `
+              <tr>
+                <td class="rank-col">
+                  <span class="rank-badge ${rankClass}">${rank}</span>
+                </td>
+                <td class="player-col">
+                  <div class="player-info">
+                    ${team.logo_url ?
+        `<img src="${team.logo_url}" class="team-logo-small" alt="">` :
+        `<div class="team-initials-small">${getTeamInitials(team.name)}</div>`
+      }
+                    <span class="player-name-text">${team.name}</span>
+                  </div>
+                </td>
+                <td class="stats-col">${team.played}</td>
+                <td class="stats-col text-success">${team.wins}</td>
+                <td class="stats-col text-danger">${team.losses}</td>
+                <td class="rating-col">
+                  <span class="rating-badge">${team.points}</span>
+                </td>
+              </tr>
+            `;
+  }).join('')}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="bracket-title-banner" style="margin-top: 40px;"><h1>PARTIDAS</h1></div>
+    <div class="bracket-grid single-elimination">
+      <div class="bracket-column" style="width: 100%; display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px;">
+        ${matches.map(match => renderMatchBox(match, teams)).join('')}
+      </div>
+    </div>
+  `;
 }
 
 // =====================================================

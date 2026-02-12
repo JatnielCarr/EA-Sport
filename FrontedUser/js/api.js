@@ -2,7 +2,7 @@
 // API Client - User Frontend (Solo endpoints públicos)
 // =====================================================
 
-import { getToken } from './auth.js';
+import { getToken, logout } from './auth.js';
 
 const API_BASE = 'http://localhost:3000';
 
@@ -10,7 +10,7 @@ const API_BASE = 'http://localhost:3000';
 const cache = new Map();
 const CACHE_TTL = 60000; // 1 minute default
 
-class ApiClient {
+export class ApiClient {
     constructor(baseUrl) {
         this.baseUrl = baseUrl;
         this.retryAttempts = 3;
@@ -57,21 +57,48 @@ class ApiClient {
                 const controller = new AbortController();
                 const timeout = setTimeout(() => controller.abort(), 10000); // 10s timeout
 
-                const response = await fetch(url, {
-                    headers: {
-                        'Content-Type': 'application/json',
-                        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-                        ...options.headers
-                    },
-                    signal: controller.signal,
-                    ...options
-                });
+                // Build headers properly - ensure our headers come last
+                const headers = {
+                    'Content-Type': 'application/json',
+                    ...options.headers,
+                    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                };
+
+                // Spread options first, then override with our values
+                const fetchOptions = {
+                    ...options,
+                    headers,
+                    signal: controller.signal
+                };
+
+                console.log(`[API] ${options.method || 'GET'} ${url}`);
+                const response = await fetch(url, fetchOptions);
 
                 clearTimeout(timeout);
-                const data = await response.json();
+
+                // Handle non-JSON responses
+                const contentType = response.headers.get('content-type');
+                let data;
+                if (contentType && contentType.includes('application/json')) {
+                    data = await response.json();
+                } else {
+                    const text = await response.text();
+                    console.error('[API] Non-JSON response:', text.substring(0, 200));
+                    throw new Error('El servidor no respondió correctamente');
+                }
 
                 if (!response.ok) {
-                    throw new Error(data.error || 'Error en la solicitud');
+                    // Check for 401 Unauthorized
+                    if (response.status === 401) {
+                        console.warn('[API] Session expired or invalid token');
+                        logout(); // Auto-logout on 401
+                        throw new Error('Sesión expirada');
+                    }
+
+                    // Create error with status for retry logic
+                    const error = new Error(data.error || `Error ${response.status}`);
+                    error.status = response.status;
+                    throw error;
                 }
 
                 // Cache successful GET requests
@@ -82,24 +109,28 @@ class ApiClient {
                 return data;
             } catch (error) {
                 lastError = error;
+                console.warn(`[API] Error on attempt ${attempt + 1}:`, error.message);
 
-                // Don't retry on abort or client errors
-                if (error.name === 'AbortError' || (error.status && error.status < 500)) {
+                // Don't retry on abort or client errors (4xx)
+                if (error.name === 'AbortError' ||
+                    (error.status && error.status >= 400 && error.status < 500) ||
+                    error.message === 'Sesión expirada') {
                     throw error;
                 }
 
-                // Exponential backoff
+                // Exponential backoff for server errors only
                 if (attempt < retries - 1) {
                     const delay = this.retryDelay * Math.pow(2, attempt);
-                    console.log(`Retrying request (${attempt + 1}/${retries}) in ${delay}ms...`);
+                    console.log(`[API] Retrying in ${delay}ms...`);
                     await new Promise(resolve => setTimeout(resolve, delay));
                 }
             }
         }
 
-        console.error('API Error after retries:', lastError);
+        console.error('[API] Failed after retries:', lastError);
         throw lastError;
     }
+
 
     get(endpoint, config = {}) {
         return this.request(endpoint, { method: 'GET' }, config);
@@ -172,13 +203,7 @@ export const API = {
             client.post('/auth/change-password', { currentPassword, newPassword })
     },
 
-    // Usuario (autenticado)
-    users: {
-        getById: (id) => client.get(`/users/${id}`),
-        update: (id, data) => client.put(`/users/${id}`, data),
-        getStats: (userId) => client.get(`/users/${userId}/stats`),
-        getClan: (userId) => client.get(`/users/${userId}/clan`)
-    },
+
 
     // Clanes
     clans: {
@@ -222,7 +247,64 @@ export const API = {
                 content,
                 is_announcement: isAnnouncement
             })
-    }
+    },
+
+    // Suscripciones
+    subscriptions: {
+        getPlans: () => client.get('/subscriptions/plans'),
+        getMySubscription: () => client.get('/subscriptions/me'),
+        checkout: (plan, interval) => client.post('/subscriptions/create-checkout-session', { plan, interval }),
+        cancel: () => client.post('/subscriptions/cancel', {}),
+        reactivate: () => client.post('/subscriptions/reactivate', {}),
+        changePlan: (plan, interval) => client.post('/subscriptions/change-plan', { plan, interval })
+    },
+
+    // Usuarios
+    users: {
+        // Public/Admin
+        getById: (id) => client.get(`/users/${id}`),
+        getStats: (userId) => client.get(`/users/${userId}/stats`),
+        getClan: (userId) => client.get(`/users/${userId}/clan`),
+
+        // Context dependent (update by ID for admin, or me) - simplifying to avoid confusion
+        // Use updateMe for current user, updateById for others
+        updateMe: (data) => client.put('/users/me', data),
+        updateById: (id, data) => client.put(`/users/${id}`, data),
+        updateProfile: (data) => client.put('/users/me', data),
+
+        // Legacy/Alias support
+        getProfile: () => client.get('/users/me', { useCache: false }),
+        update: (arg1, arg2) => {
+            // If 2 args, it's update(id, data), if 1 arg, it's update(data) for 'me'
+            if (arg2) return client.put(`/users/${arg1}`, arg2);
+            return client.put('/users/me', arg1);
+        }
+    },
+
+    // Pagos / Wallet
+    payments: {
+        getBalance: () => client.get('/payment/balance'),
+        createCheckout: (amount, currency = 'mxn', description) =>
+            client.post('/payment/create-checkout-session', { amount, currency, description }),
+        getHistory: () => client.get('/payment/history'),
+        verifySession: (sessionId) => client.get(`/payment/verify-session/${sessionId}`),
+        createNameChangeCheckout: () => client.post('/payment/name-change-checkout', {})
+    },
+
+    // Mantener compatibilidad con 'payment' sin 's'
+    payment: {
+        getBalance: () => client.get('/payment/balance'),
+        createCheckout: (amount, currency = 'mxn', description) =>
+            client.post('/payment/create-checkout-session', { amount, currency, description }),
+        getHistory: () => client.get('/payment/history'),
+        verifySession: (sessionId) => client.get(`/payment/verify-session/${sessionId}`)
+    },
+
+    // Método genérico para llamadas custom
+    get: (endpoint, config) => client.get(endpoint, config),
+    post: (endpoint, body, config) => client.post(endpoint, body, config),
+    put: (endpoint, body, config) => client.put(endpoint, body, config),
+    delete: (endpoint, config) => client.delete(endpoint, config)
 };
 
 export default API;

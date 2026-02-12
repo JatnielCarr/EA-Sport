@@ -86,13 +86,30 @@ async function loadClans() {
         const response = await API.clans.getAll();
         allClans = response.data || [];
         filteredClans = [...allClans];
+
+        // Handle empty clans with a friendly message
+        if (allClans.length === 0) {
+            document.getElementById('clansGrid').innerHTML = `
+                <div class="empty-state" style="grid-column: 1 / -1; text-align: center; padding: 60px 20px;">
+                    <i class="fas fa-shield-alt" style="font-size: 48px; color: var(--primary); margin-bottom: 20px;"></i>
+                    <h3 style="margin-bottom: 10px;">¡Sé el primero en crear un clan!</h3>
+                    <p style="color: var(--text-secondary);">Aún no hay clanes registrados. Crea el tuyo y lidera la comunidad.</p>
+                </div>
+            `;
+            return;
+        }
+
         renderClansGrid();
     } catch (error) {
         console.error('Error loading clans:', error);
         document.getElementById('clansGrid').innerHTML = `
-            <div class="error-state">
-                <i class="fas fa-exclamation-triangle"></i>
-                <p>Error al cargar los clanes</p>
+            <div class="error-state" style="grid-column: 1 / -1; text-align: center; padding: 60px 20px;">
+                <i class="fas fa-exclamation-triangle" style="font-size: 48px; color: var(--warning); margin-bottom: 20px;"></i>
+                <h3 style="margin-bottom: 10px;">No se pudieron cargar los clanes</h3>
+                <p style="color: var(--text-secondary);">Verifica tu conexión e intenta de nuevo.</p>
+                <button class="btn btn-primary" onclick="location.reload()" style="margin-top: 16px;">
+                    <i class="fas fa-sync"></i> Reintentar
+                </button>
             </div>
         `;
     }

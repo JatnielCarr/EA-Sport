@@ -1,0 +1,11 @@
+--- Database Diagnosis ---
+✅ Database connected successfully
+
+--- Record Counts ---
+Users: 30
+Tournaments: 3
+Teams: 20
+Games: 6
+Matches: 12
+
+✅ Tournaments exist.
