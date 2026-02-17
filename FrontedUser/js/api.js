@@ -168,12 +168,15 @@ export const API = {
         getById: (id) => client.get(`/games/${id}`)
     },
 
-    // Torneos (público - solo lectura)
+    // Torneos (público - solo lectura + invitaciones)
     tournaments: {
         getAll: () => client.get('/tournaments'),
         getById: (id) => client.get(`/tournaments/${id}`),
         getBracket: (id) => client.get(`/tournaments/${id}/bracket`),
-        getStandings: (id) => client.get(`/tournaments/${id}/standings`)
+        getStandings: (id) => client.get(`/tournaments/${id}/standings`),
+        // Sistema de invitación
+        getByInviteCode: (inviteCode) => client.get(`/tournaments/invite/${inviteCode}`),
+        registerViaInvite: (inviteCode, data) => client.post(`/tournaments/invite/${inviteCode}/register`, data)
     },
 
     // Equipos (público - solo lectura)
@@ -256,7 +259,8 @@ export const API = {
         checkout: (plan, interval) => client.post('/subscriptions/create-checkout-session', { plan, interval }),
         cancel: () => client.post('/subscriptions/cancel', {}),
         reactivate: () => client.post('/subscriptions/reactivate', {}),
-        changePlan: (plan, interval) => client.post('/subscriptions/change-plan', { plan, interval })
+        changePlan: (plan, interval) => client.post('/subscriptions/change-plan', { plan, interval }),
+        verifySession: (sessionId) => client.get(`/subscriptions/verify-session/${sessionId}`)
     },
 
     // Usuarios

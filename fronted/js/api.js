@@ -137,6 +137,8 @@ export const API = {
     create: (data) => api.post('/users', data),
     update: (id, data) => api.put(`/users/${id}`, data),
     delete: (id) => api.delete(`/users/${id}`),
+    ban: (id, data) => api.put(`/users/${id}/ban`, data),
+    unban: (id) => api.put(`/users/${id}/unban`, {}),
     getGameAccounts: (userId) => api.get(`/users/${userId}/game-accounts`),
     // Clan methods for organizers
     getClan: (userId) => api.get(`/users/${userId}/clan`),

@@ -29,9 +29,8 @@ class Sidebar {
     renderMenu() {
         const user = Auth.getUser();
         const isSuperAdmin = Auth.isSuperAdmin();
-        const isClanLeader = Auth.isClanLeader();
 
-        console.log('🎮 Sidebar: Rendering menu', { user, isSuperAdmin, isClanLeader });
+        console.log('🎮 Sidebar: Rendering menu', { user, isSuperAdmin });
 
         let menuItems = [];
 
@@ -45,13 +44,6 @@ class Sidebar {
                 { href: '#/matches', icon: 'fas fa-crosshairs', text: 'Partidas' },
                 { href: '#/games', icon: 'fas fa-gamepad', text: 'Juegos' },
                 { href: '#/brackets', icon: 'fas fa-sitemap', text: 'Brackets', color: 'var(--primary)' }
-            ];
-        } else if (isClanLeader) {
-            menuItems = [
-                { href: '#/dashboard', icon: 'fas fa-chart-pie', text: 'Mi Clan', active: true },
-                { href: '#/my-clan', icon: 'fas fa-users-cog', text: 'Gestión Clan' },
-                { href: '#/my-tournaments', icon: 'fas fa-trophy', text: 'Mis Torneos' },
-                { href: '#/my-matches', icon: 'fas fa-gamepad', text: 'Mis Partidos' }
             ];
         } else if (user) {
             // Fallback menu for any logged-in user
@@ -85,7 +77,7 @@ class Sidebar {
         const user = Auth.getUser();
         if (!user) return;
 
-        const roleName = Auth.isSuperAdmin() ? 'Super Admin' : (Auth.isClanLeader() ? 'Líder de Clan' : 'Usuario');
+        const roleName = Auth.isSuperAdmin() ? 'Super Admin' : 'Usuario';
         const roleIcon = Auth.isSuperAdmin() ? 'fas fa-crown' : 'fas fa-shield-alt';
 
         this.userInfo.innerHTML = `

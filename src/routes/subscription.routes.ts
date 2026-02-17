@@ -33,9 +33,10 @@ export async function subscriptionRoutes(app: FastifyInstance) {
                 price: 0,
                 currency: 'MXN',
                 interval: 'forever',
-                maxUsers: null,
+                maxParticipants: 0,
+                maxTournaments: 0,
                 features: [
-                    'Participar en torneos gratuitos',
+                    'Participar en torneos por invitación',
                     'Ver partidas en vivo',
                     'Perfil básico',
                     'Crear/Unirse a Clan'
@@ -47,12 +48,16 @@ export async function subscriptionRoutes(app: FastifyInstance) {
                 monthlyPrice: 499,
                 yearlyPrice: 4990,
                 currency: 'MXN',
-                maxUsers: null,
+                maxParticipants: 16,
+                maxTournaments: 3,
                 features: [
                     'Todo lo del plan Gratis',
-                    'Crear torneos privados',
+                    'Crear y administrar torneos',
+                    'Hasta 16 jugadores por torneo',
+                    'Hasta 3 torneos activos',
+                    'Generación de URL de invitación',
+                    'Cobro de cuota de inscripción',
                     'Estadísticas avanzadas',
-                    'Soporte prioritario',
                     'Sin anuncios'
                 ]
             },
@@ -62,13 +67,15 @@ export async function subscriptionRoutes(app: FastifyInstance) {
                 monthlyPrice: 999,
                 yearlyPrice: 9990,
                 currency: 'MXN',
-                maxUsers: null,
+                maxParticipants: 64,
+                maxTournaments: 10,
                 features: [
                     'Todo lo del plan Standard',
-                    'Torneos ilimitados',
+                    'Hasta 64 jugadores por torneo',
+                    'Hasta 10 torneos activos',
                     'Análisis profesional',
-                    'API access',
-                    'Soporte 24/7'
+                    'Soporte prioritario 24/7',
+                    'API access'
                 ]
             }
         ];
@@ -103,6 +110,119 @@ export async function subscriptionRoutes(app: FastifyInstance) {
         }
 
         return { success: true, data: subscription };
+    });
+
+    // Alias: /subscriptions/me -> same as /subscriptions/current (frontend compatibility)
+    app.get('/subscriptions/me', {
+        preHandler: [app.authenticate],
+        schema: {
+            tags: ['Subscriptions'],
+            description: 'Get current user subscription status (alias for /current)'
+        }
+    }, async (request: any, reply) => {
+        const userId = request.user.id;
+
+        const subscription = await prisma.subscription.findUnique({
+            where: { user_id: userId }
+        });
+
+        if (!subscription) {
+            return {
+                success: true,
+                data: {
+                    plan: 'FREE',
+                    status: 'ACTIVE',
+                    current_period_start: null,
+                    current_period_end: null
+                }
+            };
+        }
+
+        return { success: true, data: subscription };
+    });
+
+    // Verify checkout session and activate subscription (replaces webhook for local dev)
+    app.get('/subscriptions/verify-session/:sessionId', {
+        preHandler: [app.authenticate],
+        schema: {
+            tags: ['Subscriptions'],
+            description: 'Verify Stripe checkout session and activate subscription'
+        }
+    }, async (request: any, reply) => {
+        const { sessionId } = request.params as { sessionId: string };
+        const userId = request.user.id;
+
+        try {
+            // Retrieve the checkout session from Stripe
+            const session = await stripe.checkout.sessions.retrieve(sessionId, {
+                expand: ['subscription']
+            });
+
+            if (!session) {
+                return reply.status(404).send({ success: false, error: 'Session not found' });
+            }
+
+            // Verify this session belongs to this user
+            const metadata = session.metadata || {};
+            if (metadata.userId !== userId && session.client_reference_id !== userId) {
+                return reply.status(403).send({ success: false, error: 'Session does not belong to this user' });
+            }
+
+            // Check payment status
+            if (session.payment_status !== 'paid') {
+                return { success: false, error: 'Payment not completed', status: session.payment_status };
+            }
+
+            // Determine plan from metadata
+            const plan = metadata.plan || 'STANDARD';
+            const interval = metadata.interval || 'monthly';
+
+            // Get subscription details from Stripe
+            const stripeSubscription = session.subscription as any;
+
+            if (stripeSubscription) {
+                // Map Stripe status
+                let status: 'ACTIVE' | 'CANCELED' | 'PAST_DUE' | 'TRIALING' | 'INCOMPLETE' = 'ACTIVE';
+                switch (stripeSubscription.status) {
+                    case 'canceled': status = 'CANCELED'; break;
+                    case 'past_due': status = 'PAST_DUE'; break;
+                    case 'trialing': status = 'TRIALING'; break;
+                    case 'incomplete': status = 'INCOMPLETE'; break;
+                }
+
+                // Upsert subscription in DB
+                const subscription = await prisma.subscription.upsert({
+                    where: { user_id: userId },
+                    update: {
+                        plan: plan as any,
+                        status,
+                        stripe_subscription_id: stripeSubscription.id,
+                        stripe_price_id: stripeSubscription.items?.data?.[0]?.price?.id,
+                        current_period_start: new Date(stripeSubscription.current_period_start * 1000),
+                        current_period_end: new Date(stripeSubscription.current_period_end * 1000),
+                        cancel_at_period_end: stripeSubscription.cancel_at_period_end || false
+                    },
+                    create: {
+                        user_id: userId,
+                        plan: plan as any,
+                        status,
+                        stripe_subscription_id: stripeSubscription.id,
+                        stripe_price_id: stripeSubscription.items?.data?.[0]?.price?.id,
+                        current_period_start: new Date(stripeSubscription.current_period_start * 1000),
+                        current_period_end: new Date(stripeSubscription.current_period_end * 1000)
+                    }
+                });
+
+                console.log(`✅ Subscription verified and activated: ${userId} - ${plan} - ${status}`);
+                return { success: true, data: subscription };
+            } else {
+                return reply.status(400).send({ success: false, error: 'No subscription found in session' });
+            }
+
+        } catch (error: any) {
+            console.error('Subscription verification error:', error);
+            return reply.status(500).send({ success: false, error: 'Failed to verify session' });
+        }
     });
 
     // Create checkout session for subscription

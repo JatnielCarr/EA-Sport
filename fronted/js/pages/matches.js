@@ -1,9 +1,8 @@
 // =====================================================
-// PAGES - Matches Management
+// PAGES - Gestión de Partidas (Match Management)
 // =====================================================
 
-import API from '../api.js';
-import Auth from '../auth.js';
+import { API } from '../api.js';
 import { showLoading, showToast, openModal, closeModal, confirmDialog, formatDate } from '../ui.js';
 
 let allMatches = [];
@@ -11,70 +10,54 @@ let allTournaments = [];
 let allTeams = [];
 
 export async function renderMatches(container) {
-  showLoading(container);
+    showLoading(container);
 
-  try {
-    const [matchesRes, tournamentsRes, teamsRes] = await Promise.all([
-      API.matches.getAll(),
-      API.tournaments.getAll(),
-      API.teams.getAll()
-    ]);
+    try {
+        const [matchRes, tourRes, teamRes] = await Promise.all([
+            API.matches.getAll(),
+            API.tournaments.getAll(),
+            API.teams.getAll()
+        ]);
+        allMatches = matchRes.data || [];
+        allTournaments = tourRes.data || [];
+        allTeams = teamRes.data || [];
 
-    allMatches = matchesRes.data || [];
-    allTournaments = tournamentsRes.data || [];
-    allTeams = teamsRes.data || [];
-
-    // Filter for Clan Leaders
-    if (Auth.isClanLeader()) {
-      const userId = Auth.getUser().id;
-      // 1. Filter Tournaments
-      allTournaments = allTournaments.filter(t => t.organizer_id === userId);
-      const myTournamentIds = allTournaments.map(t => t.id);
-
-      // 2. Filter Matches
-      allMatches = allMatches.filter(m => myTournamentIds.includes(m.tournament_id));
-
-      console.log('Filtered matches for Clan Leader:', allMatches.length);
-    }
-
-    container.innerHTML = `
+        container.innerHTML = `
       <div class="card">
-        <div class="card-header">
-          <h2 class="card-title">
-            <i class="fas fa-gamepad"></i>
-            Gestión de Partidas (${allMatches.length})
+        <div class="card-header" style="display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px;">
+          <h2 class="card-title" style="margin:0; font-size:1.25rem; display:flex; align-items:center; gap:8px;">
+            <i class="fas fa-crosshairs" style="color:#e83e8c;"></i>
+            Gestión de Partidas
+            <span class="badge badge-info" style="font-size:0.75rem; margin-left:4px;">${allMatches.length}</span>
           </h2>
-          <div class="card-actions">
-            <select class="form-control" id="filterTournament" style="width: 200px;">
-              <option value="">Todos los torneos</option>
+          <div class="card-actions" style="display:flex; flex-wrap:wrap; align-items:center; gap:8px;">
+            <select class="form-control" id="tournamentFilter" style="width:200px; font-size:0.85rem; padding:6px 10px;">
+              <option value="all">Todos los Torneos</option>
               ${allTournaments.map(t => `<option value="${t.id}">${t.name}</option>`).join('')}
             </select>
-            <select class="form-control" id="filterStatus" style="width: 150px;">
-              <option value="">Todos</option>
-              <option value="PENDING">Pendientes</option>
-              <option value="SCHEDULED">Programadas</option>
-              <option value="IN_PROGRESS">En Curso</option>
-              <option value="COMPLETED">Completadas</option>
+            <select class="form-control" id="statusFilter" style="width:140px; font-size:0.85rem; padding:6px 10px;">
+              <option value="all">Todos</option>
+              <option value="SCHEDULED">Programado</option>
+              <option value="LIVE">En Vivo</option>
+              <option value="COMPLETED">Completado</option>
+              <option value="CANCELLED">Cancelado</option>
             </select>
-            <button class="btn btn-primary" id="btnNewMatch">
-              <i class="fas fa-plus"></i> Nueva Partida
-            </button>
+            <input type="text" class="form-control" placeholder="🔍 Buscar partida..."
+                   id="searchMatches" style="width:180px; font-size:0.85rem; padding:6px 10px;">
           </div>
         </div>
-        <div class="table-container">
-          <table class="data-table">
+        <div class="table-container" style="overflow-x:auto;">
+          <table class="data-table" style="width:100%;">
             <thead>
               <tr>
-                <th>Partida</th>
-                <th>Torneo</th>
-                <th>Ronda</th>
-                <th>Equipo 1</th>
-                <th>vs</th>
-                <th>Equipo 2</th>
-                <th>Resultado</th>
-                <th>Estado</th>
-                <th>Fecha</th>
-                <th>Acciones</th>
+                <th style="min-width:140px;">Torneo</th>
+                <th style="min-width:60px;">Ronda</th>
+                <th style="min-width:120px;">Equipo Local</th>
+                <th style="min-width:80px;">Marcador</th>
+                <th style="min-width:120px;">Equipo Visitante</th>
+                <th style="min-width:90px;">Estado</th>
+                <th style="min-width:100px;">Fecha</th>
+                <th style="min-width:90px;">Acciones</th>
               </tr>
             </thead>
             <tbody id="matchesTableBody">
@@ -85,403 +68,204 @@ export async function renderMatches(container) {
       </div>
     `;
 
-    // Event Listeners
-    document.getElementById('btnNewMatch').addEventListener('click', () => showMatchForm());
-    document.getElementById('filterTournament').addEventListener('change', handleFilter);
-    document.getElementById('filterStatus').addEventListener('change', handleFilter);
-    document.getElementById('matchesTableBody').addEventListener('click', handleTableActions);
+        document.getElementById('searchMatches')?.addEventListener('input', handleFilter);
+        document.getElementById('statusFilter')?.addEventListener('change', handleFilter);
+        document.getElementById('tournamentFilter')?.addEventListener('change', handleFilter);
+        document.getElementById('matchesTableBody')?.addEventListener('click', handleTableActions);
 
-  } catch (error) {
-    console.error('Error loading matches:', error);
-    container.innerHTML = `
+    } catch (error) {
+        console.error('Error loading matches:', error);
+        container.innerHTML = `
       <div class="empty-state">
         <i class="fas fa-exclamation-triangle"></i>
         <h3>Error al cargar partidas</h3>
         <p>${error.message}</p>
       </div>
     `;
-  }
-}
-
-function renderMatchesRows(matches) {
-  if (matches.length === 0) {
-    return `<tr><td colspan="10" class="text-center text-muted">No hay partidas</td></tr>`;
-  }
-
-  return matches.map(m => `
-    <tr data-id="${m.id}">
-      <td>
-        <strong>Match #${m.match_number || m.id.substring(0, 8)}</strong>
-      </td>
-      <td>${getTournamentName(m.tournament_id)}</td>
-      <td>${m.round || '-'}</td>
-      <td class="${m.winner_id === m.home_team_id ? 'winner' : ''}">
-        ${getTeamName(m.home_team_id)}
-      </td>
-      <td class="text-center text-muted">VS</td>
-      <td class="${m.winner_id === m.away_team_id ? 'winner' : ''}">
-        ${getTeamName(m.away_team_id)}
-      </td>
-      <td class="text-center">
-        ${m.status === 'COMPLETED' ?
-      `<span class="score">${m.home_score || 0} - ${m.away_score || 0}</span>` :
-      '-'
     }
-      </td>
-      <td>${getMatchStatusBadge(m.status)}</td>
-      <td>${formatDateShort(m.scheduled_datetime)}</td>
-      <td>
-        ${m.status !== 'COMPLETED' ? `
-          <button class="btn btn-success btn-sm btn-icon" data-action="score" title="Reportar resultado">
-            <i class="fas fa-clipboard-check"></i>
-          </button>
-        ` : ''}
-        <button class="btn btn-secondary btn-sm btn-icon" data-action="edit" title="Editar">
-          <i class="fas fa-edit"></i>
-        </button>
-        <button class="btn btn-danger btn-sm btn-icon" data-action="delete" title="Eliminar">
-          <i class="fas fa-trash"></i>
-        </button>
-      </td>
-    </tr>
-  `).join('');
-}
-
-function getTournamentName(tournamentId) {
-  const tournament = allTournaments.find(t => t.id === tournamentId);
-  return tournament ? tournament.name : 'N/A';
-}
-
-function getTeamName(teamId) {
-  const team = allTeams.find(t => t.id === teamId);
-  return team ? team.name : 'TBD';
 }
 
 function getMatchStatusBadge(status) {
-  const labels = {
-    'PENDING': 'Pendiente',
-    'SCHEDULED': 'Programada',
-    'IN_PROGRESS': 'En Curso',
-    'COMPLETED': 'Completada',
-    'CANCELLED': 'Cancelada'
-  };
-  const statusClass = status?.toLowerCase() || 'pending';
-  return `<span class="status-badge ${statusClass}">${labels[status] || status}</span>`;
+    const map = {
+        SCHEDULED: { label: 'Programado', color: '#6c757d' },
+        CHECK_IN: { label: 'Check-in', color: '#fd7e14' },
+        LIVE: { label: '🔴 En Vivo', color: '#dc3545' },
+        COMPLETED: { label: 'Completado', color: '#198754' },
+        DISPUTED: { label: 'Disputado', color: '#ffc107', textColor: '#000' },
+        CANCELLED: { label: 'Cancelado', color: '#6c757d' }
+    };
+    const info = map[status] || { label: status, color: '#6c757d' };
+    const textColor = info.textColor || '#fff';
+    return `<span style="background:${info.color}; color:${textColor}; font-size:0.7rem; padding:3px 10px; border-radius:20px; font-weight:600;">${info.label}</span>`;
 }
 
-function formatDateShort(dateString) {
-  if (!dateString) return '-';
-  return new Date(dateString).toLocaleDateString('es-ES', {
-    day: '2-digit',
-    month: 'short',
-    hour: '2-digit',
-    minute: '2-digit'
-  });
+function renderMatchesRows(matches) {
+    if (matches.length === 0) {
+        return `<tr><td colspan="8" style="text-align:center; padding:40px; color:var(--text-secondary);">
+      <i class="fas fa-inbox" style="font-size:2rem; margin-bottom:8px; display:block; opacity:0.4;"></i>
+      No se encontraron partidas
+    </td></tr>`;
+    }
+
+    return matches.map(m => {
+        const tournament = allTournaments.find(t => t.id === m.tournament_id);
+        const homeTeam = allTeams.find(t => t.id === m.home_team_id);
+        const awayTeam = allTeams.find(t => t.id === m.away_team_id);
+        const scheduledDate = m.scheduled_datetime
+            ? new Date(m.scheduled_datetime).toLocaleDateString('es-MX', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
+            : 'TBD';
+
+        const isLive = m.status === 'LIVE';
+        const rowStyle = isLive ? 'background:rgba(220,53,69,0.06); border-left:3px solid #dc3545;' : '';
+        const scoreColor = isLive ? '#dc3545' : 'var(--text-primary)';
+
+        return `
+    <tr data-id="${m.id}" style="${rowStyle}">
+      <td>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <div style="width:28px; height:28px; border-radius:6px; background:linear-gradient(135deg,#ffd700,#ff6b35); display:flex; align-items:center; justify-content:center; color:#fff; font-size:0.65rem; flex-shrink:0;">
+            <i class="fas fa-trophy"></i>
+          </div>
+          <span style="font-weight:600; font-size:0.82rem;">${tournament?.name || 'N/A'}</span>
+        </div>
+      </td>
+      <td>
+        <span style="background:rgba(99,102,241,0.15); color:#818cf8; padding:2px 10px; border-radius:12px; font-size:0.75rem; font-weight:700;">R${m.round}</span>
+      </td>
+      <td style="font-weight:700; font-size:0.85rem;">${homeTeam?.name || 'TBD'}</td>
+      <td>
+        <div style="display:flex; align-items:center; gap:6px;">
+          <span style="font-size:1.1rem; font-weight:800; color:${scoreColor};">${m.home_score}</span>
+          <span style="font-size:0.75rem; color:var(--text-muted); font-weight:600;">VS</span>
+          <span style="font-size:1.1rem; font-weight:800; color:${scoreColor};">${m.away_score}</span>
+        </div>
+      </td>
+      <td style="font-weight:700; font-size:0.85rem;">${awayTeam?.name || 'TBD'}</td>
+      <td>${getMatchStatusBadge(m.status)}</td>
+      <td style="font-size:0.78rem; color:var(--text-secondary);">${scheduledDate}</td>
+      <td>
+        <div style="display:inline-flex; gap:6px;">
+          <button class="btn btn-sm btn-icon" data-action="score" title="Reportar marcador" style="background:rgba(25,135,84,0.15); color:#34d399; border:1px solid rgba(25,135,84,0.3); padding:5px 8px; border-radius:6px; cursor:pointer;">
+            <i class="fas fa-flag-checkered"></i>
+          </button>
+          <button class="btn btn-sm btn-icon" data-action="delete" title="Eliminar" style="background:rgba(220,53,69,0.15); color:#f87171; border:1px solid rgba(220,53,69,0.3); padding:5px 8px; border-radius:6px; cursor:pointer;">
+            <i class="fas fa-trash"></i>
+          </button>
+        </div>
+      </td>
+    </tr>
+  `;
+    }).join('');
 }
 
 function handleFilter() {
-  const tournamentFilter = document.getElementById('filterTournament').value;
-  const statusFilter = document.getElementById('filterStatus').value;
+    const query = document.getElementById('searchMatches').value.toLowerCase();
+    const statusFilter = document.getElementById('statusFilter').value;
+    const tournamentFilter = document.getElementById('tournamentFilter').value;
 
-  let filtered = [...allMatches];
+    const filtered = allMatches.filter(m => {
+        const tournament = allTournaments.find(t => t.id === m.tournament_id);
+        const homeTeam = allTeams.find(t => t.id === m.home_team_id);
+        const awayTeam = allTeams.find(t => t.id === m.away_team_id);
 
-  if (tournamentFilter) {
-    filtered = filtered.filter(m => m.tournament_id === tournamentFilter);
-  }
-  if (statusFilter) {
-    filtered = filtered.filter(m => m.status === statusFilter);
-  }
+        const matchesSearch = (tournament?.name || '').toLowerCase().includes(query) ||
+            (homeTeam?.name || '').toLowerCase().includes(query) ||
+            (awayTeam?.name || '').toLowerCase().includes(query);
 
-  document.getElementById('matchesTableBody').innerHTML = renderMatchesRows(filtered);
+        let matchesStatus = true;
+        if (statusFilter !== 'all') matchesStatus = m.status === statusFilter;
+
+        let matchesTournament = true;
+        if (tournamentFilter !== 'all') matchesTournament = m.tournament_id === tournamentFilter;
+
+        return matchesSearch && matchesStatus && matchesTournament;
+    });
+
+    document.getElementById('matchesTableBody').innerHTML = renderMatchesRows(filtered);
 }
 
 async function handleTableActions(e) {
-  const btn = e.target.closest('button[data-action]');
-  if (!btn) return;
+    const btn = e.target.closest('button[data-action]');
+    if (!btn) return;
 
-  const action = btn.dataset.action;
-  const row = btn.closest('tr');
-  const matchId = row.dataset.id;
+    const action = btn.dataset.action;
+    const row = btn.closest('tr');
+    const id = row.dataset.id;
 
-  if (action === 'score') {
-    const match = allMatches.find(m => m.id === matchId);
-    showScoreModal(match);
-  } else if (action === 'edit') {
-    const match = allMatches.find(m => m.id === matchId);
-    showMatchForm(match);
-  } else if (action === 'delete') {
-    if (await confirmDialog('¿Estás seguro de eliminar esta partida?')) {
-      try {
-        await API.matches.delete(matchId);
-        showToast('success', 'Éxito', 'Partida eliminada correctamente');
-        row.remove();
-        allMatches = allMatches.filter(m => m.id !== matchId);
-      } catch (error) {
-        showToast('error', 'Error', error.message);
-      }
+    if (action === 'score') {
+        const match = allMatches.find(m => m.id === id);
+        showScoreModal(match);
+    } else if (action === 'delete') {
+        if (await confirmDialog('¿Estás seguro de eliminar esta partida?')) {
+            try {
+                await API.matches.delete(id);
+                showToast('success', 'Éxito', 'Partida eliminada correctamente');
+                row.remove();
+                allMatches = allMatches.filter(m => m.id !== id);
+            } catch (error) {
+                showToast('error', 'Error', error.message);
+            }
+        }
     }
-  }
 }
 
 function showScoreModal(match) {
-  const team1 = allTeams.find(t => t.id === match.home_team_id);
-  const team2 = allTeams.find(t => t.id === match.away_team_id);
+    const homeTeam = allTeams.find(t => t.id === match.home_team_id);
+    const awayTeam = allTeams.find(t => t.id === match.away_team_id);
+    const title = '🏆 Reportar Marcador';
 
-  const content = `
-    <form id="scoreForm">
-      <div class="score-input">
-        <div class="team-score">
-          <label class="form-label">${team1?.name || 'Equipo Local'}</label>bel>
-          <input type="number" class="form-control score-field" name="home_score" 
-                 value="${match.home_score || 0}" min="0" required>
+    const formHtml = `
+    <form id="scoreForm" style="display:flex; flex-direction:column; gap:16px;">
+      <div style="display:flex; align-items:center; justify-content:center; gap:20px; padding:16px; background:rgba(255,255,255,0.05); border-radius:8px;">
+        <div style="text-align:center;">
+          <div style="font-size:1rem; font-weight:700; margin-bottom:6px;">${homeTeam?.name || 'Local'}</div>
+          <input type="number" class="form-control" name="home_score" value="${match.home_score || 0}" min="0"
+                 style="width:70px; text-align:center; font-size:1.2rem; font-weight:700; padding:8px;">
         </div>
-        <div class="vs-separator">VS</div>
-        <div class="team-score">
-          <label class="form-label">${team2?.name || 'Equipo Visitante'}</label>
-          <input type="number" class="form-control score-field" name="away_score" 
-                 value="${match.away_score || 0}" min="0" required>
+        <div style="font-size:1.5rem; font-weight:700; color:var(--text-secondary);">VS</div>
+        <div style="text-align:center;">
+          <div style="font-size:1rem; font-weight:700; margin-bottom:6px;">${awayTeam?.name || 'Visitante'}</div>
+          <input type="number" class="form-control" name="away_score" value="${match.away_score || 0}" min="0"
+                 style="width:70px; text-align:center; font-size:1.2rem; font-weight:700; padding:8px;">
         </div>
       </div>
-
-      <div class="form-group" style="margin-top: 20px;">
-        <label class="form-label">Ganador</label>
-        <select class="form-control" name="winner_id" required>
-          <option value="">Seleccionar ganador</option>
-          <option value="${match.home_team_id}">${team1?.name || 'Equipo Local'}</option>
-          <option value="${match.away_team_id}">${team2?.name || 'Equipo Visitante'}</option>
-        </select>
-      </div>
-
       <div class="form-group">
-        <label class="form-label">Estado</label>
-        <select class="form-control" name="status">
-          <option value="COMPLETED" selected>Completada</option>
-          <option value="LIVE">En Progreso</option>
-          <option value="SCHEDULED">Programada</option>
-          <option value="DISPUTED">Disputada</option>
-          <option value="CANCELLED">Cancelada</option>
+        <label class="form-label" style="font-weight:600; margin-bottom:6px; display:block;">Estado</label>
+        <select class="form-control" name="status" style="padding:8px 12px; font-size:0.9rem;">
+          <option value="SCHEDULED" ${match.status === 'SCHEDULED' ? 'selected' : ''}>Programado</option>
+          <option value="LIVE" ${match.status === 'LIVE' ? 'selected' : ''}>En Vivo</option>
+          <option value="COMPLETED" ${match.status === 'COMPLETED' ? 'selected' : ''}>Completado</option>
+          <option value="CANCELLED" ${match.status === 'CANCELLED' ? 'selected' : ''}>Cancelado</option>
         </select>
       </div>
-
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" onclick="window.closeModal()">Cancelar</button>
-        <button type="submit" class="btn btn-success">
-          <i class="fas fa-check"></i> Guardar Resultado
-        </button>
-      </div>
-    </form>
-    <style>
-      .score-input {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 30px;
-        padding: 20px 0;
-      }
-      .team-score {
-        text-align: center;
-      }
-      .score-field {
-        font-size: 2rem;
-        text-align: center;
-        width: 100px;
-        padding: 15px;
-      }
-      .vs-separator {
-        font-size: 1.5rem;
-        font-weight: bold;
-        color: var(--text-secondary);
-      }
-    </style>
-  `;
-
-  openModal('Reportar Resultado', content);
-
-  document.getElementById('scoreForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const formData = new FormData(e.target);
-    const winnerId = formData.get('winner_id');
-    const homeScore = formData.get('home_score');
-    const awayScore = formData.get('away_score');
-    
-    const data = {
-      home_score: homeScore ? parseInt(homeScore) : 0,
-      away_score: awayScore ? parseInt(awayScore) : 0,
-      winner_id: winnerId && winnerId.trim() !== '' ? winnerId : null,
-      status: formData.get('status')
-    };
-
-    console.log('📤 Sending match update:', data);
-
-    try {
-      await API.matches.update(match.id, data);
-      showToast('success', 'Éxito', 'Resultado guardado correctamente');
-      closeModal();
-      const container = document.getElementById('pageContent');
-      renderMatches(container);
-    } catch (error) {
-      console.error('Match update error:', error);
-      showToast('error', 'Error', error.message);
-    }
-  });
-}
-
-function showMatchForm(match = null) {
-  const isEdit = !!match;
-  const title = isEdit ? 'Editar Partida' : 'Nueva Partida';
-
-  const tournamentsOptions = allTournaments.map(t =>
-    `<option value="${t.id}" ${match?.tournament_id === t.id ? 'selected' : ''}>${t.name}</option>`
-  ).join('');
-
-  const teamsOptions = allTeams.map(t =>
-    `<option value="${t.id}">${t.name}</option>`
-  ).join('');
-
-  const formHtml = `
-    <form id="matchForm">
-      <div class="form-group">
-        <label class="form-label">Torneo *</label>
-        <select class="form-control" name="tournament_id" required>
-          <option value="">Seleccionar torneo</option>
-          ${tournamentsOptions}
-        </select>
-      </div>
-
-      <div class="form-row">
-        <div class="form-group">
-          <label class="form-label">Equipo Local</label>
-          <select class="form-control" name="home_team_id">
-            <option value="">Sin asignar</option>
-            ${teamsOptions}
-          </select>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Equipo Visitante</label>
-          <select class="form-control" name="away_team_id">
-            <option value="">Sin asignar</option>
-            ${teamsOptions}
-          </select>
-        </div>
-      </div>
-
-      <div class="form-row">
-        <div class="form-group">
-          <label class="form-label">Ronda *</label>
-          <input type="number" class="form-control" name="round" 
-                 value="${match?.round || 1}" min="1" required>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Número de Match *</label>
-          <input type="number" class="form-control" name="match_number" 
-                 value="${match?.match_number || 1}" min="1" required>
-        </div>
-      </div>
-
-      <div class="form-row">
-        <div class="form-group">
-          <label class="form-label">Posición en Bracket *</label>
-          <input type="number" class="form-control" name="bracket_position" 
-                 value="${match?.bracket_position || 1}" min="1" required>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Mejor de (BO)</label>
-          <select class="form-control" name="best_of">
-            <option value="1" ${match?.best_of === 1 ? 'selected' : ''}>BO1</option>
-            <option value="3" ${match?.best_of === 3 ? 'selected' : ''}>BO3</option>
-            <option value="5" ${match?.best_of === 5 ? 'selected' : ''}>BO5</option>
-          </select>
-        </div>
-      </div>
-
-      <div class="form-row">
-        <div class="form-group">
-          <label class="form-label">Estado</label>
-          <select class="form-control" name="status">
-            <option value="SCHEDULED" ${match?.status === 'SCHEDULED' ? 'selected' : ''}>Programada</option>
-            <option value="CHECK_IN" ${match?.status === 'CHECK_IN' ? 'selected' : ''}>Check-in</option>
-            <option value="LIVE" ${match?.status === 'LIVE' ? 'selected' : ''}>En Vivo</option>
-            <option value="COMPLETED" ${match?.status === 'COMPLETED' ? 'selected' : ''}>Completada</option>
-            <option value="CANCELLED" ${match?.status === 'CANCELLED' ? 'selected' : ''}>Cancelada</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Fecha Programada</label>
-          <input type="datetime-local" class="form-control" name="scheduled_datetime" 
-                 value="${match?.scheduled_datetime ? formatForInput(match.scheduled_datetime) : ''}">
-        </div>
-      </div>
-
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" onclick="window.closeModal()">Cancelar</button>
-        <button type="submit" class="btn btn-primary">
-          <i class="fas fa-save"></i> ${isEdit ? 'Actualizar' : 'Crear'}
+      <div class="modal-footer" style="display:flex; justify-content:flex-end; gap:8px; padding-top:8px; border-top:1px solid var(--border-color);">
+        <button type="button" class="btn btn-secondary" onclick="window.closeModal()" style="padding:8px 16px;">Cancelar</button>
+        <button type="submit" class="btn btn-primary" style="padding:8px 20px;">
+          <i class="fas fa-save"></i> Guardar
         </button>
       </div>
     </form>
   `;
 
-  openModal(title, formHtml);
+    openModal(title, formHtml);
 
-  // Pre-select teams if editing
-  if (isEdit) {
-    setTimeout(() => {
-      document.querySelector(`select[name="home_team_id"]`).value = match.home_team_id || '';
-      document.querySelector(`select[name="away_team_id"]`).value = match.away_team_id || '';
-    }, 100);
-  }
+    document.getElementById('scoreForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const formData = new FormData(e.target);
+        const data = Object.fromEntries(formData.entries());
+        data.home_score = parseInt(data.home_score) || 0;
+        data.away_score = parseInt(data.away_score) || 0;
 
-  document.getElementById('matchForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const formData = new FormData(e.target);
-    const data = Object.fromEntries(formData.entries());
-
-    // Convert numeric fields
-    data.round = parseInt(data.round) || 1;
-    data.match_number = parseInt(data.match_number) || 1;
-    data.bracket_position = parseInt(data.bracket_position) || 1;
-    data.best_of = parseInt(data.best_of) || 1;
-
-    // Remove empty optional fields
-    if (!data.home_team_id) delete data.home_team_id;
-    if (!data.away_team_id) delete data.away_team_id;
-
-    // Convert datetime to ISO format if provided
-    if (data.scheduled_datetime) {
-      data.scheduled_datetime = new Date(data.scheduled_datetime).toISOString();
-    } else {
-      delete data.scheduled_datetime;
-    }
-
-    // Validate teams are different if both provided
-    if (data.home_team_id && data.away_team_id && data.home_team_id === data.away_team_id) {
-      showToast('error', 'Error', 'Los equipos deben ser diferentes');
-      return;
-    }
-
-    try {
-      if (isEdit) {
-        // When editing, don't send tournament_id (it cannot be changed)
-        delete data.tournament_id;
-        await API.matches.update(match.id, data);
-        showToast('success', 'Éxito', 'Partida actualizada correctamente');
-      } else {
-        await API.matches.create(data);
-        showToast('success', 'Éxito', 'Partida creada correctamente');
-      }
-      closeModal();
-      const container = document.getElementById('pageContent');
-      renderMatches(container);
-    } catch (error) {
-      showToast('error', 'Error', error.message);
-    }
-  });
-}
-
-function formatForInput(dateString) {
-  if (!dateString) return '';
-  const date = new Date(dateString);
-  return date.toISOString().slice(0, 16);
+        try {
+            await API.matches.update(match.id, data);
+            showToast('success', 'Éxito', 'Marcador actualizado correctamente');
+            closeModal();
+            const container = document.getElementById('pageContent');
+            renderMatches(container);
+        } catch (error) {
+            showToast('error', 'Error', error.message);
+        }
+    });
 }
 
 window.closeModal = closeModal;

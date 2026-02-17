@@ -93,14 +93,14 @@ export default function SubscriptionScreen({ navigation }) {
                 <View style={styles.heroSection}>
                     <View style={styles.heroBadge}>
                         <Ionicons name="diamond" size={14} color={colors.warning} />
-                        <Text style={styles.heroBadgeText}>PLANES PREMIUM</Text>
+                        <Text style={styles.heroBadgeText}>ADMIN DE TORNEOS</Text>
                     </View>
                     <Text style={styles.heroTitle}>
-                        Lleva tu experiencia gaming{'\n'}
-                        <Text style={styles.heroTitleGradient}>al siguiente nivel</Text>
+                        Crea y administra{'\n'}
+                        <Text style={styles.heroTitleGradient}>tus propios torneos</Text>
                     </Text>
                     <Text style={styles.heroSubtitle}>
-                        Elige el plan perfecto y desbloquea todo el potencial
+                        Suscríbete para crear torneos, invitar jugadores por URL y cobrar cuota de inscripción
                     </Text>
 
                     {/* Billing Toggle */}
@@ -378,9 +378,9 @@ export default function SubscriptionScreen({ navigation }) {
                         colors={gradients.primary}
                         style={styles.ctaCard}
                     >
-                        <Text style={styles.ctaTitle}>¿Listo para dominar?</Text>
+                        <Text style={styles.ctaTitle}>¿Listo para organizar?</Text>
                         <Text style={styles.ctaSubtitle}>
-                            Únete a miles de gamers disfrutando de beneficios premium
+                            Crea torneos, genera URLs de invitación y cobra cuotas de inscripción
                         </Text>
                         <TouchableOpacity
                             style={styles.ctaButton}

@@ -137,6 +137,9 @@ export const api = {
         getAll: () => getCached('/tournaments', 'tournaments', CACHE_TTL.TOURNAMENTS),
         getById: (id) => getCached(`/tournaments/${id}`, `tournament_${id}`, CACHE_TTL.TOURNAMENTS),
         refresh: () => refreshCached('/tournaments', 'tournaments', CACHE_TTL.TOURNAMENTS),
+        // Invite system
+        getByInviteCode: (inviteCode) => get(`/tournaments/invite/${inviteCode}`),
+        registerViaInvite: (inviteCode, data) => post(`/tournaments/invite/${inviteCode}/register`, data),
     },
 
     rankings: {

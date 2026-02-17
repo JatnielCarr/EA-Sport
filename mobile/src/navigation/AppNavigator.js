@@ -38,6 +38,7 @@ const linking = {
                         screens: {
                             TournamentsList: 'tournaments',
                             TournamentDetail: 'tournaments/:id',
+                            TournamentInvite: 'tournament/invite/:inviteCode',
                         },
                     },
                     ProfileTab: {

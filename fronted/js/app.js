@@ -13,7 +13,6 @@ import { renderBrackets } from './pages/brackets.js';
 import { renderLogin, cleanupLogin } from './pages/login.js';
 import { renderRegister, cleanupRegister } from './pages/register.js';
 import { renderBracket } from './pages/bracket.js';
-import { renderMyClan } from './pages/my-clan.js';
 
 import { showToast, initGamingEffects, closeModal, initModalHandlers, cleanupModalHandlers } from './ui.js';
 import { getInitials } from './utils.js';
@@ -37,11 +36,6 @@ const routes = {
   '/games': renderGames,
   '/leaderboard': renderLeaderboard,
   '/brackets': renderBrackets,
-
-  // Clan Leader Routes
-  '/my-clan': renderMyClan,
-  '/my-tournaments': renderTournaments,
-  '/my-matches': renderMatches,
 
   '/login': renderLogin,
   '/register': renderRegister
@@ -107,21 +101,6 @@ async function navigateTo(route) {
   if ((route === '/login' || route === '/register') && Auth.isLoggedIn()) {
     window.location.hash = '#/dashboard';
     return;
-  }
-
-  // Redirect ClanLeaders from admin routes to their equivalent routes
-  if (Auth.isClanLeader() && !Auth.isSuperAdmin()) {
-    const adminToLeaderRedirects = {
-      '/teams': '/my-clan',
-      '/users': '/dashboard',
-      '/games': '/dashboard',
-      '/brackets': '/dashboard'
-    };
-
-    if (adminToLeaderRedirects[route]) {
-      window.location.hash = '#' + adminToLeaderRedirects[route];
-      return;
-    }
   }
 
   // Find matching route handler

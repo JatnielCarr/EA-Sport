@@ -107,11 +107,30 @@ export async function renderPaymentSuccess(container) {
     </style>
     `;
 
-    // Fetch current balance
+    // Verify payment session with Stripe and then fetch balance
     try {
+        const balanceDisplay = container.querySelector('#balanceDisplay');
+
+        // Step 1: Verify the payment session if we have a session_id
+        if (sessionId) {
+            try {
+                balanceDisplay.innerHTML = `
+                    <span class="loading"><i class="fas fa-spinner fa-spin"></i> Verificando pago...</span>
+                `;
+                const verifyResponse = await API.payment.verifySession(sessionId);
+                if (verifyResponse.success) {
+                    console.log('✅ Payment verified:', verifyResponse);
+                } else {
+                    console.warn('Payment verification returned:', verifyResponse);
+                }
+            } catch (verifyError) {
+                console.warn('Could not verify session (might already be verified):', verifyError.message);
+            }
+        }
+
+        // Step 2: Fetch updated balance
         const response = await API.payment.getBalance();
         if (response.success) {
-            const balanceDisplay = container.querySelector('#balanceDisplay');
             balanceDisplay.innerHTML = `
                 <div class="label">Tu saldo actual</div>
                 <div class="amount">$${parseFloat(response.balance).toLocaleString('es-MX', { minimumFractionDigits: 2 })} MXN</div>

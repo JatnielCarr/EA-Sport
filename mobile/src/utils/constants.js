@@ -2,7 +2,7 @@ import { Platform } from 'react-native';
 
 // Use 10.0.2.2 for Android Emulator to access host localhost
 // Use your machine's local IP (e.g., 192.168.1.x) for physical device testing
-export const API_URL = 'http://192.168.0.101:3000';
+export const API_URL = 'http://10.3.0.132:3000';
 
 export const APP_NAME = 'ApexTournament';
 export const VERSION = '1.0.0';
@@ -16,11 +16,12 @@ export const PLANS = {
         name: 'Gratis',
         monthlyPrice: 0,
         yearlyPrice: 0,
+        maxParticipants: 0,
+        maxTournaments: 0,
         features: [
-            'Torneos gratuitos',
+            'Participar en torneos por invitación',
             'Perfil básico',
             'Chat global',
-            'Estadísticas básicas',
             'Ver partidas en vivo',
         ],
     },
@@ -29,11 +30,15 @@ export const PLANS = {
         name: 'Standard',
         monthlyPrice: 499,
         yearlyPrice: 4999,
+        maxParticipants: 16,
+        maxTournaments: 3,
         features: [
-            'Todo lo de Gratis',
-            'Torneos premium',
+            'Crear y administrar torneos',
+            'Hasta 16 jugadores por torneo',
+            'Hasta 3 torneos activos',
+            'URL de invitación al torneo',
+            'Cobro de cuota de inscripción',
             'Estadísticas avanzadas',
-            'Badge STANDARD exclusivo',
             'Sin anuncios',
         ],
     },
@@ -42,11 +47,14 @@ export const PLANS = {
         name: 'Premium',
         monthlyPrice: 999,
         yearlyPrice: 9999,
+        maxParticipants: 64,
+        maxTournaments: 10,
         features: [
             'Todo lo de Standard',
-            'Torneos exclusivos',
-            'Badge LEGEND exclusivo',
-            'Soporte prioritario',
+            'Hasta 64 jugadores por torneo',
+            'Hasta 10 torneos activos',
+            'Análisis profesional',
+            'Soporte prioritario 24/7',
             'Acceso anticipado a funciones',
         ],
     },
@@ -69,14 +77,16 @@ export const CACHE_TTL = {
 // Feature Comparison (for subscription screen)
 // ==========================================
 export const COMPARISON_FEATURES = [
-    { name: 'Torneos Gratuitos', free: true, standard: true, premium: true, icon: 'trophy' },
-    { name: 'Torneos Premium', free: false, standard: true, premium: true, icon: 'diamond' },
-    { name: 'Torneos Exclusivos', free: false, standard: false, premium: true, icon: 'star' },
+    { name: 'Unirse a torneos por invitación', free: true, standard: true, premium: true, icon: 'trophy' },
+    { name: 'Crear torneos', free: false, standard: true, premium: true, icon: 'add-circle' },
+    { name: 'Máx. jugadores por torneo', free: '-', standard: '16', premium: '64', icon: 'people' },
+    { name: 'Torneos activos', free: '-', standard: '3', premium: '10', icon: 'list' },
+    { name: 'URL de invitación', free: false, standard: true, premium: true, icon: 'link' },
+    { name: 'Cobrar cuota de inscripción', free: false, standard: true, premium: true, icon: 'cash' },
     { name: 'Estadísticas Avanzadas', free: false, standard: true, premium: true, icon: 'analytics' },
-    { name: 'Badge Exclusivo', free: false, standard: 'STANDARD', premium: 'LEGEND', icon: 'ribbon' },
     { name: 'Sin Anuncios', free: false, standard: true, premium: true, icon: 'ban' },
     { name: 'Soporte Prioritario', free: false, standard: false, premium: true, icon: 'headset' },
-    { name: 'Acceso Anticipado', free: false, standard: false, premium: true, icon: 'flask' },
+    { name: 'Análisis Profesional', free: false, standard: false, premium: true, icon: 'flask' },
 ];
 
 // ==========================================

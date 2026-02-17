@@ -145,6 +145,80 @@ export async function paymentRoutes(app: FastifyInstance) {
         return { success: true, data: payments };
     });
 
+    // Verify payment session (replaces webhook for local dev)
+    app.get('/payment/verify-session/:sessionId', {
+        preHandler: [app.authenticate],
+        schema: {
+            tags: ['Payment'],
+            description: 'Verify Stripe checkout session and update payment status'
+        }
+    }, async (request: any, reply) => {
+        const { sessionId } = request.params as { sessionId: string };
+        const userId = request.user.id;
+
+        try {
+            // Retrieve the checkout session from Stripe
+            const session = await stripe.checkout.sessions.retrieve(sessionId);
+
+            if (!session) {
+                return reply.status(404).send({ success: false, error: 'Session not found' });
+            }
+
+            // Verify this session belongs to this user
+            const metadata = session.metadata || {};
+            if (metadata.userId !== userId && session.client_reference_id !== userId) {
+                return reply.status(403).send({ success: false, error: 'Session does not belong to this user' });
+            }
+
+            // Check payment status
+            if (session.payment_status !== 'paid') {
+                return { success: false, error: 'Payment not completed', status: session.payment_status };
+            }
+
+            const paymentType = metadata.type;
+
+            // Update payment record in DB
+            await prisma.payment.updateMany({
+                where: { stripe_session_id: sessionId, user_id: userId },
+                data: {
+                    status: paymentType === 'name_change' ? 'name_change_approved' : 'succeeded',
+                    stripe_payment_id: session.payment_intent as string
+                }
+            });
+
+            // Handle specific payment type actions
+            if (paymentType === 'add_funds' || paymentType === 'balance_topup') {
+                const amount = parseFloat(metadata.amount || '0');
+                if (amount > 0) {
+                    await prisma.user.update({
+                        where: { id: userId },
+                        data: { balance: { increment: amount } }
+                    });
+                }
+            }
+
+            // Get the updated payment record
+            const payment = await prisma.payment.findFirst({
+                where: { stripe_session_id: sessionId, user_id: userId }
+            });
+
+            console.log(`✅ Payment verified: ${userId} - type: ${paymentType} - session: ${sessionId}`);
+
+            return {
+                success: true,
+                data: payment,
+                paymentType: paymentType,
+                message: paymentType === 'name_change'
+                    ? 'Pago aprobado. Ya puedes cambiar tu nombre.'
+                    : 'Pago completado exitosamente.'
+            };
+
+        } catch (error: any) {
+            console.error('Payment verification error:', error);
+            return reply.status(500).send({ success: false, error: 'Failed to verify session' });
+        }
+    });
+
     // Create Name Change Checkout Session
     app.post('/payment/name-change-checkout', {
         preHandler: [app.authenticate],
@@ -165,9 +239,9 @@ export async function paymentRoutes(app: FastifyInstance) {
 
         // Verify that user has already used their free name change
         if (dbUser.name_change_count === 0) {
-            return reply.status(400).send({ 
-                success: false, 
-                error: 'Tu primer cambio de nombre es gratis. No necesitas pagar.' 
+            return reply.status(400).send({
+                success: false,
+                error: 'Tu primer cambio de nombre es gratis. No necesitas pagar.'
             });
         }
 
@@ -271,9 +345,9 @@ export async function paymentRoutes(app: FastifyInstance) {
             });
 
             if (!payment) {
-                return reply.status(400).send({ 
-                    success: false, 
-                    error: 'No se encontró un pago válido para el cambio de nombre' 
+                return reply.status(400).send({
+                    success: false,
+                    error: 'No se encontró un pago válido para el cambio de nombre'
                 });
             }
 
@@ -303,7 +377,7 @@ export async function paymentRoutes(app: FastifyInstance) {
             // Mark payment as used
             await prisma.payment.update({
                 where: { id: payment.id },
-                data: { 
+                data: {
                     status: 'name_change_used',
                     metadata: JSON.stringify({
                         type: 'name_change',

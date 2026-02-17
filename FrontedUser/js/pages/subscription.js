@@ -34,10 +34,10 @@ export async function renderSubscription(container) {
             <div class="hero-glow"></div>
             <div class="container">
                 <div class="hero-badge">
-                    <i class="fas fa-crown"></i> PLANES PREMIUM
+                    <i class="fas fa-crown"></i> ADMINISTRADOR DE TORNEOS
                 </div>
-                <h1>Lleva tu experiencia gaming <span class="gradient-text">al siguiente nivel</span></h1>
-                <p class="hero-subtitle">Elige el plan perfecto para ti y desbloquea todo el potencial de ApexTournament</p>
+                <h1>Crea y administra <span class="gradient-text">tus propios torneos</span></h1>
+                <p class="hero-subtitle">Suscríbete para crear torneos, invitar jugadores por URL y cobrar cuota de inscripción</p>
                 
                 <!-- Billing Toggle -->
                 <div class="billing-toggle">
@@ -85,6 +85,7 @@ export async function renderSubscription(container) {
             <div class="container">
                 <div class="pricing-grid">
                     ${renderPlanCard(plans.find(p => p.id === 'FREE') || getDefaultFreePlan(), currentSubscription, isYearlyBilling)}
+                    ${renderPlanCard(plans.find(p => p.id === 'STANDARD') || getDefaultStandardPlan(), currentSubscription, isYearlyBilling)}
                     ${renderPlanCard(plans.find(p => p.id === 'PREMIUM') || getDefaultPremiumPlan(), currentSubscription, isYearlyBilling, true)}
                 </div>
             </div>
@@ -104,49 +105,62 @@ export async function renderSubscription(container) {
                             <tr>
                                 <th>Característica</th>
                                 <th><i class="fas fa-user"></i> Gratis</th>
+                                <th><i class="fas fa-shield-alt"></i> Standard</th>
                                 <th class="highlight"><i class="fas fa-gem"></i> Premium</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr>
-                                <td><i class="fas fa-trophy"></i> Torneos Gratuitos</td>
+                                <td><i class="fas fa-trophy"></i> Unirse a torneos por invitación</td>
+                                <td><i class="fas fa-check text-success"></i></td>
                                 <td><i class="fas fa-check text-success"></i></td>
                                 <td class="highlight"><i class="fas fa-check text-success"></i></td>
                             </tr>
                             <tr>
-                                <td><i class="fas fa-crown"></i> Torneos Premium</td>
+                                <td><i class="fas fa-plus-circle"></i> Crear torneos</td>
+                                <td><i class="fas fa-times text-muted"></i></td>
+                                <td><i class="fas fa-check text-success"></i></td>
+                                <td class="highlight"><i class="fas fa-check text-success"></i></td>
+                            </tr>
+                            <tr>
+                                <td><i class="fas fa-users"></i> Máx. jugadores por torneo</td>
+                                <td><span class="text-muted">-</span></td>
+                                <td><strong>Hasta 16</strong></td>
+                                <td class="highlight"><strong>Hasta 64</strong></td>
+                            </tr>
+                            <tr>
+                                <td><i class="fas fa-list"></i> Torneos activos simultáneos</td>
+                                <td><span class="text-muted">-</span></td>
+                                <td><strong>Hasta 3</strong></td>
+                                <td class="highlight"><strong>Hasta 10</strong></td>
+                            </tr>
+                            <tr>
+                                <td><i class="fas fa-link"></i> URL de invitación</td>
+                                <td><i class="fas fa-times text-muted"></i></td>
                                 <td><i class="fas fa-times text-muted"></i></td>
                                 <td class="highlight"><i class="fas fa-check text-success"></i></td>
                             </tr>
                             <tr>
-                                <td><i class="fas fa-star"></i> Torneos Exclusivos</td>
+                                <td><i class="fas fa-money-bill"></i> Cobrar cuota de inscripción</td>
+                                <td><i class="fas fa-times text-muted"></i></td>
                                 <td><i class="fas fa-times text-muted"></i></td>
                                 <td class="highlight"><i class="fas fa-check text-success"></i></td>
                             </tr>
                             <tr>
                                 <td><i class="fas fa-chart-line"></i> Estadísticas Avanzadas</td>
                                 <td><i class="fas fa-times text-muted"></i></td>
-                                <td class="highlight"><i class="fas fa-check text-success"></i></td>
-                            </tr>
-
-                            <tr>
-                                <td><i class="fas fa-award"></i> Badge Exclusivo</td>
                                 <td><i class="fas fa-times text-muted"></i></td>
-                                <td class="highlight"><span class="badge-premium">LEGEND</span></td>
+                                <td class="highlight"><i class="fas fa-check text-success"></i></td>
                             </tr>
                             <tr>
                                 <td><i class="fas fa-ban"></i> Sin Anuncios</td>
+                                <td><i class="fas fa-times text-muted"></i></td>
                                 <td><i class="fas fa-times text-muted"></i></td>
                                 <td class="highlight"><i class="fas fa-check text-success"></i></td>
                             </tr>
                             <tr>
                                 <td><i class="fas fa-headset"></i> Soporte Prioritario</td>
                                 <td><i class="fas fa-times text-muted"></i></td>
-                                <td class="highlight"><i class="fas fa-check text-success"></i></td>
-                            </tr>
-
-                            <tr>
-                                <td><i class="fas fa-flask"></i> Acceso Anticipado</td>
                                 <td><i class="fas fa-times text-muted"></i></td>
                                 <td class="highlight"><i class="fas fa-check text-success"></i></td>
                             </tr>
@@ -169,10 +183,10 @@ export async function renderSubscription(container) {
                         <div class="testimonial-avatar premium">
                             <i class="fas fa-user-astronaut"></i>
                         </div>
-                        <p class="testimonial-text">"Los torneos exclusivos del plan Premium son de otro nivel. La competencia es alta y los premios valen la pena."</p>
+                        <p class="testimonial-text">"Crear mi propio torneo y compartir el link de invitación fue super fácil. Mis amigos se registraron en minutos y la plataforma maneja todo."</p>
                         <div class="testimonial-author">
                             <strong>ObsidianKing</strong>
-                            <span class="badge-premium">LEGEND</span>
+                            <span class="badge-premium">ADMIN</span>
                         </div>
                     </div>
                 </div>
@@ -963,7 +977,24 @@ function getDefaultFreePlan() {
     };
 }
 
-
+function getDefaultStandardPlan() {
+    return {
+        id: 'STANDARD',
+        name: 'Standard',
+        description: 'Crea y administra tus propios torneos',
+        monthlyPrice: 499,
+        yearlyPrice: 4990,
+        features: [
+            { text: 'Crear torneos', included: true },
+            { text: 'Hasta 16 jugadores por torneo', included: true },
+            { text: 'Hasta 3 torneos activos', included: true },
+            { text: 'URL de invitación', included: true },
+            { text: 'Cobrar cuota de inscripción', included: true },
+            { text: 'Estadísticas avanzadas', included: true },
+            { text: 'Sin anuncios', included: true }
+        ]
+    };
+}
 
 function getDefaultPremiumPlan() {
     return {

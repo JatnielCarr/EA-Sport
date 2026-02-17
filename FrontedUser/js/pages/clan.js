@@ -24,18 +24,26 @@ export async function renderClanPage(container, clanId) {
     `;
 
     try {
-        // Load clan data
         const clanResponse = await API.clans.getById(clanId);
-        currentClan = clanResponse.data;
+        currentClan = clanResponse.data || {};
+
+        // Ensure arrays and required fields exist
+        if (!currentClan.members) currentClan.members = [];
+        if (!currentClan.requests) currentClan.requests = [];
+        if (!currentClan.access_type) currentClan.access_type = 'OPEN';
+        if (!currentClan.name) currentClan.name = 'Sin nombre';
+        if (!currentClan.tag) currentClan.tag = 'N/A';
 
         // Check if current user is a member
         if (isAuthenticated()) {
             const user = getStoredUser();
-            const membership = currentClan.members.find(m => m.user_id === user.id);
-            userMembership = membership ? {
-                ...membership,
-                isLeader: currentClan.leader_id === user.id
-            } : null;
+            if (user && user.id) {
+                const membership = currentClan.members.find(m => m && m.user_id === user.id);
+                userMembership = membership ? {
+                    ...membership,
+                    isLeader: currentClan.leader_id === user.id
+                } : null;
+            }
         }
 
         renderClanDetail(container);
@@ -47,7 +55,7 @@ export async function renderClanPage(container, clanId) {
                     <div class="error-state">
                         <i class="fas fa-exclamation-triangle"></i>
                         <h3>Clan no encontrado</h3>
-                        <p>${error.message}</p>
+                        <p>${error.message || 'Error desconocido'}</p>
                         <a href="#/clanes" class="btn btn-primary">Volver a Clanes</a>
                     </div>
                 </div>
@@ -59,24 +67,31 @@ export async function renderClanPage(container, clanId) {
 function renderClanDetail(container) {
     const clan = currentClan;
     const isMember = !!userMembership;
-    const isLeader = userMembership?.isLeader;
+    const isLeader = userMembership?.isLeader || false;
     const isOfficer = userMembership?.role === 'OFFICER';
     const canManage = isLeader || isOfficer;
+
+    const accessType = clan.access_type || 'OPEN';
+    const clanName = clan.name || 'Sin nombre';
+    const clanTag = clan.tag || 'N/A';
+    const memberCount = clan.members ? clan.members.length : 0;
+    const maxMembers = clan.max_members || 50;
+    const leaderName = clan.leader?.username || 'N/A';
 
     container.innerHTML = `
         <div class="clan-detail">
             <!-- Banner -->
-            <div class="clan-detail-banner" style="${clan.banner_url ? `background-image: url('${clan.banner_url}')` : ''}">
+            <div class="clan-detail-banner" style="${clan.banner_url ? "background-image: url('" + clan.banner_url + "')" : ''}">
                 <div class="clan-detail-banner-overlay">
                     <a href="#/clanes" class="btn btn-secondary back-btn">
                         <i class="fas fa-arrow-left"></i> Volver
                     </a>
                     <div class="clan-detail-header">
-                        <h1 class="clan-detail-name">${clan.name}</h1>
-                        <span class="clan-detail-tag">[${clan.tag}]</span>
-                        <div class="clan-access-badge ${clan.access_type.toLowerCase()}">
-                            <i class="fas ${getAccessIcon(clan.access_type)}"></i>
-                            ${getAccessLabel(clan.access_type)}
+                        <h1 class="clan-detail-name">${clanName}</h1>
+                        <span class="clan-detail-tag">[${clanTag}]</span>
+                        <div class="clan-access-badge ${accessType.toLowerCase()}">
+                            <i class="fas ${getAccessIcon(accessType)}"></i>
+                            ${getAccessLabel(accessType)}
                         </div>
                     </div>
                 </div>
@@ -88,71 +103,22 @@ function renderClanDetail(container) {
                     <div class="clan-detail-main">
                         <!-- Description -->
                         <div class="clan-card-section">
-                            <h3><i class="fas fa-info-circle"></i> Descripción</h3>
-                            <p>${clan.description || 'Este clan no tiene descripción aún.'}</p>
+                            <h3><i class="fas fa-info-circle"></i> Descripcion</h3>
+                            <p>${clan.description || 'Este clan no tiene descripcion aun.'}</p>
                         </div>
 
-                        ${clan.requirements ? `
-                            <div class="clan-card-section">
-                                <h3><i class="fas fa-clipboard-list"></i> Requisitos</h3>
-                                <p>${clan.requirements}</p>
-                            </div>
-                        ` : ''}
+                        ${clan.requirements ? '<div class="clan-card-section"><h3><i class="fas fa-clipboard-list"></i> Requisitos</h3><p>' + clan.requirements + '</p></div>' : ''}
 
                         <!-- Members -->
                         <div class="clan-card-section">
-                            <h3><i class="fas fa-users"></i> Miembros (${clan.members.length}/${clan.max_members})</h3>
+                            <h3><i class="fas fa-users"></i> Miembros (${memberCount}/${maxMembers})</h3>
                             <div class="clan-members-list">
-                                ${clan.members.map(member => `
-                                    <div class="clan-member-item">
-                                        <div class="clan-member-profile-click" data-user-id="${member.user_id}" style="display:flex; align-items:center; flex-grow:1; cursor:pointer;" title="Ver perfil de ${member.user.username}">
-                                            <div class="clan-member-avatar">
-                                                ${member.user.username.charAt(0).toUpperCase()}
-                                            </div>
-                                            <div class="clan-member-info">
-                                                <span class="clan-member-name">${member.user.username}</span>
-                                                <span class="clan-member-role ${member.role.toLowerCase()}">
-                                                    ${getRoleLabel(member.role)}
-                                                </span>
-                                            </div>
-                                        </div>
-                                        ${canManage && member.role !== 'LEADER' ? `
-                                            <div class="clan-member-actions">
-                                                <button class="btn btn-sm btn-secondary" data-action="role" data-user-id="${member.user_id}">
-                                                    <i class="fas fa-user-tag"></i>
-                                                </button>
-                                                <button class="btn btn-sm btn-danger" data-action="kick" data-user-id="${member.user_id}">
-                                                    <i class="fas fa-times"></i>
-                                                </button>
-                                            </div>
-                                        ` : ''}
-                                    </div>
-                                `).join('')}
+                                ${renderMembersList(clan.members || [], canManage)}
                             </div>
                         </div>
 
                         <!-- Chat (members only) -->
-                        ${isMember ? `
-                            <div class="clan-card-section clan-chat-section">
-                                <h3><i class="fas fa-comments"></i> Chat del Clan</h3>
-                                <div class="clan-chat" id="clanChat">
-                                    <div class="clan-chat-messages" id="chatMessages">
-                                        <div class="loading-spinner-small"></div>
-                                    </div>
-                                    <div class="clan-chat-input">
-                                        <input type="text" id="chatInput" placeholder="Escribe un mensaje..." maxlength="1000">
-                                        <button class="btn btn-primary" id="sendMessage">
-                                            <i class="fas fa-paper-plane"></i>
-                                        </button>
-                                        ${canManage ? `
-                                            <button class="btn btn-accent" id="sendAnnouncement" title="Enviar como anuncio">
-                                                <i class="fas fa-bullhorn"></i>
-                                            </button>
-                                        ` : ''}
-                                    </div>
-                                </div>
-                            </div>
-                        ` : ''}
+                        ${isMember ? renderChatSection(canManage) : ''}
                     </div>
 
                     <!-- Sidebar -->
@@ -161,31 +127,23 @@ function renderClanDetail(container) {
                             <div class="clan-info-item">
                                 <i class="fas fa-crown"></i>
                                 <div>
-                                    <span class="label">Líder</span>
-                                    <span class="value">${clan.leader.username}</span>
+                                    <span class="label">Lider</span>
+                                    <span class="value">${leaderName}</span>
                                 </div>
                             </div>
-                            ${clan.location ? `
-                                <div class="clan-info-item">
-                                    <i class="fas fa-map-marker-alt"></i>
-                                    <div>
-                                        <span class="label">Región</span>
-                                        <span class="value">${clan.location}</span>
-                                    </div>
-                                </div>
-                            ` : ''}
+                            ${clan.location ? '<div class="clan-info-item"><i class="fas fa-map-marker-alt"></i><div><span class="label">Region</span><span class="value">' + clan.location + '</span></div></div>' : ''}
                             <div class="clan-info-item">
                                 <i class="fas fa-users"></i>
                                 <div>
                                     <span class="label">Miembros</span>
-                                    <span class="value">${clan.members.length} / ${clan.max_members}</span>
+                                    <span class="value">${memberCount} / ${maxMembers}</span>
                                 </div>
                             </div>
                             <div class="clan-info-item">
                                 <i class="fas fa-calendar"></i>
                                 <div>
                                     <span class="label">Creado</span>
-                                    <span class="value">${new Date(clan.created_at).toLocaleDateString()}</span>
+                                    <span class="value">${clan.created_at ? new Date(clan.created_at).toLocaleDateString() : 'N/A'}</span>
                                 </div>
                             </div>
                         </div>
@@ -196,31 +154,7 @@ function renderClanDetail(container) {
                         </div>
 
                         <!-- Pending Requests (for leaders) -->
-                        ${isLeader && clan.requests?.length > 0 ? `
-                            <div class="clan-requests-card">
-                                <h4><i class="fas fa-envelope"></i> Solicitudes Pendientes</h4>
-                                <div class="clan-requests-list">
-                                    ${clan.requests.map(req => `
-                                        <div class="clan-request-item" data-request-id="${req.id}">
-                                            <div class="request-header">
-                                                <strong>${req.user.username}</strong>
-                                                <span class="request-date">${new Date(req.created_at).toLocaleDateString()}</span>
-                                            </div>
-                                            <div class="request-title">${req.title}</div>
-                                            <div class="request-message">${req.message}</div>
-                                            <div class="request-actions">
-                                                <button class="btn btn-sm btn-success" data-action="approve" data-id="${req.id}">
-                                                    <i class="fas fa-check"></i> Aprobar
-                                                </button>
-                                                <button class="btn btn-sm btn-danger" data-action="reject" data-id="${req.id}">
-                                                    <i class="fas fa-times"></i> Rechazar
-                                                </button>
-                                            </div>
-                                        </div>
-                                    `).join('')}
-                                </div>
-                            </div>
-                        ` : ''}
+                        ${isLeader && clan.requests && clan.requests.length > 0 ? renderPendingRequests(clan.requests) : ''}
                     </div>
                 </div>
             </div>
@@ -229,68 +163,114 @@ function renderClanDetail(container) {
 
     setupEventListeners();
 
-    // Load chat if member
     if (isMember) {
         loadChat();
     }
 }
 
+function renderMembersList(members, canManage) {
+    if (!members || members.length === 0) {
+        return '<p style="color: var(--text-secondary); padding: 12px;">No hay miembros registrados.</p>';
+    }
+
+    return members.map(function(member) {
+        if (!member) return '';
+        var username = member.user?.username || member.username || 'Usuario';
+        var role = member.role || 'MEMBER';
+        var userId = member.user_id || '';
+
+        return '<div class="clan-member-item">' +
+            '<div class="clan-member-profile-click" data-user-id="' + userId + '" style="display:flex; align-items:center; flex-grow:1; cursor:pointer;" title="Ver perfil de ' + username + '">' +
+                '<div class="clan-member-avatar">' + username.charAt(0).toUpperCase() + '</div>' +
+                '<div class="clan-member-info">' +
+                    '<span class="clan-member-name">' + username + '</span>' +
+                    '<span class="clan-member-role ' + role.toLowerCase() + '">' + getRoleLabel(role) + '</span>' +
+                '</div>' +
+            '</div>' +
+            (canManage && role !== 'LEADER' ?
+                '<div class="clan-member-actions">' +
+                    '<button class="btn btn-sm btn-secondary" data-action="role" data-user-id="' + userId + '"><i class="fas fa-user-tag"></i></button>' +
+                    '<button class="btn btn-sm btn-danger" data-action="kick" data-user-id="' + userId + '"><i class="fas fa-times"></i></button>' +
+                '</div>' : '') +
+        '</div>';
+    }).join('');
+}
+
+function renderChatSection(canManage) {
+    return '<div class="clan-card-section clan-chat-section">' +
+        '<h3><i class="fas fa-comments"></i> Chat del Clan</h3>' +
+        '<div class="clan-chat" id="clanChat">' +
+            '<div class="clan-chat-messages" id="chatMessages">' +
+                '<div class="loading-spinner-small"></div>' +
+            '</div>' +
+            '<div class="clan-chat-input">' +
+                '<input type="text" id="chatInput" placeholder="Escribe un mensaje..." maxlength="1000">' +
+                '<button class="btn btn-primary" id="sendMessage"><i class="fas fa-paper-plane"></i></button>' +
+                (canManage ? '<button class="btn btn-accent" id="sendAnnouncement" title="Enviar como anuncio"><i class="fas fa-bullhorn"></i></button>' : '') +
+            '</div>' +
+        '</div>' +
+    '</div>';
+}
+
+function renderPendingRequests(requests) {
+    if (!requests || requests.length === 0) return '';
+
+    var requestItems = requests.map(function(req) {
+        if (!req) return '';
+        var reqUsername = req.user?.username || 'Usuario';
+        var reqDate = req.created_at ? new Date(req.created_at).toLocaleDateString() : '';
+        var reqTitle = req.title || 'Sin titulo';
+        var reqMessage = req.message || '';
+        var reqId = req.id || '';
+
+        return '<div class="clan-request-item" data-request-id="' + reqId + '">' +
+            '<div class="request-header">' +
+                '<strong>' + reqUsername + '</strong>' +
+                '<span class="request-date">' + reqDate + '</span>' +
+            '</div>' +
+            '<div class="request-title">' + reqTitle + '</div>' +
+            '<div class="request-message">' + reqMessage + '</div>' +
+            '<div class="request-actions">' +
+                '<button class="btn btn-sm btn-success" data-action="approve" data-id="' + reqId + '"><i class="fas fa-check"></i> Aprobar</button>' +
+                '<button class="btn btn-sm btn-danger" data-action="reject" data-id="' + reqId + '"><i class="fas fa-times"></i> Rechazar</button>' +
+            '</div>' +
+        '</div>';
+    }).join('');
+
+    return '<div class="clan-requests-card">' +
+        '<h4><i class="fas fa-envelope"></i> Solicitudes Pendientes</h4>' +
+        '<div class="clan-requests-list">' + requestItems + '</div>' +
+    '</div>';
+}
+
 function renderActionButtons() {
-    const clan = currentClan;
-    const user = isAuthenticated() ? getStoredUser() : null;
-    const isMember = !!userMembership;
-    const isLeader = userMembership?.isLeader;
+    var clan = currentClan;
+    var isMember = !!userMembership;
+    var isLeader = userMembership?.isLeader || false;
+    var accessType = clan.access_type || 'OPEN';
 
     if (!isAuthenticated()) {
-        return `
-            <a href="#login" class="btn btn-primary btn-block">
-                <i class="fas fa-sign-in-alt"></i> Inicia sesión para unirte
-            </a>
-        `;
+        return '<a href="#login" class="btn btn-primary btn-block"><i class="fas fa-sign-in-alt"></i> Inicia sesion para unirte</a>';
     }
 
     if (isLeader) {
-        return `
-            <button class="btn btn-secondary btn-block" id="btnEditClan">
-                <i class="fas fa-edit"></i> Editar Clan
-            </button>
-            <button class="btn btn-danger btn-block" id="btnDeleteClan">
-                <i class="fas fa-trash"></i> Eliminar Clan
-            </button>
-        `;
+        return '<button class="btn btn-secondary btn-block" id="btnEditClan"><i class="fas fa-edit"></i> Editar Clan</button>' +
+            '<button class="btn btn-danger btn-block" id="btnDeleteClan"><i class="fas fa-trash"></i> Eliminar Clan</button>';
     }
 
     if (isMember) {
-        return `
-            <button class="btn btn-danger btn-block" id="btnLeaveClan">
-                <i class="fas fa-door-open"></i> Abandonar Clan
-            </button>
-        `;
+        return '<button class="btn btn-danger btn-block" id="btnLeaveClan"><i class="fas fa-door-open"></i> Abandonar Clan</button>';
     }
 
-    // Not a member
-    if (clan.access_type === 'OPEN') {
-        return `
-            <button class="btn btn-primary btn-block" id="btnJoinClan">
-                <i class="fas fa-user-plus"></i> Unirse al Clan
-            </button>
-        `;
+    if (accessType === 'OPEN') {
+        return '<button class="btn btn-primary btn-block" id="btnJoinClan"><i class="fas fa-user-plus"></i> Unirse al Clan</button>';
     }
 
-    if (clan.access_type === 'INVITE_ONLY') {
-        return `
-            <button class="btn btn-primary btn-block" id="btnRequestJoin">
-                <i class="fas fa-envelope"></i> Solicitar Unirse
-            </button>
-        `;
+    if (accessType === 'INVITE_ONLY') {
+        return '<button class="btn btn-primary btn-block" id="btnRequestJoin"><i class="fas fa-envelope"></i> Solicitar Unirse</button>';
     }
 
-    return `
-        <div class="clan-closed-notice">
-            <i class="fas fa-lock"></i>
-            <p>Este clan no acepta nuevos miembros</p>
-        </div>
-    `;
+    return '<div class="clan-closed-notice"><i class="fas fa-lock"></i><p>Este clan no acepta nuevos miembros</p></div>';
 }
 
 function getAccessIcon(type) {
@@ -305,24 +285,24 @@ function getAccessIcon(type) {
 function getAccessLabel(type) {
     switch (type) {
         case 'OPEN': return 'Abierto';
-        case 'INVITE_ONLY': return 'Por Invitación';
+        case 'INVITE_ONLY': return 'Por Invitacion';
         case 'CLOSED': return 'Cerrado';
-        default: return type;
+        default: return type || 'Desconocido';
     }
 }
 
 function getRoleLabel(role) {
     switch (role) {
-        case 'LEADER': return '👑 Líder';
-        case 'OFFICER': return '⭐ Oficial';
+        case 'LEADER': return 'Lider';
+        case 'OFFICER': return 'Oficial';
         case 'MEMBER': return 'Miembro';
-        default: return role;
+        default: return role || 'Miembro';
     }
 }
 
 async function loadChat() {
     try {
-        const response = await API.clans.getMessages(currentClan.id);
+        var response = await API.clans.getMessages(currentClan.id);
         chatMessages = response.data || [];
         renderChatMessages();
     } catch (error) {
@@ -331,55 +311,61 @@ async function loadChat() {
 }
 
 function renderChatMessages() {
-    const container = document.getElementById('chatMessages');
-    if (!container) return;
+    var msgContainer = document.getElementById('chatMessages');
+    if (!msgContainer) return;
 
-    const user = getStoredUser();
+    var user = getStoredUser();
 
-    if (chatMessages.length === 0) {
-        container.innerHTML = `
-            <div class="chat-empty">
-                <i class="fas fa-comments"></i>
-                <p>No hay mensajes aún. ¡Sé el primero en escribir!</p>
-            </div>
-        `;
+    if (!chatMessages || chatMessages.length === 0) {
+        msgContainer.innerHTML = '<div class="chat-empty"><i class="fas fa-comments"></i><p>No hay mensajes aun. Sea el primero en escribir!</p></div>';
         return;
     }
 
-    container.innerHTML = chatMessages.map(msg => `
-        <div class="chat-message ${msg.user_id === user.id ? 'own' : ''} ${msg.is_announcement ? 'announcement' : ''}">
-            ${msg.is_announcement ? '<div class="announcement-badge"><i class="fas fa-bullhorn"></i> Anuncio</div>' : ''}
-            <div class="chat-message-header">
-                <span class="chat-username">${msg.user.username}</span>
-                <span class="chat-time">${formatTime(msg.created_at)}</span>
-            </div>
-            <div class="chat-message-content">${escapeHtml(msg.content)}</div>
-        </div>
-    `).join('');
+    msgContainer.innerHTML = chatMessages.map(function(msg) {
+        if (!msg) return '';
+        var msgUsername = msg.user?.username || 'Usuario';
+        var isOwn = user && msg.user_id === user.id;
+        var isAnnouncement = msg.is_announcement || false;
+        var msgTime = msg.created_at ? formatTime(msg.created_at) : '';
+        var msgContent = msg.content ? escapeHtml(msg.content) : '';
 
-    // Scroll to bottom
-    container.scrollTop = container.scrollHeight;
+        return '<div class="chat-message ' + (isOwn ? 'own' : '') + ' ' + (isAnnouncement ? 'announcement' : '') + '">' +
+            (isAnnouncement ? '<div class="announcement-badge"><i class="fas fa-bullhorn"></i> Anuncio</div>' : '') +
+            '<div class="chat-message-header">' +
+                '<span class="chat-username">' + msgUsername + '</span>' +
+                '<span class="chat-time">' + msgTime + '</span>' +
+            '</div>' +
+            '<div class="chat-message-content">' + msgContent + '</div>' +
+        '</div>';
+    }).join('');
+
+    msgContainer.scrollTop = msgContainer.scrollHeight;
 }
 
 function formatTime(dateStr) {
-    const date = new Date(dateStr);
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    try {
+        var date = new Date(dateStr);
+        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    } catch (e) {
+        return '';
+    }
 }
 
 function escapeHtml(text) {
-    const div = document.createElement('div');
+    var div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
 }
 
 function setupEventListeners() {
-    const user = isAuthenticated() ? getStoredUser() : null;
+    var user = isAuthenticated() ? getStoredUser() : null;
 
     // Join clan
-    document.getElementById('btnJoinClan')?.addEventListener('click', async () => {
+    document.getElementById('btnJoinClan')?.addEventListener('click', async function() {
+        if (!user) return;
         try {
             await API.clans.join(currentClan.id, user.id);
-            showToast('success', '¡Te has unido al clan!');
+            showToast('success', 'Te has unido al clan!');
             location.reload();
         } catch (error) {
             showToast('error', error.message || 'Error al unirse');
@@ -387,77 +373,78 @@ function setupEventListeners() {
     });
 
     // Request to join
-    document.getElementById('btnRequestJoin')?.addEventListener('click', () => {
+    document.getElementById('btnRequestJoin')?.addEventListener('click', function() {
         showRequestModal();
     });
 
     // Leave clan
-    document.getElementById('btnLeaveClan')?.addEventListener('click', () => {
+    document.getElementById('btnLeaveClan')?.addEventListener('click', function() {
         showLeaveClanModal();
     });
 
     // Delete clan
-    document.getElementById('btnDeleteClan')?.addEventListener('click', () => {
+    document.getElementById('btnDeleteClan')?.addEventListener('click', function() {
         showDeleteClanModal();
     });
 
     // Edit clan
-    document.getElementById('btnEditClan')?.addEventListener('click', () => {
+    document.getElementById('btnEditClan')?.addEventListener('click', function() {
         showEditClanModal();
     });
 
     // Send message
-    document.getElementById('sendMessage')?.addEventListener('click', () => sendChatMessage(false));
-    document.getElementById('sendAnnouncement')?.addEventListener('click', () => sendChatMessage(true));
-    document.getElementById('chatInput')?.addEventListener('keypress', (e) => {
+    document.getElementById('sendMessage')?.addEventListener('click', function() { sendChatMessage(false); });
+    document.getElementById('sendAnnouncement')?.addEventListener('click', function() { sendChatMessage(true); });
+    document.getElementById('chatInput')?.addEventListener('keypress', function(e) {
         if (e.key === 'Enter') sendChatMessage(false);
     });
 
     // Approve/Reject requests
-    document.querySelectorAll('[data-action="approve"]').forEach(btn => {
-        btn.addEventListener('click', async () => {
-            const requestId = btn.dataset.id;
+    document.querySelectorAll('[data-action="approve"]').forEach(function(btn) {
+        btn.addEventListener('click', async function() {
+            var requestId = btn.dataset.id;
             try {
                 await API.clans.approveRequest(currentClan.id, requestId);
                 showToast('success', 'Solicitud aprobada');
                 location.reload();
             } catch (error) {
-                showToast('error', error.message);
+                showToast('error', error.message || 'Error al aprobar');
             }
         });
     });
 
-    document.querySelectorAll('[data-action="reject"]').forEach(btn => {
-        btn.addEventListener('click', async () => {
-            const requestId = btn.dataset.id;
+    document.querySelectorAll('[data-action="reject"]').forEach(function(btn) {
+        btn.addEventListener('click', async function() {
+            var requestId = btn.dataset.id;
             try {
                 await API.clans.rejectRequest(currentClan.id, requestId);
                 showToast('success', 'Solicitud rechazada');
                 location.reload();
             } catch (error) {
-                showToast('error', error.message);
+                showToast('error', error.message || 'Error al rechazar');
             }
         });
     });
 
     // Kick member
-    document.querySelectorAll('[data-action="kick"]').forEach(btn => {
-        btn.addEventListener('click', async () => {
-            const userId = btn.dataset.userId;
-            if (!confirm('¿Expulsar a este miembro?')) return;
+    document.querySelectorAll('[data-action="kick"]').forEach(function(btn) {
+        btn.addEventListener('click', async function() {
+            var userId = btn.dataset.userId;
+            if (!confirm('Expulsar a este miembro?')) return;
             try {
                 await API.clans.removeMember(currentClan.id, userId);
                 showToast('success', 'Miembro expulsado');
                 location.reload();
             } catch (error) {
-                showToast('error', error.message);
+                showToast('error', error.message || 'Error al expulsar');
             }
         });
     });
+
     // View Member Profile
-    document.querySelectorAll('.clan-member-profile-click').forEach(item => {
-        item.addEventListener('click', (e) => {
-            const userId = item.dataset.userId;
+    document.querySelectorAll('.clan-member-profile-click').forEach(function(item) {
+        item.addEventListener('click', function() {
+            var userId = item.dataset.userId;
             if (window.showPlayerProfile) {
                 window.showPlayerProfile(userId);
             }
@@ -466,13 +453,13 @@ function setupEventListeners() {
 }
 
 async function sendChatMessage(isAnnouncement) {
-    const input = document.getElementById('chatInput');
+    var input = document.getElementById('chatInput');
     if (!input) return;
-    const content = input.value.trim();
-
+    var content = input.value.trim();
     if (!content) return;
 
-    const user = getStoredUser();
+    var user = getStoredUser();
+    if (!user) return;
 
     try {
         await API.clans.sendMessage(currentClan.id, user.id, content, isAnnouncement);
@@ -484,50 +471,44 @@ async function sendChatMessage(isAnnouncement) {
 }
 
 function showRequestModal() {
-    const modal = document.createElement('div');
+    var clanName = currentClan.name || 'este clan';
+    var modal = document.createElement('div');
     modal.className = 'modal-overlay';
-    modal.innerHTML = `
-        <div class="modal clan-request-modal">
-            <div class="modal-header">
-                <h3><i class="fas fa-envelope"></i> Solicitar unirse a ${currentClan.name}</h3>
-                <button class="modal-close" id="closeModal">&times;</button>
-            </div>
-            <form id="requestForm">
-                <div class="form-group">
-                    <label class="form-label">Título de tu solicitud *</label>
-                    <input type="text" class="form-control" name="title" required minlength="5" maxlength="100"
-                           placeholder="Ej: Jugador experimentado busca equipo">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">¿Por qué quieres unirte? *</label>
-                    <textarea class="form-control" name="message" required minlength="10" maxlength="500" rows="4"
-                              placeholder="Cuéntales un poco sobre ti y por qué te gustaría unirte..."></textarea>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" id="cancelRequest">Cancelar</button>
-                    <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-paper-plane"></i> Enviar Solicitud
-                    </button>
-                </div>
-            </form>
-        </div>
-    `;
+    modal.innerHTML = '<div class="modal clan-request-modal">' +
+        '<div class="modal-header">' +
+            '<h3><i class="fas fa-envelope"></i> Solicitar unirse a ' + clanName + '</h3>' +
+            '<button class="modal-close" id="closeModal">&times;</button>' +
+        '</div>' +
+        '<form id="requestForm">' +
+            '<div class="form-group">' +
+                '<label class="form-label">Titulo de tu solicitud *</label>' +
+                '<input type="text" class="form-control" name="title" required minlength="5" maxlength="100" placeholder="Ej: Jugador experimentado busca equipo">' +
+            '</div>' +
+            '<div class="form-group">' +
+                '<label class="form-label">Por que quieres unirte? *</label>' +
+                '<textarea class="form-control" name="message" required minlength="10" maxlength="500" rows="4" placeholder="Cuentales un poco sobre ti y por que te gustaria unirte..."></textarea>' +
+            '</div>' +
+            '<div class="modal-footer">' +
+                '<button type="button" class="btn btn-secondary" id="cancelRequest">Cancelar</button>' +
+                '<button type="submit" class="btn btn-primary"><i class="fas fa-paper-plane"></i> Enviar Solicitud</button>' +
+            '</div>' +
+        '</form>' +
+    '</div>';
 
     document.body.appendChild(modal);
 
-    // Close modal
-    const closeModal = () => modal.remove();
+    var closeModal = function() { modal.remove(); };
     modal.querySelector('#closeModal').addEventListener('click', closeModal);
     modal.querySelector('#cancelRequest').addEventListener('click', closeModal);
-    modal.addEventListener('click', (e) => {
+    modal.addEventListener('click', function(e) {
         if (e.target === modal) closeModal();
     });
 
-    // Submit form
-    modal.querySelector('#requestForm').addEventListener('submit', async (e) => {
+    modal.querySelector('#requestForm').addEventListener('submit', async function(e) {
         e.preventDefault();
-        const formData = new FormData(e.target);
-        const user = getStoredUser();
+        var formData = new FormData(e.target);
+        var user = getStoredUser();
+        if (!user) return;
 
         try {
             await API.clans.sendRequest(currentClan.id, {
@@ -552,81 +533,83 @@ export function cleanup() {
 }
 
 // =====================================================
-// Modal de Edición de Clan
+// Modal de Edicion de Clan
 // =====================================================
 function showEditClanModal() {
-    const clan = currentClan;
-    const modal = document.createElement('div');
+    var clan = currentClan;
+    var clanName = clan.name || '';
+    var clanTag = clan.tag || '';
+    var clanDesc = clan.description || '';
+    var clanReqs = clan.requirements || '';
+    var clanAccess = clan.access_type || 'OPEN';
+    var clanMaxMembers = clan.max_members || 50;
+    var clanBanner = clan.banner_url || '';
+
+    var modal = document.createElement('div');
     modal.className = 'modal-overlay';
-    modal.innerHTML = `
-        <div class="modal edit-clan-modal">
-            <div class="modal-header">
-                <h3><i class="fas fa-edit"></i> Editar Clan</h3>
-                <button class="modal-close" id="closeModal">&times;</button>
-            </div>
-            <form id="editClanForm" class="edit-clan-form">
-                <div class="form-group">
-                    <label class="form-label">Nombre del Clan *</label>
-                    <input type="text" class="form-control" name="name" value="${clan.name}" required minlength="3" maxlength="30">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Tag del Clan *</label>
-                    <input type="text" class="form-control" name="tag" value="${clan.tag}" required minlength="2" maxlength="5">
-                    <span class="form-hint">2-5 caracteres, ej: [APEX]</span>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Descripción</label>
-                    <textarea class="form-control" name="description" rows="4" maxlength="500">${clan.description || ''}</textarea>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Requisitos para unirse</label>
-                    <textarea class="form-control" name="requirements" rows="3" maxlength="300">${clan.requirements || ''}</textarea>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Tipo de Acceso</label>
-                    <select class="form-control" name="access_type">
-                        <option value="OPEN" ${clan.access_type === 'OPEN' ? 'selected' : ''}>🔓 Abierto - Cualquiera puede unirse</option>
-                        <option value="INVITE_ONLY" ${clan.access_type === 'INVITE_ONLY' ? 'selected' : ''}>📧 Por Invitación - Requiere aprobación</option>
-                        <option value="CLOSED" ${clan.access_type === 'CLOSED' ? 'selected' : ''}>🔒 Cerrado - No acepta miembros</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Máximo de Miembros</label>
-                    <select class="form-control" name="max_members">
-                        <option value="25" ${clan.max_members === 25 ? 'selected' : ''}>25 miembros</option>
-                        <option value="50" ${clan.max_members === 50 ? 'selected' : ''}>50 miembros</option>
-                        <option value="100" ${clan.max_members === 100 ? 'selected' : ''}>100 miembros</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">URL del Banner (opcional)</label>
-                    <input type="url" class="form-control" name="banner_url" value="${clan.banner_url || ''}" placeholder="https://...">
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" id="cancelEdit">Cancelar</button>
-                    <button type="submit" class="btn btn-primary" id="saveEditBtn">
-                        <i class="fas fa-save"></i> Guardar Cambios
-                    </button>
-                </div>
-            </form>
-        </div>
-    `;
+    modal.innerHTML = '<div class="modal edit-clan-modal">' +
+        '<div class="modal-header">' +
+            '<h3><i class="fas fa-edit"></i> Editar Clan</h3>' +
+            '<button class="modal-close" id="closeModal">&times;</button>' +
+        '</div>' +
+        '<form id="editClanForm" class="edit-clan-form">' +
+            '<div class="form-group">' +
+                '<label class="form-label">Nombre del Clan *</label>' +
+                '<input type="text" class="form-control" name="name" value="' + clanName + '" required minlength="3" maxlength="30">' +
+            '</div>' +
+            '<div class="form-group">' +
+                '<label class="form-label">Tag del Clan *</label>' +
+                '<input type="text" class="form-control" name="tag" value="' + clanTag + '" required minlength="2" maxlength="5">' +
+                '<span class="form-hint">2-5 caracteres, ej: [APEX]</span>' +
+            '</div>' +
+            '<div class="form-group">' +
+                '<label class="form-label">Descripcion</label>' +
+                '<textarea class="form-control" name="description" rows="4" maxlength="500">' + clanDesc + '</textarea>' +
+            '</div>' +
+            '<div class="form-group">' +
+                '<label class="form-label">Requisitos para unirse</label>' +
+                '<textarea class="form-control" name="requirements" rows="3" maxlength="300">' + clanReqs + '</textarea>' +
+            '</div>' +
+            '<div class="form-group">' +
+                '<label class="form-label">Tipo de Acceso</label>' +
+                '<select class="form-control" name="access_type">' +
+                    '<option value="OPEN"' + (clanAccess === 'OPEN' ? ' selected' : '') + '>Abierto - Cualquiera puede unirse</option>' +
+                    '<option value="INVITE_ONLY"' + (clanAccess === 'INVITE_ONLY' ? ' selected' : '') + '>Por Invitacion - Requiere aprobacion</option>' +
+                    '<option value="CLOSED"' + (clanAccess === 'CLOSED' ? ' selected' : '') + '>Cerrado - No acepta miembros</option>' +
+                '</select>' +
+            '</div>' +
+            '<div class="form-group">' +
+                '<label class="form-label">Maximo de Miembros</label>' +
+                '<select class="form-control" name="max_members">' +
+                    '<option value="25"' + (clanMaxMembers === 25 ? ' selected' : '') + '>25 miembros</option>' +
+                    '<option value="50"' + (clanMaxMembers === 50 ? ' selected' : '') + '>50 miembros</option>' +
+                    '<option value="100"' + (clanMaxMembers === 100 ? ' selected' : '') + '>100 miembros</option>' +
+                '</select>' +
+            '</div>' +
+            '<div class="form-group">' +
+                '<label class="form-label">URL del Banner (opcional)</label>' +
+                '<input type="url" class="form-control" name="banner_url" value="' + clanBanner + '" placeholder="https://...">' +
+            '</div>' +
+            '<div class="modal-footer">' +
+                '<button type="button" class="btn btn-secondary" id="cancelEdit">Cancelar</button>' +
+                '<button type="submit" class="btn btn-primary" id="saveEditBtn"><i class="fas fa-save"></i> Guardar Cambios</button>' +
+            '</div>' +
+        '</form>' +
+    '</div>';
 
     document.body.appendChild(modal);
 
-    // Close modal
-    const closeModal = () => modal.remove();
+    var closeModal = function() { modal.remove(); };
     modal.querySelector('#closeModal').addEventListener('click', closeModal);
     modal.querySelector('#cancelEdit').addEventListener('click', closeModal);
-    modal.addEventListener('click', (e) => {
+    modal.addEventListener('click', function(e) {
         if (e.target === modal) closeModal();
     });
 
-    // Submit form
-    modal.querySelector('#editClanForm').addEventListener('submit', async (e) => {
+    modal.querySelector('#editClanForm').addEventListener('submit', async function(e) {
         e.preventDefault();
-        const formData = new FormData(e.target);
-        const saveBtn = modal.querySelector('#saveEditBtn');
+        var formData = new FormData(e.target);
+        var saveBtn = modal.querySelector('#saveEditBtn');
 
         saveBtn.disabled = true;
         saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
@@ -641,7 +624,7 @@ function showEditClanModal() {
                 max_members: parseInt(formData.get('max_members')),
                 banner_url: formData.get('banner_url') || null
             });
-            showToast('success', '¡Clan actualizado correctamente!');
+            showToast('success', 'Clan actualizado correctamente!');
             closeModal();
             location.reload();
         } catch (error) {
@@ -653,61 +636,51 @@ function showEditClanModal() {
 }
 
 // =====================================================
-// Modal de Confirmación para Eliminar Clan
+// Modal de Confirmacion para Eliminar Clan
 // =====================================================
 function showDeleteClanModal() {
-    const clan = currentClan;
-    const modal = document.createElement('div');
+    var clan = currentClan;
+    var clanName = clan.name || 'este clan';
+    var clanTag = clan.tag || '';
+    var memberCount = clan.members ? clan.members.length : 0;
+
+    var modal = document.createElement('div');
     modal.className = 'modal-overlay';
-    modal.innerHTML = `
-        <div class="modal confirm-modal danger-modal">
-            <div class="confirm-modal-icon danger">
-                <i class="fas fa-exclamation-triangle"></i>
-            </div>
-            <h3 class="confirm-modal-title">¿Eliminar ${clan.name}?</h3>
-            <p class="confirm-modal-text">
-                Esta acción <strong>no se puede deshacer</strong>. Se eliminará:
-            </p>
-            <ul class="confirm-modal-list">
-                <li><i class="fas fa-times-circle"></i> El clan y toda su información</li>
-                <li><i class="fas fa-times-circle"></i> Todos los ${clan.members.length} miembros serán removidos</li>
-                <li><i class="fas fa-times-circle"></i> El historial de chat completo</li>
-                <li><i class="fas fa-times-circle"></i> Todas las solicitudes pendientes</li>
-            </ul>
-            <div class="confirm-modal-input">
-                <label>Escribe <strong>${clan.tag}</strong> para confirmar:</label>
-                <input type="text" id="confirmDeleteInput" placeholder="Escribe el tag del clan" autocomplete="off">
-            </div>
-            <div class="confirm-modal-actions">
-                <button class="btn btn-secondary" id="cancelDelete">
-                    <i class="fas fa-arrow-left"></i> Cancelar
-                </button>
-                <button class="btn btn-danger" id="confirmDelete" disabled>
-                    <i class="fas fa-trash"></i> Eliminar Clan
-                </button>
-            </div>
-        </div>
-    `;
+    modal.innerHTML = '<div class="modal confirm-modal danger-modal">' +
+        '<div class="confirm-modal-icon danger"><i class="fas fa-exclamation-triangle"></i></div>' +
+        '<h3 class="confirm-modal-title">Eliminar ' + clanName + '?</h3>' +
+        '<p class="confirm-modal-text">Esta accion <strong>no se puede deshacer</strong>. Se eliminara:</p>' +
+        '<ul class="confirm-modal-list">' +
+            '<li><i class="fas fa-times-circle"></i> El clan y toda su informacion</li>' +
+            '<li><i class="fas fa-times-circle"></i> Todos los ' + memberCount + ' miembros seran removidos</li>' +
+            '<li><i class="fas fa-times-circle"></i> El historial de chat completo</li>' +
+            '<li><i class="fas fa-times-circle"></i> Todas las solicitudes pendientes</li>' +
+        '</ul>' +
+        (clanTag ? '<div class="confirm-modal-input"><label>Escribe <strong>' + clanTag + '</strong> para confirmar:</label><input type="text" id="confirmDeleteInput" placeholder="Escribe el tag del clan" autocomplete="off"></div>' : '') +
+        '<div class="confirm-modal-actions">' +
+            '<button class="btn btn-secondary" id="cancelDelete"><i class="fas fa-arrow-left"></i> Cancelar</button>' +
+            '<button class="btn btn-danger" id="confirmDelete"' + (clanTag ? ' disabled' : '') + '><i class="fas fa-trash"></i> Eliminar Clan</button>' +
+        '</div>' +
+    '</div>';
 
     document.body.appendChild(modal);
 
-    const confirmInput = modal.querySelector('#confirmDeleteInput');
-    const confirmBtn = modal.querySelector('#confirmDelete');
+    var confirmInput = modal.querySelector('#confirmDeleteInput');
+    var confirmBtn = modal.querySelector('#confirmDelete');
 
-    // Enable button only when tag matches
-    confirmInput.addEventListener('input', () => {
-        confirmBtn.disabled = confirmInput.value.toUpperCase() !== clan.tag.toUpperCase();
-    });
+    if (confirmInput && clanTag) {
+        confirmInput.addEventListener('input', function() {
+            confirmBtn.disabled = confirmInput.value.toUpperCase() !== clanTag.toUpperCase();
+        });
+    }
 
-    // Close modal
-    const closeModal = () => modal.remove();
+    var closeModal = function() { modal.remove(); };
     modal.querySelector('#cancelDelete').addEventListener('click', closeModal);
-    modal.addEventListener('click', (e) => {
+    modal.addEventListener('click', function(e) {
         if (e.target === modal) closeModal();
     });
 
-    // Confirm delete
-    confirmBtn.addEventListener('click', async () => {
+    confirmBtn.addEventListener('click', async function() {
         confirmBtn.disabled = true;
         confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Eliminando...';
 
@@ -725,50 +698,40 @@ function showDeleteClanModal() {
 }
 
 // =====================================================
-// Modal de Confirmación para Abandonar Clan
+// Modal de Confirmacion para Abandonar Clan
 // =====================================================
 function showLeaveClanModal() {
-    const clan = currentClan;
-    const user = getStoredUser();
-    const modal = document.createElement('div');
+    var clan = currentClan;
+    var clanName = clan.name || 'este clan';
+    var user = getStoredUser();
+
+    var modal = document.createElement('div');
     modal.className = 'modal-overlay';
-    modal.innerHTML = `
-        <div class="modal confirm-modal warning-modal">
-            <div class="confirm-modal-icon warning">
-                <i class="fas fa-door-open"></i>
-            </div>
-            <h3 class="confirm-modal-title">¿Abandonar ${clan.name}?</h3>
-            <p class="confirm-modal-text">
-                Estás a punto de abandonar el clan. Ten en cuenta que:
-            </p>
-            <ul class="confirm-modal-list warning">
-                <li><i class="fas fa-info-circle"></i> Perderás acceso al chat del clan</li>
-                <li><i class="fas fa-info-circle"></i> Tu historial de mensajes permanecerá</li>
-                <li><i class="fas fa-info-circle"></i> Podrás volver a unirte si el clan es abierto</li>
-            </ul>
-            <div class="confirm-modal-actions">
-                <button class="btn btn-secondary" id="cancelLeave">
-                    <i class="fas fa-times"></i> Cancelar
-                </button>
-                <button class="btn btn-warning" id="confirmLeave">
-                    <i class="fas fa-door-open"></i> Sí, Abandonar
-                </button>
-            </div>
-        </div>
-    `;
+    modal.innerHTML = '<div class="modal confirm-modal warning-modal">' +
+        '<div class="confirm-modal-icon warning"><i class="fas fa-door-open"></i></div>' +
+        '<h3 class="confirm-modal-title">Abandonar ' + clanName + '?</h3>' +
+        '<p class="confirm-modal-text">Estas a punto de abandonar el clan. Ten en cuenta que:</p>' +
+        '<ul class="confirm-modal-list warning">' +
+            '<li><i class="fas fa-info-circle"></i> Perderas acceso al chat del clan</li>' +
+            '<li><i class="fas fa-info-circle"></i> Tu historial de mensajes permanecera</li>' +
+            '<li><i class="fas fa-info-circle"></i> Podras volver a unirte si el clan es abierto</li>' +
+        '</ul>' +
+        '<div class="confirm-modal-actions">' +
+            '<button class="btn btn-secondary" id="cancelLeave"><i class="fas fa-times"></i> Cancelar</button>' +
+            '<button class="btn btn-warning" id="confirmLeave"><i class="fas fa-door-open"></i> Si, Abandonar</button>' +
+        '</div>' +
+    '</div>';
 
     document.body.appendChild(modal);
 
-    // Close modal
-    const closeModal = () => modal.remove();
+    var closeModal = function() { modal.remove(); };
     modal.querySelector('#cancelLeave').addEventListener('click', closeModal);
-    modal.addEventListener('click', (e) => {
+    modal.addEventListener('click', function(e) {
         if (e.target === modal) closeModal();
     });
 
-    // Confirm leave
-    modal.querySelector('#confirmLeave').addEventListener('click', async () => {
-        const confirmBtn = modal.querySelector('#confirmLeave');
+    modal.querySelector('#confirmLeave').addEventListener('click', async function() {
+        var confirmBtn = modal.querySelector('#confirmLeave');
         confirmBtn.disabled = true;
         confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saliendo...';
 
@@ -780,7 +743,7 @@ function showLeaveClanModal() {
         } catch (error) {
             showToast('error', error.message || 'Error al abandonar el clan');
             confirmBtn.disabled = false;
-            confirmBtn.innerHTML = '<i class="fas fa-door-open"></i> Sí, Abandonar';
+            confirmBtn.innerHTML = '<i class="fas fa-door-open"></i> Si, Abandonar';
         }
     });
 }

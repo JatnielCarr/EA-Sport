@@ -30,9 +30,9 @@
           return;
         }
 
-        // Verify role
+        // Verify role - only ADMIN can access
         var userData = JSON.parse(user);
-        if (userData.role !== 'ADMIN' && userData.role !== 'ORGANIZER') {
+        if (userData.role !== 'ADMIN') {
           localStorage.removeItem('apex_tournament_token');
           localStorage.removeItem('apex_tournament_user');
           window.location.replace('/landing.html');
@@ -68,7 +68,6 @@
 
   <!-- Custom Styles -->
   <link rel="stylesheet" href="/css/styles.css">
-  <link rel="stylesheet" href="/css/clan-leader-epic.css">
 
   <style>
     /* 🎮 EPIC GAMING PRELOADER */

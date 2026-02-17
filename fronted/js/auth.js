@@ -36,22 +36,16 @@ class Auth {
     }
   }
 
-  // Check if user is logged in
+  // Check if user has admin access
   isAdmin() {
     const user = this.getUser();
-    return user && (user.role === 'ADMIN' || user.role === 'ORGANIZER');
+    return user && user.role === 'ADMIN';
   }
 
   // Check if user is Super Admin (Platform Owner)
   isSuperAdmin() {
     const user = this.getUser();
     return user && user.role === 'ADMIN';
-  }
-
-  // Check if user is Clan Leader (Organizer)
-  isClanLeader() {
-    const user = this.getUser();
-    return user && user.role === 'ORGANIZER';
   }
 
   // Login
@@ -96,7 +90,7 @@ class Auth {
 
     // Solo guardar token si el usuario tiene permisos de admin
     const user = data.data.user;
-    if (user.role === 'ADMIN' || user.role === 'ORGANIZER') {
+    if (user.role === 'ADMIN') {
       localStorage.setItem(this.tokenKey, data.data.token);
       localStorage.setItem(this.userKey, JSON.stringify(user));
     } else {

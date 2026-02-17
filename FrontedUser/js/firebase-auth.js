@@ -67,6 +67,16 @@ const FirebaseAuth = {
             // Sync with backend
             const backendResponse = await this.syncWithBackend(idToken);
 
+            // Check if user is banned
+            if (backendResponse.banned) {
+                await signOut(auth);
+                return {
+                    success: false,
+                    banned: true,
+                    ban_info: backendResponse.ban_info
+                };
+            }
+
             return {
                 success: true,
                 user: result.user,
@@ -124,6 +134,16 @@ const FirebaseAuth = {
 
             // Sync with backend
             const backendResponse = await this.syncWithBackend(idToken);
+
+            // Check if user is banned
+            if (backendResponse.banned) {
+                await signOut(auth);
+                return {
+                    success: false,
+                    banned: true,
+                    ban_info: backendResponse.ban_info
+                };
+            }
 
             return {
                 success: true,
@@ -196,6 +216,11 @@ const FirebaseAuth = {
             });
 
             const data = await response.json();
+
+            // Check if user is banned
+            if (response.status === 403 && data.banned === true) {
+                return { banned: true, ban_info: data.ban_info };
+            }
 
             if (data.success) {
                 // Store backend token for API calls

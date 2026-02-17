@@ -58,6 +58,30 @@ export async function firebaseAuthRoutes(app: FastifyInstance) {
                 });
             }
 
+            // Check if user is banned
+            if (user.banned) {
+                const now = new Date();
+                if (user.ban_duration === 'permanent' || (user.banned_until && user.banned_until > now)) {
+                    return reply.status(403).send({
+                        success: false,
+                        error: 'ACCOUNT_BANNED',
+                        banned: true,
+                        ban_info: {
+                            username: user.username,
+                            reason: user.ban_reason || 'Violación de las reglas de la comunidad',
+                            duration: user.ban_duration,
+                            banned_at: user.banned_at,
+                            banned_until: user.banned_until
+                        }
+                    });
+                } else {
+                    await prisma.user.update({
+                        where: { id: user.id },
+                        data: { banned: false, ban_reason: null, ban_duration: null, banned_at: null, banned_until: null }
+                    });
+                }
+            }
+
             // Generate JWT token
             const token = app.jwt.sign(
                 {
@@ -184,6 +208,30 @@ export async function firebaseAuthRoutes(app: FastifyInstance) {
                     user = await prisma.user.update({
                         where: { id: user.id },
                         data: { verified: true }
+                    });
+                }
+            }
+
+            // Check if user is banned
+            if (user.banned) {
+                const now = new Date();
+                if (user.ban_duration === 'permanent' || (user.banned_until && user.banned_until > now)) {
+                    return reply.status(403).send({
+                        success: false,
+                        error: 'ACCOUNT_BANNED',
+                        banned: true,
+                        ban_info: {
+                            username: user.username,
+                            reason: user.ban_reason || 'Violación de las reglas de la comunidad',
+                            duration: user.ban_duration,
+                            banned_at: user.banned_at,
+                            banned_until: user.banned_until
+                        }
+                    });
+                } else {
+                    await prisma.user.update({
+                        where: { id: user.id },
+                        data: { banned: false, ban_reason: null, ban_duration: null, banned_at: null, banned_until: null }
                     });
                 }
             }

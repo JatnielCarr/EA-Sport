@@ -13,7 +13,6 @@ import { subscriptionRoutes } from './routes/subscription.routes';
 import { userRoutes } from './routes/user.routes';
 import { liveUpdatesRoutes } from './routes/live-updates';
 import { monetizationRoutes } from './routes/monetization.routes';
-import { stripeWebhookRoutes } from './routes/stripe-webhook.routes';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'ea-sports-tournament-secret-key-2024';
 
@@ -111,9 +110,6 @@ export async function buildApp() {
   // Register Monetization Routes
   await app.register(monetizationRoutes);
 
-  // Register Stripe Webhook Routes
-  await app.register(stripeWebhookRoutes);
-
   // =====================================================
   // AUTH ROUTES
   // =====================================================
@@ -195,6 +191,31 @@ export async function buildApp() {
 
     if (!validPassword) {
       return reply.status(401).send({ success: false, error: 'Invalid credentials' });
+    }
+
+    // Check if user is banned
+    if (user.banned) {
+      const now = new Date();
+      if (user.ban_duration === 'permanent' || (user.banned_until && user.banned_until > now)) {
+        return reply.status(403).send({
+          success: false,
+          error: 'ACCOUNT_BANNED',
+          banned: true,
+          ban_info: {
+            username: user.username,
+            reason: user.ban_reason || 'Violación de las reglas de la comunidad',
+            duration: user.ban_duration,
+            banned_at: user.banned_at,
+            banned_until: user.banned_until
+          }
+        });
+      } else {
+        // Ban expired, auto-unban
+        await prisma.user.update({
+          where: { id: user.id },
+          data: { banned: false, ban_reason: null, ban_duration: null, banned_at: null, banned_until: null }
+        });
+      }
     }
 
     // Generate JWT token
@@ -512,6 +533,90 @@ export async function buildApp() {
     return { success: true, message: 'User deleted' };
   });
 
+  // Ban user
+  app.put('/users/:id/ban', {
+    schema: {
+      tags: ['Users'],
+      description: 'Ban a user by ID',
+      params: {
+        type: 'object',
+        properties: {
+          id: { type: 'string' }
+        }
+      },
+      body: {
+        type: 'object',
+        required: ['duration', 'reason'],
+        properties: {
+          duration: { type: 'string', enum: ['3d', '7d', '14d', '31d', 'permanent'] },
+          reason: { type: 'string', minLength: 1 }
+        }
+      }
+    }
+  }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const { duration, reason } = request.body as { duration: string; reason: string };
+
+    const targetUser = await prisma.user.findUnique({ where: { id } });
+    if (!targetUser) {
+      return reply.status(404).send({ success: false, error: 'User not found' });
+    }
+
+    let banned_until: Date | null = null;
+    if (duration !== 'permanent') {
+      const days = parseInt(duration.replace('d', ''));
+      banned_until = new Date();
+      banned_until.setDate(banned_until.getDate() + days);
+    }
+
+    const user = await prisma.user.update({
+      where: { id },
+      data: {
+        banned: true,
+        ban_reason: reason,
+        ban_duration: duration,
+        banned_at: new Date(),
+        banned_until
+      }
+    });
+
+    return { success: true, data: user };
+  });
+
+  // Unban user
+  app.put('/users/:id/unban', {
+    schema: {
+      tags: ['Users'],
+      description: 'Unban a user by ID',
+      params: {
+        type: 'object',
+        properties: {
+          id: { type: 'string' }
+        }
+      }
+    }
+  }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+
+    const targetUser = await prisma.user.findUnique({ where: { id } });
+    if (!targetUser) {
+      return reply.status(404).send({ success: false, error: 'User not found' });
+    }
+
+    const user = await prisma.user.update({
+      where: { id },
+      data: {
+        banned: false,
+        ban_reason: null,
+        ban_duration: null,
+        banned_at: null,
+        banned_until: null
+      }
+    });
+
+    return { success: true, data: user };
+  });
+
   // Tournaments
   app.get('/tournaments', {
     schema: {
@@ -532,22 +637,41 @@ export async function buildApp() {
     return { success: true, data: tournaments };
   });
 
+  // =====================================================
+  // SUBSCRIPTION LIMITS FOR TOURNAMENT CREATION
+  // =====================================================
+  const SUBSCRIPTION_TOURNAMENT_LIMITS: Record<string, { maxParticipants: number; maxTournaments: number }> = {
+    STANDARD: { maxParticipants: 16, maxTournaments: 3 },
+    PREMIUM: { maxParticipants: 64, maxTournaments: 10 },
+  };
+
+  // Helper: generate unique invite code
+  function generateInviteCode(): string {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let code = '';
+    for (let i = 0; i < 8; i++) {
+      code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return code;
+  }
+
   app.post('/tournaments', {
+    preHandler: [app.authenticate],
     schema: {
       tags: ['Tournaments'],
-      description: 'Create a new tournament',
+      description: 'Create a new tournament (requires STANDARD or PREMIUM subscription)',
       body: {
         type: 'object',
-        required: ['name', 'slug', 'game_id', 'organizer_id', 'format', 'team_size', 'start_date'],
+        required: ['name', 'slug', 'game_id', 'format', 'team_size', 'start_date'],
         properties: {
           name: { type: 'string' },
           slug: { type: 'string' },
           game_id: { type: 'string' },
-          organizer_id: { type: 'string' },
           format: { type: 'string' },
           team_size: { type: 'integer' },
           max_participants: { type: 'integer' },
           region: { type: 'string' },
+          entry_fee: { type: 'number' },
           start_date: { type: 'string', format: 'date-time' },
           registration_deadline: { type: 'string', format: 'date-time' }
         }
@@ -562,25 +686,469 @@ export async function buildApp() {
         }
       }
     }
-  }, async (request) => {
+  }, async (request: any, reply) => {
+    const userId = request.user.id;
     const data = request.body as any;
 
-    // Ensure required fields have defaults if not provided
-    if (!data.max_participants) {
-      data.max_participants = 32;
+    // Verify user has active subscription (STANDARD or PREMIUM)
+    const subscription = await prisma.subscription.findUnique({
+      where: { user_id: userId }
+    });
+
+    if (!subscription || subscription.plan === 'FREE' || subscription.status !== 'ACTIVE') {
+      return reply.status(403).send({
+        success: false,
+        error: 'Necesitas una suscripción STANDARD o PREMIUM activa para crear torneos. Los ingresos por suscripción mantienen la plataforma.'
+      });
     }
+
+    const limits = SUBSCRIPTION_TOURNAMENT_LIMITS[subscription.plan];
+    if (!limits) {
+      return reply.status(403).send({
+        success: false,
+        error: 'Tu plan de suscripción no permite crear torneos.'
+      });
+    }
+
+    // Check tournament count limit
+    const currentTournamentCount = await prisma.tournament.count({
+      where: {
+        organizer_id: userId,
+        status: { notIn: ['COMPLETED', 'CANCELLED'] }
+      }
+    });
+
+    if (currentTournamentCount >= limits.maxTournaments) {
+      return reply.status(403).send({
+        success: false,
+        error: `Tu plan ${subscription.plan} permite máximo ${limits.maxTournaments} torneos activos. Tienes ${currentTournamentCount}.`
+      });
+    }
+
+    // Enforce max participants based on subscription
+    const requestedMax = data.max_participants || 16;
+    if (requestedMax > limits.maxParticipants) {
+      return reply.status(400).send({
+        success: false,
+        error: `Tu plan ${subscription.plan} permite máximo ${limits.maxParticipants} participantes por torneo.`
+      });
+    }
+
+    // Set organizer_id from authenticated user
+    data.organizer_id = userId;
+    data.max_participants = requestedMax;
+
     if (!data.region) {
       data.region = 'LATAM';
     }
     if (!data.registration_deadline) {
-      // Default: 1 day before start_date
       const startDate = new Date(data.start_date);
       startDate.setDate(startDate.getDate() - 1);
       data.registration_deadline = startDate.toISOString();
     }
 
+    // Generate unique invite code
+    let inviteCode = generateInviteCode();
+    let codeExists = await prisma.tournament.findUnique({ where: { invite_code: inviteCode } });
+    while (codeExists) {
+      inviteCode = generateInviteCode();
+      codeExists = await prisma.tournament.findUnique({ where: { invite_code: inviteCode } });
+    }
+    data.invite_code = inviteCode;
+    data.invite_active = true;
+
+    // If entry_fee > 0, mark as requiring entry fee
+    if (data.entry_fee && Number(data.entry_fee) > 0) {
+      data.requires_entry_fee = true;
+    }
+
+    // Update user role to ORGANIZER if not already
+    if (request.user.role === 'USER') {
+      await prisma.user.update({
+        where: { id: userId },
+        data: { role: 'ORGANIZER' }
+      });
+    }
+
     const tournament = await prisma.tournament.create({ data });
-    return { success: true, data: tournament };
+
+    // Build invite URL
+    const baseUrl = process.env.FRONTEND_URL || 'http://localhost:5174';
+    const inviteUrl = `${baseUrl}/#/tournament/invite/${inviteCode}`;
+
+    return {
+      success: true,
+      data: {
+        ...tournament,
+        invite_url: inviteUrl,
+        subscription_plan: subscription.plan,
+        max_allowed_participants: limits.maxParticipants
+      }
+    };
+  });
+
+  // =====================================================
+  // INVITE URL SYSTEM
+  // =====================================================
+
+  // Get tournament by invite code (public - no auth required)
+  app.get('/tournaments/invite/:inviteCode', {
+    schema: {
+      tags: ['Tournaments'],
+      description: 'Get tournament details by invite code (for registration)'
+    }
+  }, async (request, reply) => {
+    const { inviteCode } = request.params as { inviteCode: string };
+
+    const tournament = await prisma.tournament.findUnique({
+      where: { invite_code: inviteCode },
+      include: {
+        game: true,
+        organizer: {
+          select: { id: true, username: true, avatar_url: true }
+        },
+        teams: {
+          include: { players: true }
+        }
+      }
+    });
+
+    if (!tournament) {
+      return reply.status(404).send({ success: false, error: 'Código de invitación inválido' });
+    }
+
+    if (!tournament.invite_active) {
+      return reply.status(403).send({ success: false, error: 'La invitación a este torneo ya no está activa' });
+    }
+
+    if (tournament.status !== 'REGISTRATION_OPEN' && tournament.status !== 'DRAFT' && tournament.status !== 'PUBLISHED') {
+      return reply.status(403).send({ success: false, error: 'El torneo no está aceptando registros' });
+    }
+
+    // Count current participants
+    const currentTeams = tournament.teams.length;
+    const spotsLeft = tournament.max_participants - currentTeams;
+
+    return {
+      success: true,
+      data: {
+        ...tournament,
+        current_teams: currentTeams,
+        spots_left: spotsLeft,
+        requires_payment: tournament.requires_entry_fee && Number(tournament.entry_fee) > 0
+      }
+    };
+  });
+
+  // Regenerate invite code (tournament admin only)
+  app.post('/tournaments/:id/regenerate-invite', {
+    preHandler: [app.authenticate],
+    schema: {
+      tags: ['Tournaments'],
+      description: 'Regenerate invite code for a tournament'
+    }
+  }, async (request: any, reply) => {
+    const { id } = request.params as { id: string };
+    const userId = request.user.id;
+
+    const tournament = await prisma.tournament.findUnique({ where: { id } });
+    if (!tournament) {
+      return reply.status(404).send({ success: false, error: 'Torneo no encontrado' });
+    }
+    if (tournament.organizer_id !== userId && request.user.role !== 'ADMIN') {
+      return reply.status(403).send({ success: false, error: 'Solo el organizador puede regenerar el código' });
+    }
+
+    let inviteCode = generateInviteCode();
+    let codeExists = await prisma.tournament.findUnique({ where: { invite_code: inviteCode } });
+    while (codeExists) {
+      inviteCode = generateInviteCode();
+      codeExists = await prisma.tournament.findUnique({ where: { invite_code: inviteCode } });
+    }
+
+    const updated = await prisma.tournament.update({
+      where: { id },
+      data: { invite_code: inviteCode, invite_active: true }
+    });
+
+    const baseUrl = process.env.FRONTEND_URL || 'http://localhost:5174';
+    return {
+      success: true,
+      data: {
+        invite_code: inviteCode,
+        invite_url: `${baseUrl}/#/tournament/invite/${inviteCode}`
+      }
+    };
+  });
+
+  // Toggle invite active/inactive
+  app.patch('/tournaments/:id/invite-status', {
+    preHandler: [app.authenticate],
+    schema: {
+      tags: ['Tournaments'],
+      description: 'Enable or disable tournament invite link'
+    }
+  }, async (request: any, reply) => {
+    const { id } = request.params as { id: string };
+    const { active } = request.body as { active: boolean };
+    const userId = request.user.id;
+
+    const tournament = await prisma.tournament.findUnique({ where: { id } });
+    if (!tournament) {
+      return reply.status(404).send({ success: false, error: 'Torneo no encontrado' });
+    }
+    if (tournament.organizer_id !== userId && request.user.role !== 'ADMIN') {
+      return reply.status(403).send({ success: false, error: 'Solo el organizador puede cambiar el estado de la invitación' });
+    }
+
+    const updated = await prisma.tournament.update({
+      where: { id },
+      data: { invite_active: active }
+    });
+
+    return { success: true, data: { invite_active: updated.invite_active } };
+  });
+
+  // =====================================================
+  // STREAMING MANAGEMENT
+  // =====================================================
+
+  // Update tournament streaming URLs
+  app.patch('/tournaments/:id/streaming', {
+    preHandler: [app.authenticate],
+    schema: {
+      tags: ['Tournaments'],
+      description: 'Update tournament streaming URLs (Twitch/YouTube)',
+      body: {
+        type: 'object',
+        properties: {
+          twitch_url: { type: 'string' },
+          youtube_url: { type: 'string' },
+          stream_active: { type: 'boolean' }
+        }
+      }
+    }
+  }, async (request: any, reply) => {
+    const { id } = request.params as { id: string };
+    const { twitch_url, youtube_url, stream_active } = request.body as {
+      twitch_url?: string;
+      youtube_url?: string;
+      stream_active?: boolean;
+    };
+    const userId = request.user.id;
+
+    const tournament = await prisma.tournament.findUnique({ where: { id } });
+    if (!tournament) {
+      return reply.status(404).send({ success: false, error: 'Torneo no encontrado' });
+    }
+    if (tournament.organizer_id !== userId && request.user.role !== 'ADMIN') {
+      return reply.status(403).send({ success: false, error: 'Solo el organizador puede gestionar las transmisiones' });
+    }
+
+    // Validate URLs if provided
+    if (twitch_url && !twitch_url.match(/^(https?:\/\/)?(www\.)?twitch\.tv\/[a-zA-Z0-9_]+$/)) {
+      return reply.status(400).send({ success: false, error: 'URL de Twitch inválida' });
+    }
+    if (youtube_url && !youtube_url.match(/^(https?:\/\/)?(www\.)?(youtube\.com\/(channel\/|user\/|@|c\/)?[a-zA-Z0-9_-]+|youtu\.be\/[a-zA-Z0-9_-]+)$/)) {
+      return reply.status(400).send({ success: false, error: 'URL de YouTube inválida' });
+    }
+
+    const updated = await prisma.tournament.update({
+      where: { id },
+      data: {
+        twitch_url: twitch_url || null,
+        youtube_url: youtube_url || null,
+        stream_active: stream_active ?? tournament.stream_active
+      }
+    });
+
+    return {
+      success: true,
+      data: {
+        twitch_url: updated.twitch_url,
+        youtube_url: updated.youtube_url,
+        stream_active: updated.stream_active
+      }
+    };
+  });
+
+  // Update match streaming URLs
+  app.patch('/matches/:id/streaming', {
+    preHandler: [app.authenticate],
+    schema: {
+      tags: ['Matches'],
+      description: 'Update match streaming URLs (Twitch/YouTube)',
+      body: {
+        type: 'object',
+        properties: {
+          twitch_url: { type: 'string' },
+          youtube_url: { type: 'string' }
+        }
+      }
+    }
+  }, async (request: any, reply) => {
+    const { id } = request.params as { id: string };
+    const { twitch_url, youtube_url } = request.body as {
+      twitch_url?: string;
+      youtube_url?: string;
+    };
+    const userId = request.user.id;
+
+    const match = await prisma.match.findUnique({
+      where: { id },
+      include: { tournament: true }
+    });
+    if (!match) {
+      return reply.status(404).send({ success: false, error: 'Partido no encontrado' });
+    }
+    if (match.tournament.organizer_id !== userId && request.user.role !== 'ADMIN') {
+      return reply.status(403).send({ success: false, error: 'Solo el organizador del torneo puede gestionar las transmisiones' });
+    }
+
+    // Validate URLs if provided
+    if (twitch_url && !twitch_url.match(/^(https?:\/\/)?(www\.)?twitch\.tv\/[a-zA-Z0-9_]+$/)) {
+      return reply.status(400).send({ success: false, error: 'URL de Twitch inválida' });
+    }
+    if (youtube_url && !youtube_url.match(/^(https?:\/\/)?(www\.)?(youtube\.com\/(channel\/|user\/|@|c\/)?[a-zA-Z0-9_-]+|youtu\.be\/[a-zA-Z0-9_-]+)$/)) {
+      return reply.status(400).send({ success: false, error: 'URL de YouTube inválida' });
+    }
+
+    const updated = await prisma.match.update({
+      where: { id },
+      data: {
+        twitch_url: twitch_url || null,
+        youtube_url: youtube_url || null
+      }
+    });
+
+    return {
+      success: true,
+      data: {
+        twitch_url: updated.twitch_url,
+        youtube_url: updated.youtube_url
+      }
+    };
+  });
+
+  // Register team via invite (requires auth + optional payment)
+  app.post('/tournaments/invite/:inviteCode/register', {
+    preHandler: [app.authenticate],
+    schema: {
+      tags: ['Tournaments'],
+      description: 'Register to a tournament via invite code',
+      body: {
+        type: 'object',
+        required: ['team_name', 'team_tag'],
+        properties: {
+          team_name: { type: 'string' },
+          team_tag: { type: 'string' },
+          logo_url: { type: 'string' }
+        }
+      }
+    }
+  }, async (request: any, reply) => {
+    const { inviteCode } = request.params as { inviteCode: string };
+    const { team_name, team_tag, logo_url } = request.body;
+    const userId = request.user.id;
+
+    // Find tournament by invite code
+    const tournament = await prisma.tournament.findUnique({
+      where: { invite_code: inviteCode },
+      include: { teams: true }
+    });
+
+    if (!tournament) {
+      return reply.status(404).send({ success: false, error: 'Código de invitación inválido' });
+    }
+
+    if (!tournament.invite_active) {
+      return reply.status(403).send({ success: false, error: 'La invitación ya no está activa' });
+    }
+
+    if (tournament.status !== 'REGISTRATION_OPEN' && tournament.status !== 'DRAFT' && tournament.status !== 'PUBLISHED') {
+      return reply.status(403).send({ success: false, error: 'El torneo no acepta registros en este momento' });
+    }
+
+    // Check if tournament is full
+    if (tournament.teams.length >= tournament.max_participants) {
+      return reply.status(400).send({ success: false, error: 'El torneo está lleno' });
+    }
+
+    // Check if user already has a team in this tournament
+    const existingTeam = await prisma.teamPlayer.findFirst({
+      where: {
+        user_id: userId,
+        team: { tournament_id: tournament.id }
+      }
+    });
+    if (existingTeam) {
+      return reply.status(400).send({ success: false, error: 'Ya estás registrado en este torneo' });
+    }
+
+    // Check if tournament requires entry fee payment
+    if (tournament.requires_entry_fee && Number(tournament.entry_fee) > 0) {
+      // Create team as pending (not approved until payment)
+      const team = await prisma.team.create({
+        data: {
+          tournament_id: tournament.id,
+          name: team_name,
+          tag: team_tag,
+          logo_url: logo_url || null,
+          captain_id: userId,
+          approved: false // Pending payment
+        }
+      });
+
+      // Add captain as player
+      await prisma.teamPlayer.create({
+        data: {
+          team_id: team.id,
+          user_id: userId,
+          is_captain: true,
+          role: 'Captain'
+        }
+      });
+
+      return {
+        success: true,
+        data: {
+          team,
+          requires_payment: true,
+          entry_fee: tournament.entry_fee,
+          message: 'Equipo registrado. Debes pagar la cuota de inscripción para confirmar tu lugar.'
+        }
+      };
+    }
+
+    // Free tournament - register directly
+    const team = await prisma.team.create({
+      data: {
+        tournament_id: tournament.id,
+        name: team_name,
+        tag: team_tag,
+        logo_url: logo_url || null,
+        captain_id: userId,
+        approved: true
+      }
+    });
+
+    await prisma.teamPlayer.create({
+      data: {
+        team_id: team.id,
+        user_id: userId,
+        is_captain: true,
+        role: 'Captain'
+      }
+    });
+
+    return {
+      success: true,
+      data: {
+        team,
+        requires_payment: false,
+        message: 'Te has registrado exitosamente al torneo.'
+      }
+    };
   });
 
   app.get('/tournaments/:id', {
@@ -605,14 +1173,36 @@ export async function buildApp() {
     }
   }, async (request) => {
     const { id } = request.params as { id: string };
-    const tournament = await prisma.tournament.findUnique({ where: { id } });
-    return { success: true, data: tournament };
+    const tournament = await prisma.tournament.findUnique({
+      where: { id },
+      include: {
+        game: true,
+        organizer: { select: { id: true, username: true, avatar_url: true } },
+        teams: { include: { players: true } }
+      }
+    });
+
+    if (!tournament) {
+      return { success: false, error: 'Torneo no encontrado' };
+    }
+
+    const baseUrl = process.env.FRONTEND_URL || 'http://localhost:5174';
+    return {
+      success: true,
+      data: {
+        ...tournament,
+        invite_url: tournament.invite_code ? `${baseUrl}/#/tournament/invite/${tournament.invite_code}` : null,
+        current_teams: tournament.teams.length,
+        spots_left: tournament.max_participants - tournament.teams.length
+      }
+    };
   });
 
   app.put('/tournaments/:id', {
+    preHandler: [app.authenticate],
     schema: {
       tags: ['Tournaments'],
-      description: 'Update tournament by ID',
+      description: 'Update tournament by ID (organizer or admin only)',
       params: {
         type: 'object',
         properties: {
@@ -624,7 +1214,9 @@ export async function buildApp() {
         properties: {
           name: { type: 'string' },
           status: { type: 'string' },
-          prize_pool: { type: 'number' }
+          prize_pool: { type: 'number' },
+          entry_fee: { type: 'number' },
+          description: { type: 'string' }
         }
       },
       response: {
@@ -637,16 +1229,33 @@ export async function buildApp() {
         }
       }
     }
-  }, async (request) => {
+  }, async (request: any, reply) => {
     const { id } = request.params as { id: string };
-    const tournament = await prisma.tournament.update({ where: { id }, data: request.body as any });
+    const userId = request.user.id;
+
+    const existing = await prisma.tournament.findUnique({ where: { id } });
+    if (!existing) {
+      return reply.status(404).send({ success: false, error: 'Torneo no encontrado' });
+    }
+    if (existing.organizer_id !== userId && request.user.role !== 'ADMIN') {
+      return reply.status(403).send({ success: false, error: 'Solo el organizador o admin puede editar este torneo' });
+    }
+
+    const updateData = request.body as any;
+    // Update requires_entry_fee flag if entry_fee changes
+    if (updateData.entry_fee !== undefined) {
+      updateData.requires_entry_fee = Number(updateData.entry_fee) > 0;
+    }
+
+    const tournament = await prisma.tournament.update({ where: { id }, data: updateData });
     return { success: true, data: tournament };
   });
 
   app.delete('/tournaments/:id', {
+    preHandler: [app.authenticate],
     schema: {
       tags: ['Tournaments'],
-      description: 'Delete tournament by ID',
+      description: 'Delete tournament by ID (organizer or admin only)',
       params: {
         type: 'object',
         properties: {
@@ -663,8 +1272,18 @@ export async function buildApp() {
         }
       }
     }
-  }, async (request) => {
+  }, async (request: any, reply) => {
     const { id } = request.params as { id: string };
+    const userId = request.user.id;
+
+    const existing = await prisma.tournament.findUnique({ where: { id } });
+    if (!existing) {
+      return reply.status(404).send({ success: false, error: 'Torneo no encontrado' });
+    }
+    if (existing.organizer_id !== userId && request.user.role !== 'ADMIN') {
+      return reply.status(403).send({ success: false, error: 'Solo el organizador o admin puede eliminar este torneo' });
+    }
+
     await prisma.tournament.delete({ where: { id } });
     return { success: true, message: 'Tournament deleted' };
   });

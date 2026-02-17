@@ -10,6 +10,7 @@ import { colors, gradients } from '../theme/colors';
 import HomeScreen from '../screens/main/HomeScreen';
 import TournamentsScreen from '../screens/main/TournamentsScreen';
 import TournamentDetailScreen from '../screens/main/TournamentDetailScreen';
+import TournamentInviteScreen from '../screens/main/TournamentInviteScreen';
 import ProfileScreen from '../screens/main/ProfileScreen';
 import SettingsScreen from '../screens/main/SettingsScreen';
 import RankingScreen from '../screens/main/RankingScreen';
@@ -91,6 +92,13 @@ function TournamentStackNavigator() {
             <TournamentStack.Screen
                 name="TournamentDetail"
                 component={TournamentDetailScreen}
+                options={{
+                    headerShown: false,
+                }}
+            />
+            <TournamentStack.Screen
+                name="TournamentInvite"
+                component={TournamentInviteScreen}
                 options={{
                     headerShown: false,
                 }}

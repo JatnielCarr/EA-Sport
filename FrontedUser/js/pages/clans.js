@@ -128,23 +128,25 @@ function renderClansGrid() {
     grid.classList.remove('hidden');
     emptyState.classList.add('hidden');
 
-    grid.innerHTML = filteredClans.map(clan => `
+    grid.innerHTML = filteredClans.filter(clan => clan && clan.id).map(clan => {
+        const accessType = clan.access_type || 'OPEN';
+        return `
         <div class="clan-card" data-id="${clan.id}">
             <div class="clan-banner" style="${clan.banner_url ? `background-image: url('${clan.banner_url}')` : ''}">
                 ${!clan.banner_url ? `<i class="fas fa-shield-alt"></i>` : ''}
-                <div class="clan-access-badge ${clan.access_type.toLowerCase()}">
-                    <i class="fas ${getAccessIcon(clan.access_type)}"></i>
-                    ${getAccessLabel(clan.access_type)}
+                <div class="clan-access-badge ${accessType.toLowerCase()}">
+                    <i class="fas ${getAccessIcon(accessType)}"></i>
+                    ${getAccessLabel(accessType)}
                 </div>
             </div>
             <div class="clan-content">
                 <div class="clan-header">
-                    <h3 class="clan-name">${clan.name}</h3>
-                    <span class="clan-tag">[${clan.tag}]</span>
+                    <h3 class="clan-name">${clan.name || 'Sin nombre'}</h3>
+                    <span class="clan-tag">[${clan.tag || 'N/A'}]</span>
                 </div>
                 <p class="clan-description">${clan.description || 'Sin descripción'}</p>
                 <div class="clan-meta">
-                    <span><i class="fas fa-users"></i> ${clan.member_count} miembros</span>
+                    <span><i class="fas fa-users"></i> ${clan.member_count || 0} miembros</span>
                     ${clan.location ? `<span><i class="fas fa-map-marker-alt"></i> ${clan.location}</span>` : ''}
                 </div>
                 <div class="clan-leader">
@@ -158,7 +160,8 @@ function renderClansGrid() {
                 </a>
             </div>
         </div>
-    `).join('');
+    `;
+    }).join('');
 }
 
 function getAccessIcon(type) {
@@ -227,8 +230,8 @@ function filterClans() {
 
     filteredClans = allClans.filter(clan => {
         const matchesSearch = !search ||
-            clan.name.toLowerCase().includes(search) ||
-            clan.tag.toLowerCase().includes(search) ||
+            (clan.name && clan.name.toLowerCase().includes(search)) ||
+            (clan.tag && clan.tag.toLowerCase().includes(search)) ||
             (clan.description && clan.description.toLowerCase().includes(search));
 
         const matchesAccess = !accessType || clan.access_type === accessType;

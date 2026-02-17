@@ -37,6 +37,7 @@ import { renderCreateClanPage } from './pages/create-clan.js';
 import { renderPayment } from './pages/payment.js';
 import { renderSubscription } from './pages/subscription.js';
 import { renderPaymentSuccess } from './pages/payment-success.js';
+import { renderTournamentInvite } from './pages/tournament-invite.js';
 
 import { initChatbot } from './components/chatbot.js';
 
@@ -183,6 +184,12 @@ async function handleRoute() {
         '#/pago/exito': () => renderPaymentSuccess(app),
         '#/suscripcion': () => renderSubscription(app)
     };
+
+    // Check for tournament invite route
+    if (hash.startsWith('#/tournament/invite/')) {
+        const inviteCode = hash.split('/')[3];
+        return renderTournamentInvite(app, inviteCode);
+    }
 
     // Check for tournament detail route
     if (hash.startsWith('#/torneo/')) {

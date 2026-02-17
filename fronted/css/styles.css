@@ -95,7 +95,7 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--primary);
+  background: var(--text-muted);
   border-radius: 4px;
 }
 
@@ -755,53 +755,51 @@ textarea {
 .data-table {
   width: 100%;
   border-collapse: collapse;
+  border: 1px solid var(--border-color);
 }
 
 .data-table th {
-  padding: 16px 20px;
+  padding: 12px 14px;
   text-align: left;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   color: var(--text-muted);
   background: var(--bg-secondary);
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 2px solid var(--border-color);
+  border-right: 1px solid var(--border-color);
+}
+
+.data-table th:last-child {
+  border-right: none;
 }
 
 .data-table td {
-  padding: 16px 20px;
-  font-size: 14px;
+  padding: 10px 14px;
+  font-size: 13px;
   color: var(--text-primary);
   border-bottom: 1px solid var(--border-color);
-  transition: var(--transition);
+  border-right: 1px solid var(--border-color);
+  vertical-align: middle;
+}
+
+.data-table td:last-child {
+  border-right: none;
 }
 
 .data-table tbody tr {
-  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  transition: background 0.2s ease;
   position: relative;
 }
 
-.data-table tbody tr::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0;
-  height: 100%;
-  width: 3px;
-  background: linear-gradient(180deg, var(--primary), var(--accent));
-  transform: scaleY(0);
-  transition: transform 0.3s ease;
-}
+
 
 .data-table tbody tr:hover {
-  background: linear-gradient(90deg, rgba(0, 212, 255, 0.08), transparent);
-  transform: translateX(5px);
+  background: rgba(0, 212, 255, 0.06);
 }
 
-.data-table tbody tr:hover::before {
-  transform: scaleY(1);
-}
+
 
 .data-table tbody tr:hover td {
   color: var(--primary);
@@ -810,6 +808,7 @@ textarea {
 .data-table tbody tr:last-child td {
   border-bottom: none;
 }
+
 
 /* =====================================================
    BUTTONS

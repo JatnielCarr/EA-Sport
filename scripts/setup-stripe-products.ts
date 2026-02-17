@@ -11,12 +11,12 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
-    apiVersion: '2024-09-30.acacia'
+    apiVersion: '2026-01-28.clover'
 });
 
 interface PriceIds {
-    STRIPE_PRO_MONTHLY_PRICE_ID: string;
-    STRIPE_PRO_YEARLY_PRICE_ID: string;
+    STRIPE_STANDARD_MONTHLY_PRICE_ID: string;
+    STRIPE_STANDARD_YEARLY_PRICE_ID: string;
     STRIPE_PREMIUM_MONTHLY_PRICE_ID: string;
     STRIPE_PREMIUM_YEARLY_PRICE_ID: string;
 }
@@ -24,54 +24,54 @@ interface PriceIds {
 async function createProducts(): Promise<PriceIds> {
     console.log('🚀 Creando productos en Stripe...\n');
 
-    // Crear producto PRO
-    console.log('📦 Creando producto PRO...');
-    const proProduct = await stripe.products.create({
-        name: 'ApexTournament Pro',
-        description: 'Acceso a torneos premium, estadísticas avanzadas, badge exclusivo y más.',
+    // Crear producto STANDARD
+    console.log('📦 Creando producto STANDARD...');
+    const standardProduct = await stripe.products.create({
+        name: 'ApexTournament Standard',
+        description: 'Plan Standard: crea y administra torneos, hasta 16 jugadores y 3 torneos activos.',
         metadata: {
-            plan: 'PRO'
+            plan: 'STANDARD'
         }
     });
-    console.log(`   ✅ Producto creado: ${proProduct.id}`);
+    console.log(`   ✅ Producto creado: ${standardProduct.id}`);
 
-    // Precio PRO Mensual
-    console.log('   💵 Creando precio mensual ($99 MXN/mes)...');
-    const proMonthly = await stripe.prices.create({
-        product: proProduct.id,
-        unit_amount: 9900, // $99.00 MXN en centavos
+    // Precio STANDARD Mensual
+    console.log('   💵 Creando precio mensual ($499 MXN/mes)...');
+    const standardMonthly = await stripe.prices.create({
+        product: standardProduct.id,
+        unit_amount: 49900, // $499.00 MXN en centavos
         currency: 'mxn',
         recurring: {
             interval: 'month'
         },
         metadata: {
-            plan: 'PRO',
+            plan: 'STANDARD',
             interval: 'monthly'
         }
     });
-    console.log(`   ✅ Precio mensual: ${proMonthly.id}`);
+    console.log(`   ✅ Precio mensual: ${standardMonthly.id}`);
 
-    // Precio PRO Anual
-    console.log('   💵 Creando precio anual ($990 MXN/año)...');
-    const proYearly = await stripe.prices.create({
-        product: proProduct.id,
-        unit_amount: 99000, // $990.00 MXN en centavos
+    // Precio STANDARD Anual
+    console.log('   💵 Creando precio anual ($4,990 MXN/año)...');
+    const standardYearly = await stripe.prices.create({
+        product: standardProduct.id,
+        unit_amount: 499000, // $4,990.00 MXN en centavos
         currency: 'mxn',
         recurring: {
             interval: 'year'
         },
         metadata: {
-            plan: 'PRO',
+            plan: 'STANDARD',
             interval: 'yearly'
         }
     });
-    console.log(`   ✅ Precio anual: ${proYearly.id}`);
+    console.log(`   ✅ Precio anual: ${standardYearly.id}`);
 
     // Crear producto PREMIUM
     console.log('\n📦 Creando producto PREMIUM...');
     const premiumProduct = await stripe.products.create({
         name: 'ApexTournament Premium',
-        description: 'Todo lo de Pro más torneos exclusivos, coaching personalizado, badge legendario y acceso anticipado.',
+        description: 'Plan Premium: hasta 64 jugadores y 10 torneos activos, soporte prioritario.',
         metadata: {
             plan: 'PREMIUM'
         }
@@ -79,10 +79,10 @@ async function createProducts(): Promise<PriceIds> {
     console.log(`   ✅ Producto creado: ${premiumProduct.id}`);
 
     // Precio PREMIUM Mensual
-    console.log('   💵 Creando precio mensual ($199 MXN/mes)...');
+    console.log('   💵 Creando precio mensual ($999 MXN/mes)...');
     const premiumMonthly = await stripe.prices.create({
         product: premiumProduct.id,
-        unit_amount: 19900, // $199.00 MXN en centavos
+        unit_amount: 99900, // $999.00 MXN en centavos
         currency: 'mxn',
         recurring: {
             interval: 'month'
@@ -95,10 +95,10 @@ async function createProducts(): Promise<PriceIds> {
     console.log(`   ✅ Precio mensual: ${premiumMonthly.id}`);
 
     // Precio PREMIUM Anual
-    console.log('   💵 Creando precio anual ($1990 MXN/año)...');
+    console.log('   💵 Creando precio anual ($9,990 MXN/año)...');
     const premiumYearly = await stripe.prices.create({
         product: premiumProduct.id,
-        unit_amount: 199000, // $1990.00 MXN en centavos
+        unit_amount: 999000, // $9,990.00 MXN en centavos
         currency: 'mxn',
         recurring: {
             interval: 'year'
@@ -111,8 +111,8 @@ async function createProducts(): Promise<PriceIds> {
     console.log(`   ✅ Precio anual: ${premiumYearly.id}`);
 
     return {
-        STRIPE_PRO_MONTHLY_PRICE_ID: proMonthly.id,
-        STRIPE_PRO_YEARLY_PRICE_ID: proYearly.id,
+        STRIPE_STANDARD_MONTHLY_PRICE_ID: standardMonthly.id,
+        STRIPE_STANDARD_YEARLY_PRICE_ID: standardYearly.id,
         STRIPE_PREMIUM_MONTHLY_PRICE_ID: premiumMonthly.id,
         STRIPE_PREMIUM_YEARLY_PRICE_ID: premiumYearly.id
     };
@@ -139,8 +139,8 @@ async function updateEnvFile(priceIds: PriceIds) {
     }
 
     // Reemplazar valores vacíos con los nuevos
-    envContent = envContent.replace(/STRIPE_PRO_MONTHLY_PRICE_ID=\s*$/m, `STRIPE_PRO_MONTHLY_PRICE_ID=${priceIds.STRIPE_PRO_MONTHLY_PRICE_ID}`);
-    envContent = envContent.replace(/STRIPE_PRO_YEARLY_PRICE_ID=\s*$/m, `STRIPE_PRO_YEARLY_PRICE_ID=${priceIds.STRIPE_PRO_YEARLY_PRICE_ID}`);
+    envContent = envContent.replace(/STRIPE_STANDARD_MONTHLY_PRICE_ID=\s*$/m, `STRIPE_STANDARD_MONTHLY_PRICE_ID=${priceIds.STRIPE_STANDARD_MONTHLY_PRICE_ID}`);
+    envContent = envContent.replace(/STRIPE_STANDARD_YEARLY_PRICE_ID=\s*$/m, `STRIPE_STANDARD_YEARLY_PRICE_ID=${priceIds.STRIPE_STANDARD_YEARLY_PRICE_ID}`);
     envContent = envContent.replace(/STRIPE_PREMIUM_MONTHLY_PRICE_ID=\s*$/m, `STRIPE_PREMIUM_MONTHLY_PRICE_ID=${priceIds.STRIPE_PREMIUM_MONTHLY_PRICE_ID}`);
     envContent = envContent.replace(/STRIPE_PREMIUM_YEARLY_PRICE_ID=\s*$/m, `STRIPE_PREMIUM_YEARLY_PRICE_ID=${priceIds.STRIPE_PREMIUM_YEARLY_PRICE_ID}`);
 
@@ -167,8 +167,8 @@ async function main() {
         console.log('   ✅ CONFIGURACIÓN COMPLETADA');
         console.log('═'.repeat(50));
         console.log('\nPrice IDs creados:');
-        console.log(`  PRO Mensual:     ${priceIds.STRIPE_PRO_MONTHLY_PRICE_ID}`);
-        console.log(`  PRO Anual:       ${priceIds.STRIPE_PRO_YEARLY_PRICE_ID}`);
+        console.log(`  STANDARD Mensual: ${priceIds.STRIPE_STANDARD_MONTHLY_PRICE_ID}`);
+        console.log(`  STANDARD Anual:   ${priceIds.STRIPE_STANDARD_YEARLY_PRICE_ID}`);
         console.log(`  PREMIUM Mensual: ${priceIds.STRIPE_PREMIUM_MONTHLY_PRICE_ID}`);
         console.log(`  PREMIUM Anual:   ${priceIds.STRIPE_PREMIUM_YEARLY_PRICE_ID}`);
         console.log('\n🎉 ¡Listo! Reinicia el servidor para aplicar los cambios.');

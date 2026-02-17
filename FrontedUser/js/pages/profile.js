@@ -13,13 +13,20 @@ async function handleNameChangeReturn() {
     const sessionId = urlParams.get('session_id');
 
     if (nameChangeStatus === 'success' && sessionId) {
+        // Verify payment with Stripe first
+        try {
+            await API.payment.verifySession(sessionId);
+        } catch (e) {
+            console.warn('Could not verify name change payment:', e.message);
+        }
+
         // Get pending profile update from sessionStorage
         const pendingUpdate = sessionStorage.getItem('pendingProfileUpdate');
-        
+
         if (pendingUpdate) {
             try {
                 const { username, description } = JSON.parse(pendingUpdate);
-                
+
                 // Apply the name change using the session ID
                 const response = await API.post('/payment/apply-name-change', {
                     session_id: sessionId,
@@ -31,7 +38,7 @@ async function handleNameChangeReturn() {
                     if (description) {
                         await API.users.updateProfile({ description });
                     }
-                    
+
                     window.showToast?.('success', '¡Nombre actualizado!', 'Tu nombre de usuario ha sido cambiado exitosamente.');
                     sessionStorage.removeItem('pendingProfileUpdate');
                 } else {
@@ -48,6 +55,33 @@ async function handleNameChangeReturn() {
     } else if (nameChangeStatus === 'canceled') {
         window.showToast?.('warning', 'Pago cancelado', 'El cambio de nombre no se realizó');
         sessionStorage.removeItem('pendingProfileUpdate');
+        window.history.replaceState(null, '', window.location.pathname + '#/perfil');
+    }
+}
+
+// Handle return from Stripe subscription checkout
+async function handleSubscriptionReturn() {
+    const urlParams = new URLSearchParams(window.location.hash.split('?')[1] || '');
+    const subscriptionStatus = urlParams.get('subscription');
+    const sessionId = urlParams.get('session_id');
+
+    if (subscriptionStatus === 'success' && sessionId) {
+        try {
+            const result = await API.subscriptions.verifySession(sessionId);
+            if (result.success) {
+                window.showToast?.('success', '¡Suscripción Activada!', `Tu plan ${result.data?.plan || ''} ha sido activado exitosamente.`);
+            } else {
+                window.showToast?.('warning', 'Verificación', result.error || 'No se pudo verificar la suscripción');
+            }
+        } catch (error) {
+            console.error('Error verifying subscription:', error);
+            window.showToast?.('warning', 'Verificación pendiente', 'Tu suscripción puede tardar unos momentos en activarse.');
+        }
+
+        // Clean URL
+        window.history.replaceState(null, '', window.location.pathname + '#/perfil');
+    } else if (subscriptionStatus === 'canceled') {
+        window.showToast?.('warning', 'Suscripción cancelada', 'No se realizó el pago de la suscripción.');
         window.history.replaceState(null, '', window.location.pathname + '#/perfil');
     }
 }
@@ -104,6 +138,9 @@ export async function renderProfile(container) {
 
     // Check for name change success from Stripe redirect
     await handleNameChangeReturn();
+
+    // Check for subscription success from Stripe redirect
+    await handleSubscriptionReturn();
 
     try {
         const response = await API.users.getProfile();
@@ -451,7 +488,7 @@ function initProfileEvents(user) {
                     username,
                     description
                 }));
-                
+
                 // Create checkout session for name change
                 const response = await API.payments.createNameChangeCheckout();
                 if (response.url) {

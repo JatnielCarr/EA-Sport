@@ -103,6 +103,11 @@ model User {
   banner_url       String?  @db.LongText
   description      String?  @db.VarChar(500)
   name_change_count Int     @default(0)
+  banned           Boolean  @default(false)
+  ban_reason       String?  @db.Text
+  ban_duration     String?  // "3d", "7d", "14d", "31d", "permanent"
+  banned_at        DateTime?
+  banned_until     DateTime?
   created_at       DateTime @default(now())
   updated_at       DateTime @updatedAt
 
@@ -329,6 +334,15 @@ model Tournament {
   status                TournamentStatus @default(DRAFT)
   rules_json            Json?
   bracket_generated     Boolean          @default(false)
+  invite_code           String?          @unique  // Código único para URL de invitación
+  invite_active         Boolean          @default(true)  // Si la invitación está activa
+  requires_entry_fee    Boolean          @default(false) // Si requiere pago para entrar
+
+  // Streaming URLs
+  twitch_url            String?          // URL del canal de Twitch para transmisiones del torneo
+  youtube_url           String?          // URL del canal de YouTube para transmisiones del torneo
+  stream_active         Boolean          @default(false) // Si las transmisiones están activas
+
   created_at            DateTime         @default(now())
   updated_at            DateTime         @updatedAt
 
@@ -344,6 +358,7 @@ model Tournament {
   @@index([organizer_id])
   @@index([status])
   @@index([start_date])
+  @@index([invite_code])
   @@map("tournaments")
 }
 
@@ -413,6 +428,11 @@ model Match {
   winner_id          String?
   home_score         Int         @default(0)
   away_score         Int         @default(0)
+
+  // Streaming URLs (opcional - si es diferente al del torneo)
+  twitch_url         String?     // URL específica de Twitch para este partido
+  youtube_url        String?     // URL específica de YouTube para este partido
+
   created_at         DateTime    @default(now())
   updated_at         DateTime    @updatedAt
 
