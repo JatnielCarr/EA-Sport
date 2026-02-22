@@ -1,0 +1,1384 @@
+/* =====================================================
+   CLANS - Premium Stylesheet
+   Sistema: Solo Líder + Miembros
+   ===================================================== */
+
+/* ==================== ANIMATIONS ==================== */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes shimmer {
+    0% {
+        background-position: -200% 0;
+    }
+
+    100% {
+        background-position: 200% 0;
+    }
+}
+
+@keyframes pulseGlow {
+
+    0%,
+    100% {
+        box-shadow: 0 0 5px rgba(0, 212, 255, 0.3);
+    }
+
+    50% {
+        box-shadow: 0 0 20px rgba(0, 212, 255, 0.6);
+    }
+}
+
+@keyframes float {
+
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-6px);
+    }
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateX(-20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* ==================== HERO ==================== */
+.clans-hero {
+    position: relative;
+    text-align: center;
+    padding: 60px 20px 40px;
+    margin-bottom: 32px;
+    border-radius: 20px;
+    background: linear-gradient(135deg, rgba(0, 212, 255, 0.08), rgba(0, 255, 136, 0.05), rgba(139, 92, 246, 0.08));
+    border: 1px solid rgba(0, 212, 255, 0.15);
+    overflow: hidden;
+}
+
+.clans-hero::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: radial-gradient(circle at 30% 20%, rgba(0, 212, 255, 0.1) 0%, transparent 50%),
+        radial-gradient(circle at 70% 80%, rgba(139, 92, 246, 0.08) 0%, transparent 50%);
+    pointer-events: none;
+}
+
+.clans-hero-content {
+    position: relative;
+    z-index: 1;
+}
+
+.clans-hero-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 2.5rem;
+    font-weight: 800;
+    margin-bottom: 12px;
+    color: #fff;
+}
+
+.clans-hero-title i {
+    color: #00d4ff;
+    margin-right: 12px;
+}
+
+.gradient-text {
+    background: linear-gradient(135deg, #00d4ff, #00ff88, #8b5cf6);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.clans-hero-subtitle {
+    font-size: 1.05rem;
+    color: rgba(255, 255, 255, 0.7);
+    max-width: 600px;
+    margin: 0 auto 24px;
+    line-height: 1.6;
+}
+
+.clans-hero-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    margin-bottom: 32px;
+    flex-wrap: wrap;
+}
+
+.clans-hero-stats {
+    display: flex;
+    gap: 40px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.clans-hero-stat {
+    text-align: center;
+}
+
+.clans-hero-stat .stat-value {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: #00d4ff;
+}
+
+.clans-hero-stat .stat-label {
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.5);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-top: 4px;
+}
+
+/* ==================== FILTERS ==================== */
+.clans-filters {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 28px;
+    flex-wrap: wrap;
+}
+
+.search-box {
+    flex: 1;
+    min-width: 250px;
+    position: relative;
+}
+
+.search-box i {
+    position: absolute;
+    left: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 14px;
+}
+
+.search-input {
+    width: 100%;
+    padding: 12px 16px 12px 44px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    color: #fff;
+    font-size: 14px;
+    transition: all 0.3s;
+}
+
+.search-input:focus {
+    outline: none;
+    border-color: #00d4ff;
+    box-shadow: 0 0 0 3px rgba(0, 212, 255, 0.15);
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.filter-group {
+    display: flex;
+    gap: 10px;
+}
+
+.filter-select,
+.filter-input {
+    padding: 12px 16px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    color: #fff;
+    font-size: 14px;
+    transition: all 0.3s;
+    min-width: 160px;
+}
+
+.filter-select:focus,
+.filter-input:focus {
+    outline: none;
+    border-color: #00d4ff;
+    box-shadow: 0 0 0 3px rgba(0, 212, 255, 0.15);
+}
+
+.filter-select option {
+    background: #1a1a2e;
+    color: #fff;
+}
+
+/* ==================== CLAN GRID ==================== */
+.clans-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 24px;
+}
+
+/* ==================== CLAN CARD ==================== */
+.clan-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 16px;
+    overflow: hidden;
+    transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    animation: fadeInUp 0.5s ease-out backwards;
+    display: flex;
+    flex-direction: column;
+}
+
+.clan-card:nth-child(1) {
+    animation-delay: 0.05s;
+}
+
+.clan-card:nth-child(2) {
+    animation-delay: 0.1s;
+}
+
+.clan-card:nth-child(3) {
+    animation-delay: 0.15s;
+}
+
+.clan-card:nth-child(4) {
+    animation-delay: 0.2s;
+}
+
+.clan-card:nth-child(5) {
+    animation-delay: 0.25s;
+}
+
+.clan-card:nth-child(6) {
+    animation-delay: 0.3s;
+}
+
+.clan-card:hover {
+    transform: translateY(-6px);
+    border-color: rgba(0, 212, 255, 0.4);
+    box-shadow: 0 12px 40px rgba(0, 212, 255, 0.15), 0 0 0 1px rgba(0, 212, 255, 0.2);
+}
+
+.clan-banner {
+    height: 160px;
+    background: linear-gradient(135deg, #0a2a3a, #1a0a2e, #0a1a2a);
+    background-size: cover;
+    background-position: center;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.clan-banner>i {
+    font-size: 40px;
+    color: rgba(0, 212, 255, 0.2);
+}
+
+.clan-access-badge {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    backdrop-filter: blur(8px);
+}
+
+.clan-access-badge.open {
+    background: rgba(0, 255, 136, 0.2);
+    color: #00ff88;
+    border: 1px solid rgba(0, 255, 136, 0.3);
+}
+
+.clan-access-badge.invite_only {
+    background: rgba(0, 212, 255, 0.2);
+    color: #00d4ff;
+    border: 1px solid rgba(0, 212, 255, 0.3);
+}
+
+.clan-access-badge.closed {
+    background: rgba(255, 68, 68, 0.2);
+    color: #ff4444;
+    border: 1px solid rgba(255, 68, 68, 0.3);
+}
+
+.clan-content {
+    padding: 20px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.clan-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.clan-name {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #fff;
+}
+
+.clan-tag {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #00d4ff;
+    background: rgba(0, 212, 255, 0.1);
+    padding: 3px 8px;
+    border-radius: 6px;
+    border: 1px solid rgba(0, 212, 255, 0.2);
+}
+
+.clan-description {
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.6);
+    line-height: 1.5;
+    margin-bottom: 14px;
+    flex: 1;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.clan-meta {
+    display: flex;
+    gap: 16px;
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.5);
+    margin-bottom: 10px;
+}
+
+.clan-meta i {
+    margin-right: 4px;
+    color: rgba(0, 212, 255, 0.6);
+}
+
+.clan-leader {
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.5);
+    margin-bottom: 4px;
+}
+
+.clan-leader i {
+    color: #ffd700;
+    margin-right: 4px;
+}
+
+.clan-footer {
+    padding: 0 20px 20px;
+}
+
+.btn-block {
+    width: 100%;
+    text-align: center;
+}
+
+/* ==================== SKELETON LOADING ==================== */
+.loading-skeleton {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 24px;
+    width: 100%;
+}
+
+.clan-card-skeleton {
+    height: 360px;
+    border-radius: 16px;
+    background: linear-gradient(90deg, rgba(255, 255, 255, 0.03) 25%, rgba(255, 255, 255, 0.06) 50%, rgba(255, 255, 255, 0.03) 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+}
+
+/* ==================== EMPTY/ERROR STATE ==================== */
+.empty-state,
+.error-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.empty-state i,
+.error-state i {
+    font-size: 48px;
+    color: rgba(0, 212, 255, 0.3);
+    margin-bottom: 16px;
+    display: block;
+}
+
+.empty-state h3,
+.error-state h3 {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1.2rem;
+    color: #fff;
+    margin-bottom: 8px;
+}
+
+.hidden {
+    display: none !important;
+}
+
+/* =====================================================
+   CLAN DETAIL PAGE
+   ===================================================== */
+
+.clan-detail-banner {
+    width: 100%;
+    height: 280px;
+    background: linear-gradient(135deg, #0a2a3a, #1a0a2e);
+    background-size: cover;
+    background-position: center;
+    position: relative;
+}
+
+.clan-detail-banner-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to bottom, rgba(10, 10, 30, 0.3) 0%, rgba(10, 10, 30, 0.95) 100%);
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    padding: 24px 32px;
+}
+
+.back-btn {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    backdrop-filter: blur(8px);
+    border-radius: 10px;
+}
+
+.clan-detail-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.clan-detail-name {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 2rem;
+    font-weight: 800;
+    color: #fff;
+}
+
+.clan-detail-tag {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #00d4ff;
+    background: rgba(0, 212, 255, 0.15);
+    padding: 6px 14px;
+    border-radius: 8px;
+    border: 1px solid rgba(0, 212, 255, 0.3);
+}
+
+/* ==================== DETAIL GRID ==================== */
+.clan-detail-grid {
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    gap: 24px;
+    margin-top: 24px;
+    padding-bottom: 40px;
+}
+
+/* ==================== TABS ==================== */
+.clan-tabs {
+    display: flex;
+    gap: 4px;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 14px;
+    padding: 4px;
+    margin-bottom: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    overflow-x: auto;
+}
+
+.clan-tab {
+    flex: 1;
+    padding: 12px 16px;
+    background: transparent;
+    border: none;
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 13px;
+    font-weight: 500;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.25s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    white-space: nowrap;
+}
+
+.clan-tab:hover {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.clan-tab.active {
+    background: rgba(0, 212, 255, 0.15);
+    color: #00d4ff;
+    font-weight: 600;
+}
+
+.tab-badge {
+    background: rgba(0, 212, 255, 0.2);
+    color: #00d4ff;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.clan-tab-content {
+    display: none;
+    animation: fadeInUp 0.3s ease;
+}
+
+.clan-tab-content.active {
+    display: block;
+}
+
+/* ==================== CARD SECTION ==================== */
+.clan-card-section {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 14px;
+    padding: 24px;
+}
+
+.clan-card-section h3 {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #00d4ff;
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.clan-card-section p {
+    color: rgba(255, 255, 255, 0.7);
+    line-height: 1.7;
+    font-size: 0.9rem;
+}
+
+/* ==================== MEMBERS LIST ==================== */
+.clan-members-bar {
+    width: 100%;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.clan-members-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #00d4ff, #00ff88);
+    border-radius: 3px;
+    transition: width 0.6s ease;
+}
+
+.clan-members-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.clan-member-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.02);
+    transition: background 0.2s;
+}
+
+.clan-member-item:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.clan-member-profile-click {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    flex: 1;
+}
+
+.clan-member-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 14px;
+    color: #fff;
+    background: linear-gradient(135deg, #00d4ff, #8b5cf6);
+    flex-shrink: 0;
+}
+
+.clan-member-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.clan-member-name {
+    font-weight: 600;
+    color: #fff;
+    font-size: 0.88rem;
+}
+
+.clan-member-role {
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 6px;
+    display: inline-flex;
+    align-items: center;
+    width: fit-content;
+}
+
+.clan-member-role.leader {
+    color: #ffd700;
+    background: rgba(255, 215, 0, 0.15);
+}
+
+.clan-member-role.member {
+    color: rgba(255, 255, 255, 0.5);
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.clan-member-actions {
+    display: flex;
+    gap: 6px;
+}
+
+.clan-member-actions .btn {
+    padding: 6px 10px;
+    font-size: 12px;
+    border-radius: 8px;
+}
+
+/* ==================== CHAT ==================== */
+.clan-chat {
+    display: flex;
+    flex-direction: column;
+    height: 450px;
+}
+
+.clan-chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 12px 12px 0 0;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-bottom: none;
+}
+
+.chat-message {
+    max-width: 80%;
+    padding: 10px 14px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    align-self: flex-start;
+    animation: fadeInUp 0.2s ease;
+}
+
+.chat-message.own {
+    align-self: flex-end;
+    background: rgba(0, 212, 255, 0.1);
+    border-color: rgba(0, 212, 255, 0.2);
+}
+
+.chat-message.announcement {
+    align-self: center;
+    max-width: 90%;
+    background: rgba(255, 215, 0, 0.08);
+    border-color: rgba(255, 215, 0, 0.2);
+    text-align: center;
+}
+
+.announcement-badge {
+    font-size: 10px;
+    color: #ffd700;
+    font-weight: 700;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.chat-message-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 4px;
+}
+
+.chat-username {
+    font-weight: 600;
+    font-size: 0.8rem;
+    color: #00d4ff;
+}
+
+.chat-time {
+    font-size: 0.7rem;
+    color: rgba(255, 255, 255, 0.3);
+}
+
+.chat-message-content {
+    font-size: 0.88rem;
+    color: rgba(255, 255, 255, 0.85);
+    line-height: 1.5;
+}
+
+.chat-empty {
+    text-align: center;
+    padding: 40px;
+    color: rgba(255, 255, 255, 0.4);
+}
+
+.chat-empty i {
+    font-size: 32px;
+    margin-bottom: 10px;
+    display: block;
+}
+
+.clan-chat-input {
+    display: flex;
+    gap: 8px;
+    padding: 12px;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 0 0 12px 12px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-top: none;
+}
+
+.clan-chat-input input {
+    flex: 1;
+    padding: 10px 14px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    color: #fff;
+    font-size: 14px;
+}
+
+.clan-chat-input input:focus {
+    outline: none;
+    border-color: #00d4ff;
+}
+
+.clan-chat-input .btn {
+    padding: 10px 16px;
+    border-radius: 10px;
+}
+
+/* ==================== SIDEBAR ==================== */
+.clan-info-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 14px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.clan-info-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+}
+
+.clan-info-item>i {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    flex-shrink: 0;
+    background: rgba(0, 212, 255, 0.1);
+    color: #00d4ff;
+}
+
+.clan-info-item>i.fa-crown {
+    color: #ffd700;
+    background: rgba(255, 215, 0, 0.1);
+}
+
+.clan-info-item>i.fa-map-marker-alt {
+    color: #00ff88;
+    background: rgba(0, 255, 136, 0.1);
+}
+
+.clan-info-item>i.fa-users {
+    color: #8b5cf6;
+    background: rgba(139, 92, 246, 0.1);
+}
+
+.clan-info-item>i.fa-calendar {
+    color: #ff6b6b;
+    background: rgba(255, 107, 107, 0.1);
+}
+
+.clan-info-item .label {
+    font-size: 0.72rem;
+    color: rgba(255, 255, 255, 0.4);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    display: block;
+}
+
+.clan-info-item .value {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #fff;
+    display: block;
+    margin-top: 2px;
+}
+
+.clan-actions {
+    margin-top: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+/* ==================== REQUESTS CARD ==================== */
+.clan-requests-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 14px;
+    padding: 20px;
+}
+
+.clan-requests-card h4 {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.85rem;
+    color: #00d4ff;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.clan-request-item {
+    padding: 14px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 10px;
+    margin-bottom: 10px;
+}
+
+.request-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+}
+
+.request-header strong {
+    color: #fff;
+    font-size: 0.9rem;
+}
+
+.request-date {
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.4);
+}
+
+.request-title {
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 0.85rem;
+    margin-bottom: 4px;
+}
+
+.request-message {
+    font-size: 0.82rem;
+    color: rgba(255, 255, 255, 0.6);
+    line-height: 1.5;
+    margin-bottom: 10px;
+}
+
+.request-actions {
+    display: flex;
+    gap: 8px;
+}
+
+/* ==================== INVITE SECTION ==================== */
+.invite-section {
+    margin-top: 16px;
+}
+
+.invite-form {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.invite-form input {
+    flex: 1;
+    padding: 10px 14px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    color: #fff;
+    font-size: 14px;
+}
+
+.invite-form input:focus {
+    outline: none;
+    border-color: #00d4ff;
+}
+
+.pending-invite {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 10px;
+    margin-top: 8px;
+}
+
+.pending-invite .invite-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.pending-invite .invite-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 13px;
+    color: #fff;
+    background: linear-gradient(135deg, #00d4ff, #8b5cf6);
+}
+
+.pending-invite .invite-name {
+    font-weight: 600;
+    color: #fff;
+    font-size: 0.85rem;
+}
+
+.pending-invite .invite-status {
+    font-size: 0.72rem;
+    color: rgba(255, 215, 0, 0.8);
+}
+
+/* ==================== MODALS ==================== */
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(4px);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    animation: fadeInUp 0.2s ease;
+}
+
+.modal {
+    background: #1a1a2e;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    width: 100%;
+    max-width: 520px;
+    max-height: 85vh;
+    overflow-y: auto;
+    animation: fadeInUp 0.3s ease;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 24px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.modal-header h3 {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1rem;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.modal-header h3 i {
+    color: #00d4ff;
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 24px;
+    cursor: pointer;
+    transition: color 0.2s;
+    line-height: 1;
+}
+
+.modal-close:hover {
+    color: #fff;
+}
+
+.modal form {
+    padding: 24px;
+}
+
+.modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* Confirm Modals */
+.confirm-modal {
+    text-align: center;
+    padding: 32px 28px;
+}
+
+.confirm-modal-icon {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 20px;
+    font-size: 28px;
+}
+
+.confirm-modal-icon.danger {
+    background: rgba(255, 68, 68, 0.15);
+    color: #ff4444;
+}
+
+.confirm-modal-icon.warning {
+    background: rgba(255, 165, 0, 0.15);
+    color: #ffa500;
+}
+
+.confirm-modal-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1.1rem;
+    color: #fff;
+    margin-bottom: 12px;
+}
+
+.confirm-modal-text {
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.6);
+    margin-bottom: 16px;
+}
+
+.confirm-modal-list {
+    text-align: left;
+    list-style: none;
+    padding: 0;
+    margin-bottom: 20px;
+}
+
+.confirm-modal-list li {
+    padding: 8px 0;
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.85rem;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.confirm-modal-list li i {
+    color: #ff4444;
+}
+
+.confirm-modal-list.warning li i {
+    color: #ffa500;
+}
+
+.confirm-modal-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin-top: 20px;
+}
+
+/* ==================== CREATE CLAN ==================== */
+.create-clan-page {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 20px 0 40px;
+}
+
+.back-link {
+    margin-bottom: 20px;
+    display: inline-flex;
+}
+
+.create-clan-header {
+    text-align: center;
+    margin-bottom: 32px;
+}
+
+.create-clan-header h1 {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 2rem;
+    font-weight: 800;
+    color: #fff;
+    margin-bottom: 8px;
+}
+
+.create-clan-header h1 i {
+    color: #00d4ff;
+    margin-right: 10px;
+}
+
+.create-clan-header p {
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 1rem;
+}
+
+.create-clan-form {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.form-section {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 14px;
+    padding: 24px;
+}
+
+.form-section h3 {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #00d4ff;
+    margin-bottom: 18px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+
+.form-group {
+    margin-bottom: 16px;
+}
+
+.form-label {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.7);
+    margin-bottom: 6px;
+}
+
+.form-control {
+    width: 100%;
+    padding: 10px 14px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    color: #fff;
+    font-size: 14px;
+    transition: all 0.3s;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: #00d4ff;
+    box-shadow: 0 0 0 3px rgba(0, 212, 255, 0.15);
+}
+
+.form-hint {
+    display: block;
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.35);
+    margin-top: 4px;
+}
+
+.form-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+}
+
+.banner-preview {
+    width: 100%;
+    height: 120px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 2px dashed rgba(255, 255, 255, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    color: rgba(255, 255, 255, 0.3);
+    font-size: 0.85rem;
+    background-size: cover;
+    background-position: center;
+    transition: all 0.3s;
+}
+
+.banner-preview.has-image {
+    border-style: solid;
+    border-color: rgba(0, 212, 255, 0.3);
+}
+
+.banner-preview.has-image i,
+.banner-preview.has-image span {
+    display: none;
+}
+
+/* ==================== REPORT BUTTON ==================== */
+.report-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    background: rgba(255, 68, 68, 0.08);
+    border: 1px solid rgba(255, 68, 68, 0.2);
+    border-radius: 10px;
+    color: #ff6b6b;
+    font-size: 0.82rem;
+    cursor: pointer;
+    transition: all 0.3s;
+    width: 100%;
+    justify-content: center;
+}
+
+.report-btn:hover {
+    background: rgba(255, 68, 68, 0.15);
+    border-color: rgba(255, 68, 68, 0.4);
+}
+
+/* ==================== RESPONSIVE ==================== */
+@media (max-width: 1024px) {
+    .clan-detail-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .clan-detail-sidebar {
+        order: -1;
+    }
+}
+
+@media (max-width: 768px) {
+    .clans-hero-title {
+        font-size: 1.8rem;
+    }
+
+    .clans-hero-stats {
+        gap: 24px;
+    }
+
+    .clans-filters {
+        flex-direction: column;
+    }
+
+    .filter-group {
+        flex-direction: column;
+    }
+
+    .clans-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .clan-detail-banner {
+        height: 200px;
+    }
+
+    .clan-detail-name {
+        font-size: 1.4rem;
+    }
+
+    .clan-tabs {
+        overflow-x: auto;
+    }
+
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 480px) {
+    .clans-hero {
+        padding: 40px 16px 30px;
+    }
+
+    .clans-hero-title {
+        font-size: 1.5rem;
+    }
+
+    .clans-hero-stat .stat-value {
+        font-size: 1.4rem;
+    }
+
+    .clan-detail-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+}

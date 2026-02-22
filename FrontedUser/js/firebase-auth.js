@@ -13,7 +13,8 @@ import {
     signOut,
     onAuthStateChanged,
     sendPasswordResetEmail,
-    updateProfile
+    updateProfile,
+    OAuthProvider
 } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
 
 import { firebaseConfig } from './firebase-config.js';
@@ -156,6 +157,97 @@ const FirebaseAuth = {
             return {
                 success: false,
                 error: this.getErrorMessage(error.code)
+            };
+        }
+    },
+
+    /**
+     * Login with Discord (Direct OAuth2 - no Firebase)
+     */
+    async loginWithDiscord() {
+        try {
+            const DISCORD_CLIENT_ID = '1474796449257750638';
+            const REDIRECT_URI = encodeURIComponent(window.location.origin + '/discord-callback.html');
+            const SCOPE = encodeURIComponent('identify email');
+
+            const authUrl = 'https://discord.com/api/oauth2/authorize'
+                + '?client_id=' + DISCORD_CLIENT_ID
+                + '&redirect_uri=' + REDIRECT_URI
+                + '&response_type=code'
+                + '&scope=' + SCOPE;
+
+            // Open popup
+            const width = 500;
+            const height = 700;
+            const left = (window.innerWidth - width) / 2 + window.screenX;
+            const top = (window.innerHeight - height) / 2 + window.screenY;
+            const popup = window.open(
+                authUrl,
+                'discord-auth',
+                'width=' + width + ',height=' + height + ',left=' + left + ',top=' + top
+            );
+
+            if (!popup) {
+                return { success: false, error: 'No se pudo abrir la ventana de Discord. Desbloquea los popups.' };
+            }
+
+            // Wait for the callback
+            const code = await new Promise(function (resolve, reject) {
+                var checkInterval = setInterval(function () {
+                    if (popup.closed) {
+                        clearInterval(checkInterval);
+                        reject(new Error('Ventana cerrada por el usuario'));
+                    }
+                }, 500);
+
+                window.addEventListener('message', function handler(event) {
+                    if (event.data && event.data.type === 'discord-auth') {
+                        clearInterval(checkInterval);
+                        window.removeEventListener('message', handler);
+                        if (event.data.error) {
+                            reject(new Error(event.data.error));
+                        } else {
+                            resolve(event.data.code);
+                        }
+                    }
+                });
+            });
+
+            // Send code to backend
+            var API_URL = window.API_BASE_URL || 'http://localhost:3000';
+            var response = await fetch(API_URL + '/auth/discord/callback', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ code: code })
+            });
+
+            var data = await response.json();
+
+            if (response.status === 403 && data.banned) {
+                return {
+                    success: false,
+                    banned: true,
+                    ban_info: data.ban_info
+                };
+            }
+
+            if (data.success && data.data) {
+                localStorage.setItem('token', data.data.token);
+                localStorage.setItem('user', JSON.stringify(data.data.user));
+                return {
+                    success: true,
+                    user: data.data.user,
+                    token: data.data.token,
+                    backendUser: data.data.user
+                };
+            }
+
+            return { success: false, error: data.error || 'Error al iniciar sesión con Discord' };
+        } catch (error) {
+            console.error('Discord login error:', error);
+            return {
+                success: false,
+                error: error.message || 'Error al conectar con Discord'
             };
         }
     },

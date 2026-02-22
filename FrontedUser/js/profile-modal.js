@@ -158,6 +158,7 @@ function populateProfile(data) {
     // Example badges
     if (data.clan?.role === 'LEADER') addBadge(badgesContainer, 'fas fa-crown', 'Líder', 'gold');
     if (data.subscription?.plan === 'PREMIUM') addBadge(badgesContainer, 'fas fa-gem', 'Premium', '#ff00cc');
+    if (data.subscription?.plan === 'STANDARD') addBadge(badgesContainer, 'fas fa-rocket', 'Standard', '#667eea');
     if (data.stats.matches > 100) addBadge(badgesContainer, 'fas fa-fire', 'Veterano', '#ff4500');
 
     // 5. Social

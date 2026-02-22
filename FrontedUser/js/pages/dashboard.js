@@ -65,7 +65,7 @@ export async function renderDashboard(container) {
                         <i class="fas fa-users"></i>
                         <div class="stat-info">
                             <span class="stat-value">${myTeams.length}</span>
-                            <span class="stat-label">Mis Equipos</span>
+                            <span class="stat-label">Mi equipo actual</span>
                         </div>
                     </div>
                     <div class="stat-card accent">
@@ -82,7 +82,7 @@ export async function renderDashboard(container) {
                         <div class="section-header">
                             <h2 class="section-title">
                                 <i class="fas fa-users"></i>
-                                Mis Equipos
+                                Mi equipo actual
                             </h2>
                             <a href="#/torneos" class="btn btn-secondary btn-sm">
                                 <i class="fas fa-plus"></i>

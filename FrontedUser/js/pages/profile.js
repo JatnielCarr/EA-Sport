@@ -51,11 +51,11 @@ async function handleNameChangeReturn() {
         }
 
         // Clean URL
-        window.history.replaceState(null, '', window.location.pathname + '#/perfil');
+        window.history.replaceState(null, '', window.location.origin + '/#/perfil');
     } else if (nameChangeStatus === 'canceled') {
         window.showToast?.('warning', 'Pago cancelado', 'El cambio de nombre no se realizó');
         sessionStorage.removeItem('pendingProfileUpdate');
-        window.history.replaceState(null, '', window.location.pathname + '#/perfil');
+        window.history.replaceState(null, '', window.location.origin + '/#/perfil');
     }
 }
 
@@ -79,10 +79,10 @@ async function handleSubscriptionReturn() {
         }
 
         // Clean URL
-        window.history.replaceState(null, '', window.location.pathname + '#/perfil');
+        window.history.replaceState(null, '', window.location.origin + '/#/perfil');
     } else if (subscriptionStatus === 'canceled') {
         window.showToast?.('warning', 'Suscripción cancelada', 'No se realizó el pago de la suscripción.');
-        window.history.replaceState(null, '', window.location.pathname + '#/perfil');
+        window.history.replaceState(null, '', window.location.origin + '/#/perfil');
     }
 }
 

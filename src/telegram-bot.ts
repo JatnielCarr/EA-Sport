@@ -8,6 +8,7 @@
 import 'dotenv/config';
 import { telegramService } from './config/telegram';
 import { prisma } from './config/database';
+import { aiService } from './services/ai';
 
 console.log('🎮 Iniciando ApexTournament Telegram Bot...');
 
@@ -15,6 +16,46 @@ console.log('🎮 Iniciando ApexTournament Telegram Bot...');
 if (!process.env.TELEGRAM_BOT_TOKEN) {
     console.error('❌ Error: TELEGRAM_BOT_TOKEN no está configurado en .env');
     process.exit(1);
+}
+
+// Helper para obtener contexto
+async function getContextForAI(): Promise<string> {
+    try {
+        const [tournaments, matches, games] = await Promise.all([
+            prisma.tournament.findMany({
+                where: { status: { in: ['REGISTRATION_OPEN', 'PUBLISHED', 'IN_PROGRESS'] } },
+                take: 5,
+                include: { game: true }
+            }),
+            prisma.match.findMany({
+                where: { status: 'SCHEDULED', scheduled_datetime: { gte: new Date() } },
+                take: 5,
+                include: { tournament: true, home_team: true, away_team: true },
+                orderBy: { scheduled_datetime: 'asc' }
+            }),
+            prisma.game.findMany({ take: 5 })
+        ]);
+
+        let context = "--- TORNEOS ACTIVOS ---\n";
+        tournaments.forEach(t => {
+            context += `- ${t.name} (${t.game.name}): ${t.status}\n`;
+        });
+
+        context += "\n--- PRÓXIMAS PARTIDAS ---\n";
+        matches.forEach(m => {
+            context += `- ${m.home_team?.name} vs ${m.away_team?.name} (${m.tournament.name}) el ${m.scheduled_datetime}\n`;
+        });
+
+        context += "\n--- JUEGOS DISPONIBLES ---\n";
+        games.forEach(g => {
+            context += `- ${g.name}\n`;
+        });
+
+        return context;
+    } catch (error) {
+        console.error("Error obteniendo contexto para AI:", error);
+        return "No hay datos disponibles por el momento.";
+    }
 }
 
 // Registrar comandos que usan la base de datos
@@ -471,6 +512,28 @@ async function registerDatabaseCommands() {
                 parseMode: 'HTML'
             });
         }
+    });
+
+    // AI Handler
+    telegramService.registerDefaultHandler(async (chatId, text, _username) => {
+        // Notificar que está escribiendo...
+        await fetch(`${telegramService['config'].apiUrl}/sendChatAction`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ chat_id: chatId, action: 'typing' })
+        }).catch(() => { });
+
+        // Obtener contexto fresco
+        const context = await getContextForAI();
+
+        // Generar respuesta
+        const response = await aiService.generateResponse(text, context);
+
+        await telegramService.sendMessage({
+            chatId,
+            text: response,
+            parseMode: 'Markdown' // AI suele usar Markdown standard
+        });
     });
 
     console.log('✅ Comandos de base de datos registrados');

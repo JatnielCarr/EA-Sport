@@ -7,6 +7,7 @@ import { swaggerConfig } from './config/swagger';
 import { prisma } from './config/database';
 import { initializeFirebase } from './config/firebase';
 import { firebaseAuthRoutes } from './routes/firebase-auth.routes';
+import { discordAuthRoutes } from './routes/discord-auth.routes';
 import { telegramRoutes } from './routes/telegram.routes';
 import { paymentRoutes } from './routes/payment.routes';
 import { subscriptionRoutes } from './routes/subscription.routes';
@@ -91,6 +92,9 @@ export async function buildApp() {
 
   // Register Firebase Auth Routes
   await app.register(firebaseAuthRoutes);
+
+  // Register Discord Auth Routes
+  await app.register(discordAuthRoutes);
 
   // Register Telegram Routes
   await app.register(telegramRoutes);
