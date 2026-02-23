@@ -23,7 +23,7 @@ out/
 .output/
 
 # ========================================
-# Environment variables
+.environment variables
 # ========================================
 .env
 .env.local

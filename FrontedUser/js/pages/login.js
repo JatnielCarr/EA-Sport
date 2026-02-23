@@ -79,7 +79,7 @@ export async function renderLogin(container) {
         </div>
 
         <div class="social-login">
-          <button class="btn btn-social discord" id="discordBtn" disabled>
+          <button class="btn btn-social discord" id="discordBtn">
             <i class="fab fa-discord"></i>
             Discord
           </button>
@@ -161,6 +161,35 @@ function initLoginForm() {
     } finally {
       googleBtn.disabled = false;
       googleBtn.innerHTML = '<i class="fab fa-google"></i> Google';
+    }
+  });
+
+  // Discord login
+  const discordBtn = document.getElementById('discordBtn');
+  discordBtn?.addEventListener('click', async () => {
+    discordBtn.disabled = true;
+    discordBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Conectando...';
+
+    try {
+      const result = await FirebaseAuth.loginWithDiscord();
+
+      if (result.success) {
+        handleLoginSuccess({
+          user: result.backendUser || result.user,
+          token: localStorage.getItem('token')
+        });
+        window.showToast('success', '¡Bienvenido!', 'Has iniciado sesión con Discord');
+        window.location.hash = '#/';
+      } else if (result.banned) {
+        showBanScreen(result.ban_info);
+      } else {
+        window.showToast('error', 'Error', result.error || 'No se pudo iniciar sesión con Discord');
+      }
+    } catch (error) {
+      window.showToast('error', 'Error', 'Error al conectar con Discord');
+    } finally {
+      discordBtn.disabled = false;
+      discordBtn.innerHTML = '<i class="fab fa-discord"></i> Discord';
     }
   });
 

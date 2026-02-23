@@ -50,12 +50,14 @@ interface ConversationalPattern {
 }
 
 type CommandHandler = (chatId: number, args: string[], username: string) => Promise<void>;
+type MessageHandler = (chatId: number, text: string, username: string) => Promise<void>;
 
 class TelegramService {
     private config: TelegramConfig;
     private lastUpdateId: number = 0;
     private isPolling: boolean = false;
     private commandHandlers: Map<string, CommandHandler> = new Map();
+    private defaultHandler: MessageHandler | null = null;
 
     // Anti-spam: Control de mensajes procesados
     private processedMessages: Set<number> = new Set();
@@ -467,6 +469,13 @@ Abre la app → Configuración → Conectar Telegram
     }
 
     /**
+     * Registrar un handler por defecto para mensajes no reconocidos (AI)
+     */
+    registerDefaultHandler(handler: MessageHandler): void {
+        this.defaultHandler = handler;
+    }
+
+    /**
      * Check if Telegram is configured
      */
     isConfigured(): boolean {
@@ -841,7 +850,11 @@ Has vinculado tu cuenta de Telegram exitosamente. Ahora recibirás:
             // Procesar como mensaje conversacional
             const handled = await this.processConversation(chatId, text, username);
             if (!handled) {
-                await this.sendDefaultResponse(chatId, username);
+                if (this.defaultHandler) {
+                    await this.defaultHandler(chatId, text, username);
+                } else {
+                    await this.sendDefaultResponse(chatId, username);
+                }
             }
         }
     }

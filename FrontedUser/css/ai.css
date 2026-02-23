@@ -1,0 +1,369 @@
+/* =====================================================
+   AI Features - Shared Styles
+   =====================================================
+   Styles for AI Insights, AI Performance Analysis,
+   AI Generate buttons, and AI badge indicators
+   ===================================================== */
+
+/* --- AI Badge --- */
+.ai-badge-small {
+    font-size: 10px;
+    padding: 2px 8px;
+    background: linear-gradient(135deg, rgba(0, 212, 255, 0.2), rgba(102, 126, 234, 0.2));
+    color: #00d4ff;
+    border-radius: 6px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    margin-left: 8px;
+    vertical-align: middle;
+    animation: aiPulse 3s infinite;
+}
+
+@keyframes aiPulse {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.6;
+    }
+}
+
+/* --- AI Loading --- */
+.ai-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    padding: 32px 20px;
+    color: var(--text-secondary, #aaa);
+}
+
+.ai-loading-icon {
+    font-size: 28px;
+    color: #667eea;
+}
+
+.ai-loading p {
+    font-size: 13px;
+    margin: 0;
+}
+
+/* --- AI Insight Summary (Dashboard) --- */
+.ai-insight-summary {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 16px;
+    background: linear-gradient(135deg, rgba(0, 212, 255, 0.05), rgba(102, 126, 234, 0.05));
+    border-radius: 12px;
+    border: 1px solid rgba(0, 212, 255, 0.1);
+    margin-bottom: 16px;
+}
+
+.ai-insight-summary i {
+    font-size: 20px;
+    color: #667eea;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.ai-insight-summary p {
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--text-primary, #eee);
+    margin: 0;
+}
+
+/* --- AI Insight Groups --- */
+.ai-insight-group {
+    padding: 14px 16px;
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 10px;
+    margin-bottom: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.ai-insight-group h4 {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary, #fff);
+    margin: 0 0 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.ai-insight-group ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.ai-insight-group li {
+    font-size: 13px;
+    color: var(--text-secondary, #ccc);
+    padding: 6px 0 6px 20px;
+    position: relative;
+    line-height: 1.5;
+}
+
+.ai-insight-group li::before {
+    content: '•';
+    position: absolute;
+    left: 6px;
+    color: #667eea;
+    font-size: 14px;
+}
+
+.ai-insight-group.tips li::before {
+    content: '💡';
+    left: 0;
+}
+
+.ai-insight-empty {
+    text-align: center;
+    color: var(--text-muted, #666);
+    font-size: 13px;
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+/* --- AI Generate Button --- */
+.btn-ai-generate {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: 8px;
+    border: 1px solid rgba(0, 212, 255, 0.3);
+    background: linear-gradient(135deg, rgba(0, 212, 255, 0.1), rgba(102, 126, 234, 0.1));
+    color: #00d4ff;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    white-space: nowrap;
+}
+
+.btn-ai-generate:hover {
+    background: linear-gradient(135deg, rgba(0, 212, 255, 0.2), rgba(102, 126, 234, 0.2));
+    border-color: rgba(0, 212, 255, 0.5);
+    box-shadow: 0 2px 12px rgba(0, 212, 255, 0.2);
+    transform: translateY(-1px);
+}
+
+.btn-ai-generate:disabled {
+    opacity: 0.6;
+    cursor: wait;
+}
+
+/* --- AI Performance Section (Profile) --- */
+.ai-perf-header {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    padding: 20px;
+    background: linear-gradient(135deg, rgba(0, 212, 255, 0.05), rgba(102, 126, 234, 0.05));
+    border-radius: 14px;
+    margin-bottom: 16px;
+    border: 1px solid rgba(0, 212, 255, 0.1);
+}
+
+.ai-perf-rating {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    width: 80px;
+    height: 80px;
+    border-radius: 16px;
+    border: 3px solid;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.2);
+}
+
+.rating-letter {
+    font-size: 32px;
+    font-weight: 900;
+    line-height: 1;
+}
+
+.rating-label {
+    font-size: 10px;
+    color: var(--text-muted, #888);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.ai-perf-trend {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.trend-icon {
+    font-size: 24px;
+}
+
+.trend-label {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary, #eee);
+}
+
+.ai-perf-analysis {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 16px;
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 10px;
+    margin-bottom: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.ai-perf-analysis i {
+    font-size: 18px;
+    color: #667eea;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.ai-perf-analysis p {
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--text-primary, #eee);
+    margin: 0;
+}
+
+.ai-perf-recs {
+    padding: 14px 16px;
+    background: rgba(255, 215, 61, 0.03);
+    border-radius: 10px;
+    border: 1px solid rgba(255, 215, 61, 0.1);
+}
+
+.ai-perf-recs h4 {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary, #fff);
+    margin: 0 0 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.ai-perf-recs ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.ai-perf-recs li {
+    font-size: 13px;
+    color: var(--text-secondary, #ccc);
+    padding: 6px 0 6px 20px;
+    position: relative;
+    line-height: 1.5;
+}
+
+.ai-perf-recs li::before {
+    content: '→';
+    position: absolute;
+    left: 4px;
+    color: #ffd93d;
+}
+
+/* --- AI Prediction Badge (Bracket) --- */
+.ai-prediction-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 6px;
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.15), rgba(118, 75, 162, 0.15));
+    border: 1px solid rgba(102, 126, 234, 0.2);
+    font-size: 11px;
+    color: #a78bfa;
+    margin-top: 6px;
+}
+
+.ai-prediction-badge i {
+    font-size: 10px;
+}
+
+.prediction-bar {
+    display: flex;
+    height: 4px;
+    border-radius: 2px;
+    overflow: hidden;
+    background: rgba(255, 255, 255, 0.05);
+    margin-top: 4px;
+    width: 100%;
+}
+
+.prediction-bar-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.6s ease;
+}
+
+.prediction-bar-fill.team1 {
+    background: linear-gradient(90deg, #00d4ff, #667eea);
+}
+
+.prediction-bar-fill.team2 {
+    background: linear-gradient(90deg, #764ba2, #f093fb);
+}
+
+/* --- AI Section in Tournament (Summary) --- */
+.ai-tournament-summary {
+    padding: 20px;
+    background: linear-gradient(135deg, rgba(0, 212, 255, 0.05), rgba(102, 126, 234, 0.05));
+    border-radius: 14px;
+    border: 1px solid rgba(0, 212, 255, 0.1);
+    margin-top: 16px;
+}
+
+.ai-tournament-summary .summary-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+.ai-tournament-summary .summary-header i {
+    font-size: 18px;
+    color: #667eea;
+}
+
+.ai-tournament-summary .summary-header h4 {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text-primary, #fff);
+    margin: 0;
+}
+
+.ai-tournament-summary p {
+    font-size: 14px;
+    line-height: 1.7;
+    color: var(--text-secondary, #ccc);
+    margin: 0;
+}
+
+/* --- Responsive --- */
+@media (max-width: 768px) {
+    .ai-perf-header {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+    }
+}

@@ -7,12 +7,14 @@ import { swaggerConfig } from './config/swagger';
 import { prisma } from './config/database';
 import { initializeFirebase } from './config/firebase';
 import { firebaseAuthRoutes } from './routes/firebase-auth.routes';
+import { discordAuthRoutes } from './routes/discord-auth.routes';
 import { telegramRoutes } from './routes/telegram.routes';
 import { paymentRoutes } from './routes/payment.routes';
 import { subscriptionRoutes } from './routes/subscription.routes';
 import { userRoutes } from './routes/user.routes';
 import { liveUpdatesRoutes } from './routes/live-updates';
 import { monetizationRoutes } from './routes/monetization.routes';
+import { aiRoutes } from './routes/ai.routes';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'ea-sports-tournament-secret-key-2024';
 
@@ -92,6 +94,9 @@ export async function buildApp() {
   // Register Firebase Auth Routes
   await app.register(firebaseAuthRoutes);
 
+  // Register Discord Auth Routes
+  await app.register(discordAuthRoutes);
+
   // Register Telegram Routes
   await app.register(telegramRoutes);
 
@@ -109,6 +114,9 @@ export async function buildApp() {
 
   // Register Monetization Routes
   await app.register(monetizationRoutes);
+
+  // Register AI Routes
+  await app.register(aiRoutes);
 
   // =====================================================
   // AUTH ROUTES

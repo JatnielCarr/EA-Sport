@@ -119,7 +119,10 @@ function initRouter() {
 }
 
 async function handleRoute() {
-    const hash = window.location.hash || '#/';
+    const fullHash = window.location.hash || '#/';
+    // Strip query parameters from hash for route matching
+    // e.g., "#/perfil?subscription=success&session_id=xxx" -> "#/perfil"
+    const hash = fullHash.split('?')[0];
     const app = document.getElementById('app');
 
     // Handle anchor-only hashes (like #pricing-section) that don't start with #/

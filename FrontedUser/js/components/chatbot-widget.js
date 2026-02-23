@@ -75,6 +75,7 @@ function bindChatbotEvents() {
     const close = document.getElementById('chatbotClose');
     const clear = document.getElementById('chatbotClear');
     const form = document.getElementById('chatbotForm');
+    const suggestionsContainer = document.getElementById('chatbotSuggestions');
 
     toggle?.addEventListener('click', () => {
         isOpen = !isOpen;
@@ -135,12 +136,15 @@ function rebindSuggestions() {
 async function sendMessage(message) {
     if (isLoading) return;
 
+    // Hide suggestions on first message
     const suggestions = document.getElementById('chatbotSuggestions');
     if (suggestions) suggestions.style.display = 'none';
 
+    // Add user message
     appendMessage('user', message);
     chatHistory.push({ role: 'user', content: message });
 
+    // Show typing indicator
     isLoading = true;
     const typingId = appendTypingIndicator();
 
