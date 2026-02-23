@@ -38,7 +38,11 @@ export function renderCreateClanPage(container) {
         '</div>' +
         '<div class="form-group"><label class="form-label">Descripcion</label>' +
         '<textarea class="form-control" name="description" id="clanDesc" rows="3" maxlength="500" placeholder="Describe tu clan, objetivos y que tipo de jugadores buscas..."></textarea>' +
-        '<span class="form-hint">Maximo 500 caracteres</span></div>' +
+        '<div style="display:flex;align-items:center;gap:8px;margin-top:6px">' +
+        '<span class="form-hint" style="margin:0">Maximo 500 caracteres</span>' +
+        '<button type="button" class="btn-ai-generate" id="aiGenClanDesc" title="Generar descripción con IA">' +
+        '<i class="fas fa-robot"></i> ✨ Generar con IA</button>' +
+        '</div></div>' +
         '<div class="form-group"><label class="form-label">Region / Ubicacion</label>' +
         '<input type="text" class="form-control" name="location" id="clanLocation" placeholder="Ej: Latinoamerica, Mexico, etc.">' +
         '</div>' +
@@ -180,6 +184,43 @@ function setupPreview() {
     if (bannerInput) bannerInput.addEventListener('input', updatePreview);
     if (accessInput) accessInput.addEventListener('change', updatePreview);
     if (maxInput) maxInput.addEventListener('input', updatePreview);
+
+    // AI Description Generator
+    var aiBtn = document.getElementById('aiGenClanDesc');
+    if (aiBtn) {
+        aiBtn.addEventListener('click', async function () {
+            var name = nameInput?.value || '';
+            if (!name) {
+                showToast('warning', 'Escribe el nombre del clan primero');
+                return;
+            }
+            aiBtn.disabled = true;
+            aiBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generando...';
+            try {
+                var resp = await fetch((API.baseUrl || 'http://localhost:3000') + '/ai/generate-description', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        type: 'clan',
+                        name: name,
+                        tag: tagInput?.value || '',
+                        location: locationInput?.value || '',
+                        accessType: accessInput?.value || ''
+                    })
+                });
+                var data = await resp.json();
+                if (data.success && data.data?.description && descInput) {
+                    descInput.value = data.data.description.substring(0, 500);
+                    updatePreview();
+                    showToast('success', 'Descripción generada con IA ✨');
+                }
+            } catch (err) {
+                showToast('error', 'No se pudo generar la descripción');
+            }
+            aiBtn.disabled = false;
+            aiBtn.innerHTML = '<i class="fas fa-robot"></i> ✨ Generar con IA';
+        });
+    }
 }
 
 function setupFormSubmit() {

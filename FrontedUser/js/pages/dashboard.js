@@ -177,9 +177,29 @@ export async function renderDashboard(container) {
                         </div>
                     </div>
                 </div>
+
+                <!-- AI Insights Section -->
+                <div class="dashboard-section full-width ai-insights-section" id="aiInsightsSection">
+                    <div class="section-header">
+                        <h2 class="section-title">
+                            <i class="fas fa-robot"></i>
+                            Insights de IA
+                            <span class="ai-badge-small">BETA</span>
+                        </h2>
+                    </div>
+                    <div class="ai-insights-content" id="aiInsightsContent">
+                        <div class="ai-loading">
+                            <div class="ai-loading-icon"><i class="fas fa-brain fa-spin"></i></div>
+                            <p>Analizando tu rendimiento...</p>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
         `;
+
+        // Load AI insights asynchronously
+        loadAIInsights(user.id);
     } catch (error) {
         console.error('Dashboard error:', error);
         container.innerHTML = `
@@ -210,4 +230,44 @@ function getStatusLabel(status) {
         'DISPUTED': 'Disputada'
     };
     return labels[status] || status;
+}
+
+async function loadAIInsights(userId) {
+    const container = document.getElementById('aiInsightsContent');
+    if (!container) return;
+
+    try {
+        const response = await fetch(`${API.baseUrl || 'http://localhost:3000'}/ai/insights/${userId}`);
+        const data = await response.json();
+
+        if (data.success && data.data) {
+            const { summary, tips, strengths, weaknesses } = data.data;
+            container.innerHTML = `
+                <div class="ai-insight-summary">
+                    <i class="fas fa-robot"></i>
+                    <p>${summary}</p>
+                </div>
+                ${strengths.length > 0 ? `
+                <div class="ai-insight-group">
+                    <h4><i class="fas fa-arrow-up" style="color:#00ff88"></i> Fortalezas</h4>
+                    <ul>${strengths.map(s => `<li>${s}</li>`).join('')}</ul>
+                </div>` : ''}
+                ${weaknesses.length > 0 ? `
+                <div class="ai-insight-group">
+                    <h4><i class="fas fa-arrow-down" style="color:#ff6b6b"></i> Áreas de Mejora</h4>
+                    <ul>${weaknesses.map(w => `<li>${w}</li>`).join('')}</ul>
+                </div>` : ''}
+                ${tips.length > 0 ? `
+                <div class="ai-insight-group tips">
+                    <h4><i class="fas fa-lightbulb" style="color:#ffd93d"></i> Consejos de IA</h4>
+                    <ul>${tips.map(t => `<li>${t}</li>`).join('')}</ul>
+                </div>` : ''}
+            `;
+        } else {
+            container.innerHTML = `<p class="ai-insight-empty"><i class="fas fa-info-circle"></i> Participa en torneos para generar insights personalizados.</p>`;
+        }
+    } catch (error) {
+        console.warn('AI Insights not available:', error.message);
+        container.innerHTML = `<p class="ai-insight-empty"><i class="fas fa-info-circle"></i> Insights de IA no disponible en este momento.</p>`;
+    }
 }

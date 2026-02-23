@@ -350,6 +350,21 @@ export async function renderProfile(container) {
                             </div>
                         </div>
                     </div>
+
+                    <!-- AI Performance Analysis -->
+                    <div class="profile-section full-width ai-performance-section" id="aiPerformanceSection">
+                        <h2 class="section-title">
+                            <i class="fas fa-robot"></i>
+                            Análisis de IA
+                            <span class="ai-badge-small">BETA</span>
+                        </h2>
+                        <div id="aiPerformanceContent">
+                            <div class="ai-loading">
+                                <div class="ai-loading-icon"><i class="fas fa-brain fa-spin"></i></div>
+                                <p>Analizando tu rendimiento...</p>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -388,6 +403,9 @@ export async function renderProfile(container) {
         `;
 
         initProfileEvents(user);
+
+        // Load AI performance analysis asynchronously
+        loadAIPerformance(user.id);
     } catch (error) {
         container.innerHTML = `
         <div class="container">
@@ -588,4 +606,48 @@ function handleImageUpload(file, type, userId) {
     };
 
     reader.readAsDataURL(file);
+}
+
+async function loadAIPerformance(userId) {
+    const container = document.getElementById('aiPerformanceContent');
+    if (!container) return;
+
+    try {
+        const response = await fetch(`${API.baseUrl || 'http://localhost:3000'}/ai/performance/${userId}`);
+        const data = await response.json();
+
+        if (data.success && data.data) {
+            const { rating, trend, analysis, recommendations } = data.data;
+            const trendIcon = trend === 'improving' ? '📈' : trend === 'declining' ? '📉' : '📊';
+            const trendLabel = trend === 'improving' ? 'Mejorando' : trend === 'declining' ? 'Declinando' : 'Estable';
+            const ratingColors = { S: '#ffd700', A: '#00ff88', B: '#00d4ff', C: '#ff9f43', D: '#ff6b6b' };
+
+            container.innerHTML = `
+                <div class="ai-perf-header">
+                    <div class="ai-perf-rating" style="border-color:${ratingColors[rating] || '#667eea'}">
+                        <span class="rating-letter" style="color:${ratingColors[rating] || '#667eea'}">${rating}</span>
+                        <span class="rating-label">Rating IA</span>
+                    </div>
+                    <div class="ai-perf-trend">
+                        <span class="trend-icon">${trendIcon}</span>
+                        <span class="trend-label">${trendLabel}</span>
+                    </div>
+                </div>
+                <div class="ai-perf-analysis">
+                    <i class="fas fa-robot"></i>
+                    <p>${analysis}</p>
+                </div>
+                ${recommendations.length > 0 ? `
+                <div class="ai-perf-recs">
+                    <h4><i class="fas fa-lightbulb" style="color:#ffd93d"></i> Recomendaciones</h4>
+                    <ul>${recommendations.map(r => `<li>${r}</li>`).join('')}</ul>
+                </div>` : ''}
+            `;
+        } else {
+            container.innerHTML = '<p class="ai-insight-empty"><i class="fas fa-info-circle"></i> Participa en torneos para generar un análisis de rendimiento.</p>';
+        }
+    } catch (error) {
+        console.warn('AI Performance not available:', error.message);
+        container.innerHTML = '<p class="ai-insight-empty"><i class="fas fa-info-circle"></i> Análisis de IA no disponible en este momento.</p>';
+    }
 }

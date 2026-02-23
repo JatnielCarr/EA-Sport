@@ -344,6 +344,9 @@ export async function renderTournament(container, tournamentId) {
       }
     });
 
+    // Load AI features asynchronously
+    loadTournamentAI(tournamentId, tournament.status);
+
   } catch (error) {
     console.error('Error loading tournament:', error);
     container.innerHTML = `
@@ -377,8 +380,8 @@ function renderOverview(tournament, game, teams, entryFee, prizePool, timeStr, d
         <h3><i class="fas fa-scroll"></i> Descripci\u00f3n del Torneo</h3>
         <div class="description-content">
           ${tournament.description
-            ? '<p>' + tournament.description + '</p>'
-            : '<p class="text-muted">Sin descripci\u00f3n disponible.</p>'}
+      ? '<p>' + tournament.description + '</p>'
+      : '<p class="text-muted">Sin descripci\u00f3n disponible.</p>'}
         </div>
       </div>
 
@@ -488,6 +491,15 @@ function renderOverview(tournament, game, teams, entryFee, prizePool, timeStr, d
           </div>
         </div>
       </div>
+
+      <!-- AI Tournament Summary -->
+      <div class="ai-tournament-summary" id="aiTournamentSummary" style="display:none">
+        <div class="summary-header">
+            <i class="fas fa-robot"></i>
+            <h4>Resumen de IA <span class="ai-badge-small">BETA</span></h4>
+        </div>
+        <p id="aiSummaryText"><i class="fas fa-spinner fa-spin"></i> Generando resumen...</p>
+      </div>
     </div>
   `;
 }
@@ -527,8 +539,8 @@ function renderParticipants(teams, tournament) {
             <div class="participant-number">#${idx + 1}</div>
             <div class="participant-avatar">
               ${team.logo_url
-                ? '<img src="' + team.logo_url + '" alt="' + team.name + '" onerror="this.parentElement.innerHTML=\'<i class=\\\\\'fas fa-shield-halved\\\\\'></i>\'">'
-                : '<i class="fas fa-shield-halved"></i>'}
+      ? '<img src="' + team.logo_url + '" alt="' + team.name + '" onerror="this.parentElement.innerHTML=\'<i class=\\\\\'fas fa-shield-halved\\\\\'></i>\'">'
+      : '<i class="fas fa-shield-halved"></i>'}
             </div>
             <div class="participant-info">
               <h4 class="participant-name">
@@ -544,8 +556,8 @@ function renderParticipants(teams, tournament) {
             </div>
             <div class="participant-status">
               ${team.approved
-                ? '<span class="status-approved"><i class="fas fa-check-circle"></i> Confirmado</span>'
-                : '<span class="status-pending"><i class="fas fa-clock"></i> Pendiente</span>'}
+      ? '<span class="status-approved"><i class="fas fa-check-circle"></i> Confirmado</span>'
+      : '<span class="status-pending"><i class="fas fa-clock"></i> Pendiente</span>'}
             </div>
           </div>
         `).join('')}
@@ -560,12 +572,12 @@ function renderParticipants(teams, tournament) {
 function renderRules(tournament) {
   const formatName = tournament.format === 'SINGLE_ELIMINATION' ? 'Eliminaci\u00f3n Simple'
     : tournament.format === 'DOUBLE_ELIMINATION' ? 'Doble Eliminaci\u00f3n'
-    : tournament.format === 'ROUND_ROBIN' ? 'Round Robin'
-    : 'Sistema Suizo';
+      : tournament.format === 'ROUND_ROBIN' ? 'Round Robin'
+        : 'Sistema Suizo';
 
   const formatDesc = tournament.format === 'SINGLE_ELIMINATION' ? 'Una derrota y quedas eliminado.'
     : tournament.format === 'DOUBLE_ELIMINATION' ? 'Cada equipo tiene una segunda oportunidad antes de ser eliminado.'
-    : 'Todos juegan contra todos.';
+      : 'Todos juegan contra todos.';
 
   return `
     <div class="rules-section">
@@ -763,33 +775,33 @@ function renderBracket(matches, teams, tournament) {
           <div class="bracket-round">
             <div class="round-title">${roundNames[idx] || 'Ronda ' + roundNum}</div>
             ${roundMatches.map(match => {
-              const team1 = teams.find(t => t.id === match.home_team_id);
-              const team2 = teams.find(t => t.id === match.away_team_id);
-              const isMatchLive = match.status === 'LIVE' || match.status === 'IN_PROGRESS';
-              const isCompleted = match.status === 'COMPLETED';
-              const score1 = match.home_score || 0;
-              const score2 = match.away_score || 0;
-              const team1Won = match.winner_id === match.home_team_id;
-              const team2Won = match.winner_id === match.away_team_id;
+    const team1 = teams.find(t => t.id === match.home_team_id);
+    const team2 = teams.find(t => t.id === match.away_team_id);
+    const isMatchLive = match.status === 'LIVE' || match.status === 'IN_PROGRESS';
+    const isCompleted = match.status === 'COMPLETED';
+    const score1 = match.home_score || 0;
+    const score2 = match.away_score || 0;
+    const team1Won = match.winner_id === match.home_team_id;
+    const team2Won = match.winner_id === match.away_team_id;
 
-              const team1Name = isSolo ? (team1?.name || 'Por definir') : (team1 ? '[' + team1.tag + '] ' + team1.name : 'Por definir');
-              const team2Name = isSolo ? (team2?.name || 'Por definir') : (team2 ? '[' + team2.tag + '] ' + team2.name : 'Por definir');
+    const team1Name = isSolo ? (team1?.name || 'Por definir') : (team1 ? '[' + team1.tag + '] ' + team1.name : 'Por definir');
+    const team2Name = isSolo ? (team2?.name || 'Por definir') : (team2 ? '[' + team2.tag + '] ' + team2.name : 'Por definir');
 
-              const team1Avatar = team1?.logo_url
-                ? '<img src="' + team1.logo_url + '" alt="' + (team1.name || '') + '" style="width:100%;height:100%;object-fit:cover;border-radius:6px">'
-                : '<i class="fas fa-' + (isSolo ? 'user' : 'shield-halved') + '"></i>';
+    const team1Avatar = team1?.logo_url
+      ? '<img src="' + team1.logo_url + '" alt="' + (team1.name || '') + '" style="width:100%;height:100%;object-fit:cover;border-radius:6px">'
+      : '<i class="fas fa-' + (isSolo ? 'user' : 'shield-halved') + '"></i>';
 
-              const team2Avatar = team2?.logo_url
-                ? '<img src="' + team2.logo_url + '" alt="' + (team2.name || '') + '" style="width:100%;height:100%;object-fit:cover;border-radius:6px">'
-                : '<i class="fas fa-' + (isSolo ? 'user' : 'shield-halved') + '"></i>';
+    const team2Avatar = team2?.logo_url
+      ? '<img src="' + team2.logo_url + '" alt="' + (team2.name || '') + '" style="width:100%;height:100%;object-fit:cover;border-radius:6px">'
+      : '<i class="fas fa-' + (isSolo ? 'user' : 'shield-halved') + '"></i>';
 
-              let scheduleHtml = '';
-              if (match.scheduled_datetime) {
-                const sd = new Date(match.scheduled_datetime);
-                scheduleHtml = '<div class="match-schedule"><i class="fas fa-clock"></i> ' + formatDate(match.scheduled_datetime) + ' - ' + sd.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }) + '</div>';
-              }
+    let scheduleHtml = '';
+    if (match.scheduled_datetime) {
+      const sd = new Date(match.scheduled_datetime);
+      scheduleHtml = '<div class="match-schedule"><i class="fas fa-clock"></i> ' + formatDate(match.scheduled_datetime) + ' - ' + sd.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }) + '</div>';
+    }
 
-              return `
+    return `
                 <div class="bracket-match ${isMatchLive ? 'live' : ''} ${isCompleted ? 'completed' : ''}">
                   ${isMatchLive ? '<div class="match-live-indicator"><span class="live-dot"></span> EN VIVO</div>' : ''}
                   <div class="match-team ${team1Won ? 'winner' : ''} ${!team1 ? 'tbd' : ''}">
@@ -810,7 +822,7 @@ function renderBracket(matches, teams, tournament) {
                   ${scheduleHtml}
                 </div>
               `;
-            }).join('')}
+  }).join('')}
           </div>
         `).join('')}
       </div>
@@ -1070,4 +1082,62 @@ function renderTournamentStyles() {
       }
     </style>
   `;
+}
+
+// =====================================================
+// AI FEATURES - Async Loading
+// =====================================================
+async function loadTournamentAI(tournamentId, status) {
+  // Load AI Tournament Summary for completed or in-progress tournaments
+  if (status === 'COMPLETED' || status === 'IN_PROGRESS') {
+    const summaryContainer = document.getElementById('aiTournamentSummary');
+    const summaryText = document.getElementById('aiSummaryText');
+    if (summaryContainer) {
+      summaryContainer.style.display = 'block';
+      try {
+        const resp = await fetch(`${API.baseUrl || 'http://localhost:3000'}/ai/tournament-summary/${tournamentId}`);
+        const data = await resp.json();
+        if (data.success && data.data?.summary) {
+          summaryText.innerHTML = data.data.summary;
+        } else {
+          summaryContainer.style.display = 'none';
+        }
+      } catch {
+        summaryContainer.style.display = 'none';
+      }
+    }
+  }
+
+  // Load AI Predictions for in-progress tournaments
+  if (status === 'IN_PROGRESS') {
+    try {
+      const resp = await fetch(`${API.baseUrl || 'http://localhost:3000'}/ai/predictions/${tournamentId}`);
+      const data = await resp.json();
+      if (data.success && data.data?.predictions) {
+        data.data.predictions.forEach(pred => {
+          // Find the bracket match card and attach the prediction badge
+          const matchCards = document.querySelectorAll('.bracket-match');
+          matchCards.forEach(card => {
+            const teams = card.querySelectorAll('.match-team-name');
+            if (teams.length >= 2) {
+              const team1Name = teams[0]?.textContent?.trim();
+              const team2Name = teams[1]?.textContent?.trim();
+              if ((team1Name === pred.team1 && team2Name === pred.team2) ||
+                (team1Name === pred.team2 && team2Name === pred.team1)) {
+                const existing = card.querySelector('.ai-prediction-badge');
+                if (!existing) {
+                  const badge = document.createElement('div');
+                  badge.className = 'ai-prediction-badge';
+                  badge.innerHTML = `<i class="fas fa-robot"></i> IA: ${pred.predicted_winner} (${Math.round(pred.confidence)}%)`;
+                  card.appendChild(badge);
+                }
+              }
+            }
+          });
+        });
+      }
+    } catch {
+      // Predictions are optional, fail silently
+    }
+  }
 }
