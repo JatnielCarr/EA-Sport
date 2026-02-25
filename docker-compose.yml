@@ -1,85 +1,45 @@
 services:
-    # Backend API
-    api:
-        build:
-            context: .
-            dockerfile: Dockerfile
-        container_name: apex-api
-        restart: always
-        ports:
-            - "3000:3000"
-        environment:
-            - NODE_ENV=production
-            - PORT=3000
-            - DATABASE_URL=mysql://root:@host.docker.internal:3306/esports_tournament_db
-            - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
-            - JWT_SECRET=${JWT_SECRET:-your-secret-key}
-            - FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID:-}
-        extra_hosts:
-            - "host.docker.internal:host-gateway"
-        networks:
-            - apex-network
-        command: [ "node", "dist/server.js" ]
+  # n8n - Automatización de workflows
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: n8n-apex-tournament
+    restart: always
+    ports:
+      - "5678:5678"
+    environment:
+      # Configuración básica
+      - N8N_HOST=0.0.0.0
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=https
+      # URL pública para webhooks (Cloudflare tunnel)
+      - WEBHOOK_URL=https://capture-steering-eau-infringement.trycloudflare.com/
+      # Zona horaria
+      - GENERIC_TIMEZONE=America/Mexico_City
+      - TZ=America/Mexico_City
+      # Webhook settings
+      - N8N_SKIP_WEBHOOK_DEREGISTRATION_SHUTDOWN=true
+      # Telegram Bot Token
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+    volumes:
+      - n8n_data:/home/node/.n8n
+    networks:
+      - apex-network
 
-    # Telegram Bot (polling mode)
-    telegram-bot:
-        build:
-            context: .
-            dockerfile: Dockerfile
-        container_name: apex-telegram-bot
-        restart: always
-        environment:
-            - NODE_ENV=production
-            - DATABASE_URL=mysql://root:@host.docker.internal:3306/esports_tournament_db
-            - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
-        extra_hosts:
-            - "host.docker.internal:host-gateway"
-        depends_on:
-            api:
-                condition: service_started
-        networks:
-            - apex-network
-        command: [ "node", "dist/telegram-bot.js" ]
-
-    n8n:
-        image: n8nio/n8n:latest
-        container_name: n8n-telegram-invitations
-        restart: always
-        ports:
-            - "5678:5678"
-        environment:
-            # Configuración básica
-            - N8N_HOST=0.0.0.0
-            - N8N_PORT=5678
-            - N8N_PROTOCOL=https
-            # Zona horaria (ajusta según tu ubicación)
-            - GENERIC_TIMEZONE=America/Mexico_City
-            - TZ=America/Mexico_City
-            # Deshabilitar registro automático de webhook (lo haremos manualmente)
-            - N8N_SKIP_WEBHOOK_DEREGISTRATION_SHUTDOWN=true
-            # Telegram Bot Token
-            - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
-        volumes:
-            - n8n_data:/home/node/.n8n
-        networks:
-            - apex-network
-            # Túnel HTTPS gratuito con Cloudflare
-    tunnel:
-        image: cloudflare/cloudflared:latest
-        container_name: cloudflare-tunnel
-        restart: always
-        command: tunnel --no-autoupdate --protocol http2 --url http://n8n:5678
-        networks:
-            - apex-network
-        depends_on:
-            - n8n
+  # Túnel HTTPS gratuito con Cloudflare (expone n8n a internet para webhooks)
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    container_name: cloudflare-tunnel
+    restart: always
+    command: tunnel --no-autoupdate --protocol http2 --url http://n8n:5678
+    networks:
+      - apex-network
+    depends_on:
+      - n8n
 
 networks:
-    apex-network:
-        driver: bridge
+  apex-network:
+    driver: bridge
 
 volumes:
-    n8n_data:
-        driver: local
-    mysql_data:
-        driver: local
+  n8n_data:
+    driver: local
