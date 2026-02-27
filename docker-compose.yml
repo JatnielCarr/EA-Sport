@@ -12,7 +12,7 @@ services:
       - N8N_PORT=5678
       - N8N_PROTOCOL=https
       # URL pública para webhooks (Cloudflare tunnel)
-      - WEBHOOK_URL=https://capture-steering-eau-infringement.trycloudflare.com/
+      - WEBHOOK_URL=https://view-tion-weekly-pollution.trycloudflare.com/
       # Zona horaria
       - GENERIC_TIMEZONE=America/Mexico_City
       - TZ=America/Mexico_City
@@ -25,12 +25,12 @@ services:
     networks:
       - apex-network
 
-  # Túnel HTTPS gratuito con Cloudflare (expone n8n a internet para webhooks)
+  # Túnel HTTPS con Cloudflare (dominio fijo con token)
   tunnel:
     image: cloudflare/cloudflared:latest
     container_name: cloudflare-tunnel
     restart: always
-    command: tunnel --no-autoupdate --protocol http2 --url http://n8n:5678
+    command: tunnel --no-autoupdate run --token eyJhIjoiYzNiYzg1NjhkMTQ1ZTIxZTNjZmQyYTM3ZDljNDYxYzEiLCJ0IjoiNTE5MjAyNTUtNjUzNi00NzM2LWIwYzAtYzY0OTY5Nzg0MGZlIiwicyI6Ik9UZzBabVJoT1dZdE56TTVaQzAwWVdNNUxXSmxZVEF0TjJGbE1tWm1aVFU1TkRWaiJ9
     networks:
       - apex-network
     depends_on:

@@ -1,8 +1,11 @@
 /**
  * Telegram Bot Configuration - ApexTournament
  * Servicio para enviar mensajes y notificaciones via Telegram
- * Con soporte conversacional y anti-spam
+ * Con soporte conversacional, IA integrada y anti-spam
  */
+
+import { AIService } from '../services/ai';
+import { prisma } from './database';
 
 interface TelegramConfig {
     botToken: string;
@@ -57,6 +60,7 @@ class TelegramService {
     private lastUpdateId: number = 0;
     private isPolling: boolean = false;
     private commandHandlers: Map<string, CommandHandler> = new Map();
+    // @ts-ignore - kept for future extension
     private defaultHandler: MessageHandler | null = null;
 
     // Anti-spam: Control de mensajes procesados
@@ -68,12 +72,33 @@ class TelegramService {
     // Sistema conversacional
     private conversationalPatterns: ConversationalPattern[] = [];
 
+    // AI Service para respuestas inteligentes
+    private aiService: AIService | null = null;
+
+    // Historial de conversación por chat (últimos N mensajes)
+    private conversationHistory: Map<number, { role: string; text: string; timestamp: number }[]> = new Map();
+    private readonly MAX_HISTORY_PER_CHAT = 10;
+    private readonly HISTORY_TTL_MS = 30 * 60 * 1000; // 30 minutos
+
+    // Retry config for transient network errors
+    private readonly RETRY_ATTEMPTS = 5;
+    private readonly RETRY_DELAY_MS = 2000;
+
     constructor() {
         const botToken = process.env.TELEGRAM_BOT_TOKEN || '';
         this.config = {
             botToken,
             apiUrl: `https://api.telegram.org/bot${botToken}`
         };
+
+        // Inicializar servicio de IA
+        try {
+            this.aiService = new AIService();
+            console.log('🤖 Telegram Bot: IA integrada activada');
+        } catch (error) {
+            console.warn('⚠️ Telegram Bot: IA no disponible, solo patrones conversacionales');
+            this.aiService = null;
+        }
 
         // Registrar comandos por defecto
         this.registerDefaultCommands();
@@ -311,17 +336,225 @@ class TelegramService {
         ];
     }
 
+    // ========================================================
+    // Utilidades de fuzzy matching para tolerancia a errores
+    // ========================================================
+
+    /**
+     * Distancia de Levenshtein entre dos strings
+     */
+    private levenshtein(a: string, b: string): number {
+        const matrix: number[][] = [];
+        for (let i = 0; i <= b.length; i++) matrix[i] = [i];
+        for (let j = 0; j <= a.length; j++) matrix[0][j] = j;
+        for (let i = 1; i <= b.length; i++) {
+            for (let j = 1; j <= a.length; j++) {
+                const cost = a[j - 1] === b[i - 1] ? 0 : 1;
+                matrix[i][j] = Math.min(
+                    matrix[i - 1][j] + 1,
+                    matrix[i][j - 1] + 1,
+                    matrix[i - 1][j - 1] + cost
+                );
+            }
+        }
+        return matrix[b.length][a.length];
+    }
+
+    /**
+     * Normalizar texto: quitar acentos, caracteres especiales
+     */
+    private normalize(text: string): string {
+        return text
+            .toLowerCase()
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '') // quitar acentos
+            .replace(/[^a-z0-9\s]/g, '') // solo alfanuméricos
+            .trim();
+    }
+
+    /**
+     * Verificar si una palabra fuzzy-matchea con alguna keyword
+     */
+    private fuzzyMatch(input: string, keywords: string[], threshold = 0.35): boolean {
+        const normalizedInput = this.normalize(input);
+        const words = normalizedInput.split(/\s+/);
+
+        for (const keyword of keywords) {
+            const normalizedKeyword = this.normalize(keyword);
+
+            // Match exacto en el input completo
+            if (normalizedInput.includes(normalizedKeyword)) return true;
+
+            // Fuzzy match por palabra
+            for (const word of words) {
+                if (word.length < 3) continue; // ignorar palabras muy cortas
+                const distance = this.levenshtein(word, normalizedKeyword);
+                const maxLen = Math.max(word.length, normalizedKeyword.length);
+                const similarity = 1 - distance / maxLen;
+                if (similarity >= (1 - threshold)) return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Mapa de intenciones fuzzy → handlers
+     */
+    private fuzzyIntents: { keywords: string[]; handler: (chatId: number, username: string) => Promise<void> }[] = [];
+
+    /**
+     * Registrar intenciones fuzzy
+     */
+    private registerFuzzyIntents(): void {
+        this.fuzzyIntents = [
+            {
+                keywords: ['hola', 'hello', 'hey', 'buenas', 'saludos', 'buenos dias', 'buenas tardes', 'buenas noches', 'que tal', 'holi'],
+                handler: async (chatId, username) => {
+                    const responses = [
+                        `¡Hola ${username}! 👋 ¿En qué puedo ayudarte?`,
+                        `¡Hey ${username}! 🎮 ¿Qué tal? Pregúntame lo que quieras.`,
+                        `¡Buenas ${username}! 😊 Estoy aquí para ayudarte.`
+                    ];
+                    await this.sendMessage({ chatId, text: responses[Math.floor(Math.random() * responses.length)], parseMode: 'HTML' });
+                }
+            },
+            {
+                keywords: ['adios', 'bye', 'chao', 'hasta luego', 'nos vemos', 'me voy'],
+                handler: async (chatId, username) => {
+                    await this.sendMessage({ chatId, text: `¡Hasta luego ${username}! 👋 ¡Buena suerte en tus partidas!`, parseMode: 'HTML' });
+                }
+            },
+            {
+                keywords: ['gracias', 'thanks', 'grax', 'grasias', 'garcias'],
+                handler: async (chatId, username) => {
+                    await this.sendMessage({ chatId, text: `¡De nada ${username}! 😊 Si necesitas algo más, pregúntame.`, parseMode: 'HTML' });
+                }
+            },
+            {
+                keywords: ['torneo', 'torneos', 'campeonato', 'competencia', 'competicion', 'participar', 'inscribirme', 'registrarme'],
+                handler: async (chatId, _username) => {
+                    // Consultar torneos reales de la BD
+                    try {
+                        const tournaments = await prisma.tournament.findMany({
+                            where: { status: { in: ['REGISTRATION_OPEN', 'IN_PROGRESS', 'PUBLISHED'] } },
+                            include: { game: { select: { name: true } } },
+                            orderBy: { start_date: 'asc' },
+                            take: 5
+                        });
+
+                        if (tournaments.length === 0) {
+                            await this.sendMessage({ chatId, text: '😔 No hay torneos activos en este momento. ¡Vuelve pronto!', parseMode: 'HTML' });
+                            return;
+                        }
+
+                        let msg = '🏆 <b>Torneos Disponibles:</b>\n\n';
+                        for (const t of tournaments) {
+                            const emoji = t.status === 'IN_PROGRESS' ? '🔴' : '🟢';
+                            const st = t.status === 'IN_PROGRESS' ? 'En Curso' : 'Registro Abierto';
+                            msg += `${emoji} <b>${t.name}</b>\n   🎮 ${(t.game as any)?.name || 'Varios'} | 💰 $${t.prize_pool || 0} | ${st}\n\n`;
+                        }
+                        await this.sendMessage({ chatId, text: msg, parseMode: 'HTML' });
+                    } catch {
+                        await this.sendMessage({ chatId, text: '🏆 Usa /torneos para ver los torneos disponibles.', parseMode: 'HTML' });
+                    }
+                }
+            },
+            {
+                keywords: ['ranking', 'clasificacion', 'mejores jugadores', 'top', 'primero', 'ganando'],
+                handler: async (chatId, _username) => {
+                    try {
+                        const stats = await prisma.playerStats.findMany({
+                            include: { user: { select: { username: true } }, game: { select: { name: true } } },
+                            orderBy: { rating: 'desc' },
+                            take: 10
+                        });
+
+                        if (stats.length === 0) {
+                            await this.sendMessage({ chatId, text: '😔 No hay datos de ranking aún.', parseMode: 'HTML' });
+                            return;
+                        }
+
+                        const medals = ['🥇', '🥈', '🥉'];
+                        let msg = '🏅 <b>Top 10 Jugadores:</b>\n\n';
+                        stats.forEach((s, i) => {
+                            const m = medals[i] || `${i + 1}.`;
+                            const wr = (s.wins + s.losses) > 0 ? Math.round((s.wins / (s.wins + s.losses)) * 100) : 0;
+                            msg += `${m} <b>${s.user.username}</b> ⭐${s.rating} | ${s.wins}W/${s.losses}L (${wr}%)\n`;
+                        });
+                        await this.sendMessage({ chatId, text: msg, parseMode: 'HTML' });
+                    } catch {
+                        await this.sendMessage({ chatId, text: '📊 Usa /ranking para ver el top 10.', parseMode: 'HTML' });
+                    }
+                }
+            },
+            {
+                keywords: ['partida', 'partidas', 'en vivo', 'envivo', 'jugando', 'ahora'],
+                handler: async (chatId, _username) => {
+                    await this.sendMessage({ chatId, text: '⚔️ Usa /envivo para partidas en vivo o /proximas para las próximas.', parseMode: 'HTML' });
+                }
+            },
+            {
+                keywords: ['estadisticas', 'stats', 'mis datos', 'mi rating', 'como voy'],
+                handler: async (chatId, _username) => {
+                    await this.sendMessage({ chatId, text: '📈 Usa /stats para ver tus estadísticas personales.\n\n<i>Necesitas tener tu cuenta vinculada.</i>', parseMode: 'HTML' });
+                }
+            },
+            {
+                keywords: ['juego', 'juegos', 'que juegos', 'juegos disponibles'],
+                handler: async (chatId, _username) => {
+                    try {
+                        const games = await prisma.game.findMany({ orderBy: { name: 'asc' } });
+                        if (games.length === 0) {
+                            await this.sendMessage({ chatId, text: '😔 No hay juegos registrados.', parseMode: 'HTML' });
+                            return;
+                        }
+                        let msg = '🎮 <b>Juegos Disponibles:</b>\n\n';
+                        games.forEach(g => { msg += `• <b>${g.name}</b> (${g.team_size_default} jugadores)\n`; });
+                        await this.sendMessage({ chatId, text: msg, parseMode: 'HTML' });
+                    } catch {
+                        await this.sendMessage({ chatId, text: '🎮 Usa /juegos para ver los juegos disponibles.', parseMode: 'HTML' });
+                    }
+                }
+            },
+            {
+                keywords: ['clan', 'clanes', 'equipo', 'team', 'mi clan'],
+                handler: async (chatId, _username) => {
+                    await this.sendMessage({ chatId, text: '👥 Usa /clanes para ver los equipos o /miclan para tu clan.\n\nLa gestión de clanes se hace desde la web.', parseMode: 'HTML' });
+                }
+            },
+            {
+                keywords: ['reglas', 'normas', 'politicas', 'prohibido'],
+                handler: async (chatId, _username) => {
+                    await this.sendMessage({ chatId, text: '📜 Usa /reglas para ver las reglas generales.', parseMode: 'HTML' });
+                }
+            },
+            {
+                keywords: ['ayuda', 'help', 'comandos', 'que puedo', 'como funciona'],
+                handler: async (chatId, _username) => {
+                    const handler = this.commandHandlers.get('ayuda');
+                    if (handler) await handler(chatId, [], _username);
+                }
+            },
+            {
+                keywords: ['problema', 'error', 'no funciona', 'falla', 'bug', 'roto'],
+                handler: async (chatId, _username) => {
+                    await this.sendMessage({ chatId, text: '🆘 ¿Puedes decirme más sobre tu problema?\nSi es técnico, contacta a los administradores en la web.', parseMode: 'HTML' });
+                }
+            }
+        ];
+    }
+
     /**
      * Procesar mensaje conversacional (no comando)
+     * Primero intenta regex, luego fuzzy matching, luego IA
      */
     async processConversation(chatId: number, text: string, username: string): Promise<boolean> {
         const lowerText = text.toLowerCase().trim();
 
-        // Buscar un patrón que coincida
+        // 1. Buscar un patrón regex que coincida (rápido)
         for (const pattern of this.conversationalPatterns) {
             for (const regex of pattern.patterns) {
                 if (regex.test(lowerText)) {
-                    // Si hay un handler personalizado, usarlo
                     if (pattern.handler) {
                         const response = await pattern.handler(chatId, text, username);
                         if (response) {
@@ -334,7 +567,6 @@ class TelegramService {
                         }
                     }
 
-                    // Seleccionar respuesta aleatoria
                     const randomResponse = pattern.responses[Math.floor(Math.random() * pattern.responses.length)];
                     await this.sendMessage({
                         chatId,
@@ -346,11 +578,179 @@ class TelegramService {
             }
         }
 
+        // 2. Fuzzy matching (tolerante a errores de escritura)
+        if (this.fuzzyIntents.length === 0) this.registerFuzzyIntents();
+        for (const intent of this.fuzzyIntents) {
+            if (this.fuzzyMatch(text, intent.keywords)) {
+                await intent.handler(chatId, username);
+                return true;
+            }
+        }
+
+        // 3. No coincidió nada → enviar a IA
         return false;
     }
 
+    // ========================================================
+    // Integración directa con Gemini AI
+    // ========================================================
+
     /**
-     * Respuesta por defecto cuando no se entiende el mensaje
+     * Guardar mensaje en historial de conversación
+     */
+    private addToHistory(chatId: number, role: string, text: string): void {
+        if (!this.conversationHistory.has(chatId)) {
+            this.conversationHistory.set(chatId, []);
+        }
+        const history = this.conversationHistory.get(chatId)!;
+
+        // Limpiar mensajes expirados
+        const now = Date.now();
+        const filtered = history.filter(h => now - h.timestamp < this.HISTORY_TTL_MS);
+
+        filtered.push({ role, text, timestamp: now });
+
+        // Mantener solo los últimos N
+        if (filtered.length > this.MAX_HISTORY_PER_CHAT) {
+            filtered.splice(0, filtered.length - this.MAX_HISTORY_PER_CHAT);
+        }
+
+        this.conversationHistory.set(chatId, filtered);
+    }
+
+    /**
+     * Obtener historial formateado para el prompt
+     */
+    private getHistoryForPrompt(chatId: number): string {
+        const history = this.conversationHistory.get(chatId);
+        if (!history || history.length === 0) return '';
+
+        const now = Date.now();
+        const recent = history.filter(h => now - h.timestamp < this.HISTORY_TTL_MS);
+        if (recent.length === 0) return '';
+
+        return '\nHISTORIAL DE CONVERSACIÓN RECIENTE:\n' +
+            recent.map(h => `${h.role === 'user' ? 'Usuario' : 'Bot'}: ${h.text}`).join('\n') + '\n';
+    }
+
+    /**
+     * Obtener contexto de la base de datos para la IA
+     */
+    private async getAIContext(): Promise<string> {
+        try {
+            const [tournaments, games, recentMatches] = await Promise.all([
+                prisma.tournament.findMany({
+                    where: { status: { in: ['REGISTRATION_OPEN', 'IN_PROGRESS', 'PUBLISHED'] } },
+                    include: { game: { select: { name: true } } },
+                    orderBy: { start_date: 'asc' },
+                    take: 10
+                }).catch(() => []),
+                prisma.game.findMany({
+                    select: { name: true, slug: true, team_size_default: true }
+                }).catch(() => []),
+                prisma.match.findMany({
+                    where: { status: { in: ['SCHEDULED', 'LIVE'] } },
+                    include: {
+                        tournament: { select: { name: true } },
+                        home_team: { select: { name: true } },
+                        away_team: { select: { name: true } }
+                    },
+                    orderBy: { scheduled_datetime: 'asc' },
+                    take: 5
+                }).catch(() => [])
+            ]);
+
+            let context = '';
+            if (tournaments.length > 0) {
+                context += 'TORNEOS ACTIVOS: ' + tournaments.map(t =>
+                    `${t.name} (${(t.game as any)?.name || 'N/A'}, ${t.status}, premio: $${t.prize_pool || 0})`
+                ).join('; ') + '.\n';
+            } else {
+                context += 'No hay torneos activos actualmente.\n';
+            }
+
+            if (games.length > 0) {
+                context += 'JUEGOS DISPONIBLES: ' + games.map(g => g.name).join(', ') + '.\n';
+            }
+
+            if (recentMatches.length > 0) {
+                context += 'PARTIDAS PRÓXIMAS/EN VIVO: ' + recentMatches.map(m =>
+                    `${(m as any).home_team?.name || 'TBD'} vs ${(m as any).away_team?.name || 'TBD'} (${(m as any).tournament?.name}, ${m.status})`
+                ).join('; ') + '.\n';
+            }
+
+            return context || 'No hay datos disponibles actualmente.';
+        } catch (error) {
+            console.error('Error obteniendo contexto para IA:', error);
+            return 'No se pudieron obtener datos del sistema.';
+        }
+    }
+
+    /**
+     * Responder usando IA (Gemini) con contexto de BD e historial
+     */
+    async respondWithAI(chatId: number, text: string, username: string): Promise<void> {
+        if (!this.aiService) {
+            await this.sendDefaultResponse(chatId, username);
+            return;
+        }
+
+        try {
+            // Indicador de "escribiendo..."
+            await this.sendChatAction(chatId, 'typing');
+
+            // Guardar mensaje del usuario en historial
+            this.addToHistory(chatId, 'user', text);
+
+            // Obtener contexto de la BD
+            const dbContext = await this.getAIContext();
+            const historyContext = this.getHistoryForPrompt(chatId);
+
+            // Generar respuesta con IA
+            const fullContext = dbContext + historyContext;
+            const response = await this.aiService.chat(text, fullContext);
+
+            // Guardar respuesta del bot en historial
+            this.addToHistory(chatId, 'bot', response);
+
+            // Enviar respuesta (limitar a 4096 chars de Telegram)
+            const truncated = response.length > 4000 ? response.substring(0, 4000) + '...' : response;
+            await this.sendMessage({
+                chatId,
+                text: truncated,
+                parseMode: 'HTML'
+            });
+        } catch (error) {
+            console.error('Error en respuesta IA:', error);
+            // Fallback: intentar enviar sin HTML por si tiene tags mal formados
+            try {
+                await this.sendMessage({
+                    chatId,
+                    text: '🤖 Hmm, no pude procesar eso. ¿Puedes reformularlo o usar /ayuda?'
+                });
+            } catch {
+                // silently fail
+            }
+        }
+    }
+
+    /**
+     * Enviar acción de chat (typing, etc.)
+     */
+    async sendChatAction(chatId: number, action: string = 'typing'): Promise<void> {
+        try {
+            await fetch(`${this.config.apiUrl}/sendChatAction`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ chat_id: chatId, action })
+            });
+        } catch {
+            // no-op, typing indicator is non-critical
+        }
+    }
+
+    /**
+     * Respuesta por defecto cuando no hay IA disponible
      */
     async sendDefaultResponse(chatId: number, username: string): Promise<void> {
         const responses = [
@@ -447,18 +847,8 @@ Abre la app → Configuración → Conectar Telegram
             if (handler) await handler(chatId, args, username);
         });
 
-        // Actualizar menú de comandos en Telegram
-        this.setMyCommands([
-            { command: 'start', description: 'Iniciar y bienvenida' },
-            { command: 'torneos', description: 'Ver torneos activos' },
-            { command: 'clanes', description: 'Ver clanes registrados' },
-            { command: 'miclan', description: 'Mi información de equipo' },
-            { command: 'ranking', description: 'Ver top jugadores' },
-            { command: 'proximas', description: 'Próximas partidas' },
-            { command: 'envivo', description: 'Partidas en vivo' },
-            { command: 'juegos', description: 'Juegos disponibles' },
-            { command: 'ayuda', description: 'Ayuda y soporte' }
-        ]).catch(err => console.error('Error setting commands:', err));
+        // Actualizar menú de comandos en Telegram (deferred, non-blocking)
+        this.setMyCommandsWithRetry();
     }
 
     /**
@@ -776,6 +1166,65 @@ Has vinculado tu cuenta de Telegram exitosamente. Ahora recibirás:
     }
 
     /**
+     * Fetch with retry logic for transient network errors (ECONNRESET, ETIMEDOUT, etc.)
+     */
+    private async fetchWithRetry(url: string, options?: RequestInit, attempts = this.RETRY_ATTEMPTS): Promise<Response> {
+        for (let i = 0; i < attempts; i++) {
+            try {
+                return await fetch(url, options);
+            } catch (error: any) {
+                const isRetryable = error?.cause?.code === 'ECONNRESET'
+                    || error?.cause?.code === 'ETIMEDOUT'
+                    || error?.cause?.code === 'ENOTFOUND'
+                    || error?.cause?.code === 'UND_ERR_SOCKET'
+                    || error?.message?.includes('fetch failed');
+
+                if (isRetryable && i < attempts - 1) {
+                    const delay = this.RETRY_DELAY_MS * Math.pow(2, i); // exponential backoff
+                    console.warn(`Telegram fetch attempt ${i + 1}/${attempts} failed (${error?.cause?.code || 'unknown'}), retrying in ${delay}ms...`);
+                    await new Promise(r => setTimeout(r, delay));
+                    continue;
+                }
+                throw error;
+            }
+        }
+        throw new Error('fetchWithRetry: exhausted all attempts');
+    }
+
+    /**
+     * Set bot commands in Telegram UI with deferred retry on persistent failure.
+     * Called once during constructor — retries in background if network is down at startup.
+     */
+    private async setMyCommandsWithRetry(): Promise<void> {
+        const commands = [
+            { command: 'start', description: 'Iniciar y bienvenida' },
+            { command: 'torneos', description: 'Ver torneos activos' },
+            { command: 'clanes', description: 'Ver clanes registrados' },
+            { command: 'miclan', description: 'Mi información de equipo' },
+            { command: 'ranking', description: 'Ver top jugadores' },
+            { command: 'proximas', description: 'Próximas partidas' },
+            { command: 'envivo', description: 'Partidas en vivo' },
+            { command: 'juegos', description: 'Juegos disponibles' },
+            { command: 'ayuda', description: 'Ayuda y soporte' }
+        ];
+
+        const maxScheduledRetries = 3;
+        for (let attempt = 0; attempt <= maxScheduledRetries; attempt++) {
+            const result = await this.setMyCommands(commands);
+            if (result.ok) {
+                console.log('✅ Telegram commands registered successfully');
+                return;
+            }
+            if (attempt < maxScheduledRetries) {
+                const delay = 30_000 * (attempt + 1); // 30s, 60s, 90s
+                console.warn(`⚠️ setMyCommands failed (attempt ${attempt + 1}/${maxScheduledRetries + 1}), scheduling retry in ${delay / 1000}s...`);
+                await new Promise(r => setTimeout(r, delay));
+            }
+        }
+        console.error('❌ setMyCommands failed after all scheduled retries — commands not registered');
+    }
+
+    /**
      * Set bot commands in Telegram UI
      */
     async setMyCommands(commands: { command: string; description: string }[]): Promise<TelegramResponse> {
@@ -784,7 +1233,7 @@ Has vinculado tu cuenta de Telegram exitosamente. Ahora recibirás:
         }
 
         try {
-            const response = await fetch(`${this.config.apiUrl}/setMyCommands`, {
+            const response = await this.fetchWithRetry(`${this.config.apiUrl}/setMyCommands`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ commands })
@@ -847,14 +1296,11 @@ Has vinculado tu cuenta de Telegram exitosamente. Ahora recibirás:
         if (text.startsWith('/')) {
             await this.processCommand(chatId, text, username);
         } else {
-            // Procesar como mensaje conversacional
+            // Procesar como mensaje conversacional (regex → fuzzy → IA)
             const handled = await this.processConversation(chatId, text, username);
             if (!handled) {
-                if (this.defaultHandler) {
-                    await this.defaultHandler(chatId, text, username);
-                } else {
-                    await this.sendDefaultResponse(chatId, username);
-                }
+                // Si ningún patrón coincidió → responder con IA directamente
+                await this.respondWithAI(chatId, text, username);
             }
         }
     }
