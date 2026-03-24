@@ -1,13 +1,18 @@
-import React, { useEffect, useState, useCallback } from 'react';
-import { 
-    StyleSheet, 
-    View, 
-    Text, 
-    ScrollView, 
-    Image, 
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import {
+    StyleSheet,
+    View,
+    Text,
+    ScrollView,
+    Image,
     TouchableOpacity,
     RefreshControl,
     Dimensions,
+    Alert,
+    TextInput,
+    Modal,
+    KeyboardAvoidingView,
+    Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -15,6 +20,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { api } from '../../services/api';
 import { colors, gradients } from '../../theme/colors';
 import { Loading, Button, Badge, Card } from '../../components/common';
+import BracketView from '../../components/tournament/BracketView';
+import TeamsList from '../../components/tournament/TeamsList';
+import MatchDetailModal from '../../components/tournament/MatchDetailModal';
 
 const { width } = Dimensions.get('window');
 const DEFAULT_IMAGE = 'https://via.placeholder.com/800x400/161616/00d4ff?text=Tournament';
@@ -22,45 +30,110 @@ const DEFAULT_IMAGE = 'https://via.placeholder.com/800x400/161616/00d4ff?text=To
 export default function TournamentDetailScreen({ route, navigation }) {
     const { id } = route.params;
     const [tournament, setTournament] = useState(null);
+    const [matches, setMatches] = useState([]);
+    const [teams, setTeams] = useState([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [activeTab, setActiveTab] = useState('info');
+    const [registering, setRegistering] = useState(false);
+    const [selectedMatch, setSelectedMatch] = useState(null);
+    const [matchModalVisible, setMatchModalVisible] = useState(false);
+    const [myRegistration, setMyRegistration] = useState(null);
+    const [showRegForm, setShowRegForm] = useState(false);
+    const [teamName, setTeamName] = useState('');
+    const [teamTag, setTeamTag] = useState('');
 
     const fetchTournament = async () => {
         try {
-            const response = await api.get(`/tournaments/${id}`);
-            const tournamentData = response.data || response;
-            if (tournamentData && tournamentData.id) {
-                setTournament(tournamentData);
-            } else {
-                // Datos de ejemplo cuando no hay respuesta
-                setTournament({
-                    id,
-                    name: 'Torneo de Ejemplo',
-                    status: 'REGISTRATION_OPEN',
-                    game: { name: 'Juego' },
-                    start_date: new Date().toISOString(),
-                    format: 'KNOCKOUT',
-                    team_size: 1,
-                    prize_pool: 0,
-                });
+            // Fetch tournament details, bracket, teams, and registration status in parallel
+            const [detailRes, bracketRes, teamsRes, regRes] = await Promise.allSettled([
+                api.tournaments.getDetail ? api.tournaments.getDetail(id) : api.get(`/tournaments/${id}`),
+                api.tournaments.getBracket(id),
+                api.get(`/tournaments/${id}/teams`),
+                api.get(`/tournaments/${id}/my-registration`).catch(() => null),
+            ]);
+
+            // Tournament data
+            if (detailRes.status === 'fulfilled' && detailRes.value) {
+                const d = detailRes.value.data || detailRes.value;
+                if (d && (d.id || d.name)) {
+                    setTournament(d);
+                }
+            }
+
+            // Bracket data
+            if (bracketRes.status === 'fulfilled' && bracketRes.value) {
+                const b = bracketRes.value.data || bracketRes.value;
+                const matchesArr = b.matches || b || [];
+                setMatches(Array.isArray(matchesArr) ? matchesArr : []);
+            }
+
+            // Teams data
+            if (teamsRes.status === 'fulfilled' && teamsRes.value) {
+                const t = teamsRes.value.data || teamsRes.value;
+                setTeams(Array.isArray(t) ? t : []);
+            }
+
+            // Registration status
+            if (regRes.status === 'fulfilled' && regRes.value) {
+                const r = regRes.value;
+                if (r.registered && r.data) {
+                    setMyRegistration(r.data);
+                } else {
+                    setMyRegistration(null);
+                }
             }
         } catch (error) {
             console.warn('Error fetching tournament detail:', error);
-            // Datos de ejemplo como fallback
             setTournament({
-                id,
-                name: 'Torneo de Ejemplo',
-                status: 'REGISTRATION_OPEN',
-                game: { name: 'Juego' },
-                start_date: new Date().toISOString(),
-                format: 'KNOCKOUT',
-                team_size: 1,
-                prize_pool: 0,
+                id, name: 'Torneo de Ejemplo', status: 'REGISTRATION_OPEN',
+                game: { name: 'Juego' }, start_date: new Date().toISOString(),
+                format: 'KNOCKOUT', team_size: 1, prize_pool: 0,
             });
         } finally {
             setLoading(false);
             setRefreshing(false);
+        }
+    };
+
+    const handleRegister = async () => {
+        if (registering) return;
+        if (myRegistration) {
+            Alert.alert('Ya inscrito', `Ya estás inscrito con el equipo "${myRegistration.team?.name}"`);
+            return;
+        }
+        setShowRegForm(true);
+    };
+
+    const submitRegistration = async () => {
+        if (!teamName.trim() || teamName.trim().length < 2) {
+            Alert.alert('Error', 'El nombre del equipo debe tener al menos 2 caracteres');
+            return;
+        }
+        if (!teamTag.trim() || teamTag.trim().length < 2 || teamTag.trim().length > 6) {
+            Alert.alert('Error', 'El tag debe tener entre 2 y 6 caracteres');
+            return;
+        }
+
+        setRegistering(true);
+        try {
+            const result = await api.post(`/tournaments/${id}/register`, {
+                team_name: teamName.trim(),
+                team_tag: teamTag.trim().toUpperCase(),
+            });
+            setShowRegForm(false);
+            setTeamName('');
+            setTeamTag('');
+            Alert.alert(
+                '🎮 ¡Inscripción Exitosa!',
+                result.data?.message || '¡Te has inscrito al torneo!',
+                [{ text: '¡Vamos!', onPress: () => fetchTournament() }]
+            );
+        } catch (error) {
+            const msg = error?.response?.data?.error || error?.message || 'No se pudo completar la inscripción';
+            Alert.alert('Error', msg);
+        } finally {
+            setRegistering(false);
         }
     };
 
@@ -70,8 +143,43 @@ export default function TournamentDetailScreen({ route, navigation }) {
 
     const onRefresh = useCallback(() => {
         setRefreshing(true);
+        // Invalidate cache and fetch fresh data
+        api.tournaments.refreshDetail(id);
         fetchTournament();
+    }, [id]);
+
+    // Helper: compute round name based on total rounds
+    const getRoundName = useCallback((roundNum) => {
+        // Group matches by round to find total rounds
+        const roundNums = [...new Set(matches.map(m => m.round || 1))].sort((a, b) => a - b);
+        const totalRounds = roundNums.length || 1;
+        if (totalRounds <= 1) return 'Final';
+        const fromEnd = totalRounds - roundNum;
+        switch (fromEnd) {
+            case 0: return '🏆 Final';
+            case 1: return 'Semifinales';
+            case 2: return 'Cuartos de Final';
+            default: return `Ronda ${roundNum}`;
+        }
+    }, [matches]);
+
+    // Handlers for bracket and teams interactions
+    const handleMatchPress = useCallback((match) => {
+        setSelectedMatch(match);
+        setMatchModalVisible(true);
     }, []);
+
+    const handleTeamPress = useCallback((team) => {
+        const playerCount = team.players?.length || 0;
+        const captainName = team.captain?.username || team.players?.find(p => p.is_captain)?.user?.username || 'Desconocido';
+        const statusLabel = team.disqualified ? '❌ Descalificado' : (team.approved ? '✅ Aprobado' : '⏳ Pendiente');
+
+        Alert.alert(
+            `${team.name} [${team.tag}]`,
+            `Capitán: ${captainName}\nJugadores: ${playerCount}/${tournament?.team_size || '?'}\nEstado: ${statusLabel}${team.seed ? `\nSeed: #${team.seed}` : ''}`,
+            [{ text: 'Cerrar' }]
+        );
+    }, [tournament]);
 
     if (loading) return <Loading text="Cargando torneo..." />;
 
@@ -89,7 +197,8 @@ export default function TournamentDetailScreen({ route, navigation }) {
     };
 
     const status = getStatusInfo();
-    const isRegistrationOpen = tournament.status === 'REGISTRATION_OPEN';
+    const isRegistrationOpen = tournament.status === 'REGISTRATION_OPEN' || tournament.status === 'PUBLISHED';
+    const isRegistered = !!myRegistration;
 
     const tabs = [
         { key: 'info', label: 'Información', icon: 'information-circle-outline' },
@@ -119,9 +228,9 @@ export default function TournamentDetailScreen({ route, navigation }) {
                         colors={['transparent', 'rgba(0,0,0,0.9)', colors.background]}
                         style={styles.bannerOverlay}
                     />
-                    
+
                     {/* Back Button */}
-                    <TouchableOpacity 
+                    <TouchableOpacity
                         style={styles.backButton}
                         onPress={() => navigation.goBack()}
                     >
@@ -191,13 +300,13 @@ export default function TournamentDetailScreen({ route, navigation }) {
                                 style={[styles.tab, activeTab === tab.key && styles.tabActive]}
                                 onPress={() => setActiveTab(tab.key)}
                             >
-                                <Ionicons 
-                                    name={tab.icon} 
-                                    size={18} 
-                                    color={activeTab === tab.key ? colors.primary : colors.textSecondary} 
+                                <Ionicons
+                                    name={tab.icon}
+                                    size={18}
+                                    color={activeTab === tab.key ? colors.primary : colors.textSecondary}
                                 />
                                 <Text style={[
-                                    styles.tabText, 
+                                    styles.tabText,
                                     activeTab === tab.key && styles.tabTextActive
                                 ]}>
                                     {tab.label}
@@ -212,8 +321,8 @@ export default function TournamentDetailScreen({ route, navigation }) {
                             {/* Info Grid */}
                             <Card title="Detalles del Torneo" icon="information-circle">
                                 <View style={styles.infoGrid}>
-                                    <InfoItem 
-                                        icon="calendar" 
+                                    <InfoItem
+                                        icon="calendar"
                                         label="Fecha de Inicio"
                                         value={new Date(tournament.start_date).toLocaleDateString('es-ES', {
                                             weekday: 'long',
@@ -221,21 +330,21 @@ export default function TournamentDetailScreen({ route, navigation }) {
                                             month: 'long'
                                         })}
                                     />
-                                    <InfoItem 
-                                        icon="time" 
+                                    <InfoItem
+                                        icon="time"
                                         label="Hora"
                                         value={new Date(tournament.start_date).toLocaleTimeString('es-ES', {
                                             hour: '2-digit',
                                             minute: '2-digit'
                                         })}
                                     />
-                                    <InfoItem 
-                                        icon="globe" 
+                                    <InfoItem
+                                        icon="globe"
                                         label="Región"
                                         value={tournament.region || 'Global'}
                                     />
-                                    <InfoItem 
-                                        icon="ribbon" 
+                                    <InfoItem
+                                        icon="ribbon"
                                         label="Plataforma"
                                         value={tournament.platform || 'Todas'}
                                     />
@@ -263,40 +372,225 @@ export default function TournamentDetailScreen({ route, navigation }) {
 
                     {activeTab === 'bracket' && (
                         <View style={styles.tabContent}>
-                            <Card>
-                                <View style={styles.emptyState}>
-                                    <Ionicons name="git-network-outline" size={48} color={colors.textMuted} />
-                                    <Text style={styles.emptyText}>El bracket estará disponible pronto</Text>
-                                </View>
-                            </Card>
+                            <BracketView
+                                matches={matches}
+                                format={tournament.format}
+                                onMatchPress={handleMatchPress}
+                            />
                         </View>
                     )}
 
                     {activeTab === 'teams' && (
                         <View style={styles.tabContent}>
-                            <Card>
-                                <View style={styles.emptyState}>
-                                    <Ionicons name="people-outline" size={48} color={colors.textMuted} />
-                                    <Text style={styles.emptyText}>Los equipos aparecerán cuando se inscriban</Text>
-                                </View>
-                            </Card>
+                            <TeamsList
+                                teams={teams}
+                                maxTeamSize={tournament.team_size || 5}
+                                onTeamPress={handleTeamPress}
+                            />
                         </View>
                     )}
                 </View>
+
+                {/* Registered Banner */}
+                {isRegistered && (
+                    <View style={styles.registeredBanner}>
+                        <LinearGradient
+                            colors={['rgba(16, 185, 129, 0.15)', 'rgba(0, 212, 255, 0.1)']}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 0 }}
+                            style={styles.registeredGradient}
+                        >
+                            <View style={styles.registeredHeader}>
+                                <View style={styles.registeredBadge}>
+                                    <Ionicons name="checkmark-circle" size={18} color="#10b981" />
+                                    <Text style={styles.registeredTitle}>¡INSCRITO!</Text>
+                                </View>
+                                <View style={styles.registeredSeedBadge}>
+                                    <Ionicons name="shield" size={12} color={colors.primary} />
+                                    <Text style={styles.registeredSeedText}>
+                                        {myRegistration.team?.seed ? `Seed #${myRegistration.team.seed}` : 'Sin Seed'}
+                                    </Text>
+                                </View>
+                            </View>
+                            <View style={styles.registeredTeamRow}>
+                                <View style={styles.teamInitials}>
+                                    <Text style={styles.teamInitialsText}>
+                                        {myRegistration.team?.tag || '??'}
+                                    </Text>
+                                </View>
+                                <View style={styles.registeredTeamInfo}>
+                                    <Text style={styles.registeredTeamName}>{myRegistration.team?.name || 'Mi Equipo'}</Text>
+                                    <Text style={styles.registeredTeamMeta}>
+                                        {myRegistration.is_captain ? '👑 Capitán' : '⚔️ Miembro'}
+                                        {' • '}
+                                        {myRegistration.team?.approved ? '✅ Aprobado' : '⏳ Pendiente'}
+                                    </Text>
+                                </View>
+                            </View>
+                        </LinearGradient>
+                    </View>
+                )}
 
                 <View style={{ height: 120 }} />
             </ScrollView>
 
             {/* Fixed Action Button */}
             <View style={styles.actionContainer}>
-                <Button
-                    title={isRegistrationOpen ? "Inscribirse al Torneo" : "Ver Bracket"}
-                    icon={isRegistrationOpen ? "add-circle-outline" : "eye-outline"}
-                    onPress={() => console.log('Action')}
-                    gradient
-                    size="large"
-                />
+                {isRegistered ? (
+                    <TouchableOpacity
+                        style={styles.registeredButton}
+                        onPress={() => setActiveTab('bracket')}
+                        activeOpacity={0.8}
+                    >
+                        <LinearGradient
+                            colors={['#10b981', '#059669']}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 0 }}
+                            style={styles.registeredButtonGradient}
+                        >
+                            <Ionicons name="checkmark-circle" size={22} color="#fff" />
+                            <Text style={styles.registeredButtonText}>Ya Inscrito — Ver Bracket</Text>
+                        </LinearGradient>
+                    </TouchableOpacity>
+                ) : (
+                    <Button
+                        title={registering ? "Inscribiendo..." : isRegistrationOpen ? "⚔️ Inscribirse al Torneo" : "Ver Bracket"}
+                        icon={isRegistrationOpen ? "add-circle-outline" : "eye-outline"}
+                        onPress={() => {
+                            if (isRegistrationOpen) {
+                                handleRegister();
+                            } else {
+                                setActiveTab('bracket');
+                            }
+                        }}
+                        gradient
+                        size="large"
+                        disabled={registering}
+                    />
+                )}
             </View>
+
+            {/* Registration Form Modal */}
+            <Modal
+                visible={showRegForm}
+                transparent
+                animationType="slide"
+                onRequestClose={() => setShowRegForm(false)}
+            >
+                <KeyboardAvoidingView
+                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                    style={styles.regModalOverlay}
+                >
+                    <TouchableOpacity
+                        style={styles.regModalDismiss}
+                        activeOpacity={1}
+                        onPress={() => setShowRegForm(false)}
+                    />
+                    <View style={styles.regModalContainer}>
+                        <LinearGradient
+                            colors={[colors.card, colors.background]}
+                            style={styles.regModalContent}
+                        >
+                            {/* Header */}
+                            <View style={styles.regModalHeader}>
+                                <View style={styles.regModalHandle} />
+                                <View style={styles.regModalIconContainer}>
+                                    <LinearGradient
+                                        colors={[colors.primary, '#7928CA']}
+                                        style={styles.regModalIcon}
+                                    >
+                                        <Ionicons name="game-controller" size={32} color="#fff" />
+                                    </LinearGradient>
+                                </View>
+                                <Text style={styles.regModalTitle}>Inscripción al Torneo</Text>
+                                <Text style={styles.regModalSubtitle}>{tournament.name}</Text>
+                                {Number(tournament.entry_fee) > 0 && (
+                                    <View style={styles.regFeeContainer}>
+                                        <Ionicons name="cash-outline" size={16} color="#fbbf24" />
+                                        <Text style={styles.regFeeText}>Cuota: ${tournament.entry_fee} MXN</Text>
+                                    </View>
+                                )}
+                                {Number(tournament.entry_fee) === 0 && (
+                                    <View style={[styles.regFeeContainer, { backgroundColor: 'rgba(16, 185, 129, 0.15)' }]}>
+                                        <Ionicons name="gift-outline" size={16} color="#10b981" />
+                                        <Text style={[styles.regFeeText, { color: '#10b981' }]}>Inscripción Gratuita</Text>
+                                    </View>
+                                )}
+                            </View>
+
+                            {/* Form */}
+                            <View style={styles.regFormGroup}>
+                                <Text style={styles.regFormLabel}>
+                                    <Ionicons name="people" size={14} color={colors.primary} /> Nombre del Equipo
+                                </Text>
+                                <TextInput
+                                    style={styles.regFormInput}
+                                    placeholder="Ej: Shadow Warriors"
+                                    placeholderTextColor={colors.textMuted}
+                                    value={teamName}
+                                    onChangeText={setTeamName}
+                                    maxLength={50}
+                                    autoCapitalize="words"
+                                />
+                            </View>
+
+                            <View style={styles.regFormGroup}>
+                                <Text style={styles.regFormLabel}>
+                                    <Ionicons name="pricetag" size={14} color={colors.primary} /> Tag del Equipo
+                                </Text>
+                                <TextInput
+                                    style={styles.regFormInput}
+                                    placeholder="Ej: SW"
+                                    placeholderTextColor={colors.textMuted}
+                                    value={teamTag}
+                                    onChangeText={(t) => setTeamTag(t.toUpperCase())}
+                                    maxLength={6}
+                                    autoCapitalize="characters"
+                                />
+                                <Text style={styles.regFormHint}>2-6 caracteres (se muestra en el bracket)</Text>
+                            </View>
+
+                            {/* Buttons */}
+                            <TouchableOpacity
+                                style={[styles.regSubmitBtn, registering && { opacity: 0.6 }]}
+                                onPress={submitRegistration}
+                                disabled={registering}
+                                activeOpacity={0.8}
+                            >
+                                <LinearGradient
+                                    colors={[colors.primary, '#7928CA']}
+                                    start={{ x: 0, y: 0 }}
+                                    end={{ x: 1, y: 0 }}
+                                    style={styles.regSubmitGradient}
+                                >
+                                    <Ionicons name={registering ? 'hourglass-outline' : 'rocket-outline'} size={20} color="#fff" />
+                                    <Text style={styles.regSubmitText}>
+                                        {registering ? 'Inscribiendo...' : '¡Inscribirme Ahora!'}
+                                    </Text>
+                                </LinearGradient>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                style={styles.regCancelBtn}
+                                onPress={() => setShowRegForm(false)}
+                            >
+                                <Text style={styles.regCancelText}>Cancelar</Text>
+                            </TouchableOpacity>
+                        </LinearGradient>
+                    </View>
+                </KeyboardAvoidingView>
+            </Modal>
+
+            {/* Match Detail Modal */}
+            <MatchDetailModal
+                visible={matchModalVisible}
+                match={selectedMatch}
+                roundName={selectedMatch ? getRoundName(selectedMatch.round || 1) : ''}
+                onClose={() => {
+                    setMatchModalVisible(false);
+                    setSelectedMatch(null);
+                }}
+            />
         </SafeAreaView>
     );
 }
@@ -539,5 +833,216 @@ const styles = StyleSheet.create({
         backgroundColor: colors.background,
         borderTopWidth: 1,
         borderTopColor: colors.border,
+    },
+    // Registered Banner
+    registeredBanner: {
+        marginTop: 20,
+        borderRadius: 16,
+        overflow: 'hidden',
+        borderWidth: 1,
+        borderColor: 'rgba(16, 185, 129, 0.3)',
+    },
+    registeredGradient: {
+        padding: 16,
+    },
+    registeredHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 12,
+    },
+    registeredBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+    },
+    registeredTitle: {
+        color: '#10b981',
+        fontWeight: '800',
+        fontSize: 14,
+        letterSpacing: 1,
+    },
+    registeredSeedBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        backgroundColor: 'rgba(0, 212, 255, 0.1)',
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 20,
+        borderWidth: 1,
+        borderColor: 'rgba(0, 212, 255, 0.2)',
+    },
+    registeredSeedText: {
+        color: colors.primary,
+        fontSize: 11,
+        fontWeight: '700',
+    },
+    registeredTeamRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+    },
+    teamInitials: {
+        width: 48,
+        height: 48,
+        borderRadius: 12,
+        backgroundColor: 'rgba(0, 212, 255, 0.15)',
+        borderWidth: 1,
+        borderColor: 'rgba(0, 212, 255, 0.3)',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    teamInitialsText: {
+        color: colors.primary,
+        fontWeight: '800',
+        fontSize: 16,
+        letterSpacing: 1,
+    },
+    registeredTeamInfo: {
+        flex: 1,
+    },
+    registeredTeamName: {
+        color: colors.text,
+        fontWeight: '700',
+        fontSize: 16,
+    },
+    registeredTeamMeta: {
+        color: colors.textSecondary,
+        fontSize: 12,
+        marginTop: 2,
+    },
+    // Registered Button
+    registeredButton: {
+        borderRadius: 14,
+        overflow: 'hidden',
+    },
+    registeredButtonGradient: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 10,
+        paddingVertical: 16,
+        borderRadius: 14,
+    },
+    registeredButtonText: {
+        color: '#fff',
+        fontWeight: '700',
+        fontSize: 16,
+    },
+    // Registration Modal
+    regModalOverlay: {
+        flex: 1,
+        justifyContent: 'flex-end',
+    },
+    regModalDismiss: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.6)',
+    },
+    regModalContainer: {
+        borderTopLeftRadius: 28,
+        borderTopRightRadius: 28,
+        overflow: 'hidden',
+    },
+    regModalContent: {
+        padding: 24,
+        paddingBottom: 40,
+    },
+    regModalHeader: {
+        alignItems: 'center',
+        marginBottom: 24,
+    },
+    regModalHandle: {
+        width: 40,
+        height: 4,
+        borderRadius: 2,
+        backgroundColor: 'rgba(255,255,255,0.2)',
+        marginBottom: 20,
+    },
+    regModalIconContainer: {
+        marginBottom: 16,
+    },
+    regModalIcon: {
+        width: 64,
+        height: 64,
+        borderRadius: 20,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    regModalTitle: {
+        fontSize: 22,
+        fontWeight: '800',
+        color: colors.text,
+        marginBottom: 4,
+    },
+    regModalSubtitle: {
+        fontSize: 14,
+        color: colors.textSecondary,
+        marginBottom: 12,
+    },
+    regFeeContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        backgroundColor: 'rgba(251, 191, 36, 0.15)',
+        paddingHorizontal: 14,
+        paddingVertical: 6,
+        borderRadius: 20,
+    },
+    regFeeText: {
+        color: '#fbbf24',
+        fontWeight: '700',
+        fontSize: 13,
+    },
+    regFormGroup: {
+        marginBottom: 16,
+    },
+    regFormLabel: {
+        color: colors.text,
+        fontWeight: '600',
+        fontSize: 13,
+        marginBottom: 8,
+    },
+    regFormInput: {
+        backgroundColor: 'rgba(255,255,255,0.06)',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.12)',
+        borderRadius: 12,
+        paddingHorizontal: 16,
+        paddingVertical: 14,
+        color: colors.text,
+        fontSize: 16,
+        fontWeight: '600',
+    },
+    regFormHint: {
+        color: colors.textMuted,
+        fontSize: 11,
+        marginTop: 6,
+    },
+    regSubmitBtn: {
+        marginTop: 8,
+        borderRadius: 14,
+        overflow: 'hidden',
+    },
+    regSubmitGradient: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 10,
+        paddingVertical: 16,
+    },
+    regSubmitText: {
+        color: '#fff',
+        fontWeight: '700',
+        fontSize: 16,
+    },
+    regCancelBtn: {
+        alignItems: 'center',
+        paddingVertical: 14,
+    },
+    regCancelText: {
+        color: colors.textSecondary,
+        fontWeight: '600',
+        fontSize: 14,
     },
 });

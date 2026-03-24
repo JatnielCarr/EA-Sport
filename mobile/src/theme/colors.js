@@ -4,40 +4,50 @@ export const colors = {
     primaryDark: '#00a8cc',
     secondary: '#7928ca',
     accent: '#ff3366',
-    
+
     // Background colors
     background: '#0a0a0a',
     backgroundLight: '#111111',
     card: '#161616',
     cardHover: '#1a1a1a',
-    
+
     // Text colors
     text: '#ffffff',
     textSecondary: '#a0a0a0',
     textMuted: '#666666',
-    
+
     // Status colors
     success: '#10b981',
     error: '#ef4444',
     warning: '#f59e0b',
     info: '#3b82f6',
     live: '#ff3366',
-    
+
     // Utility colors
     border: '#333333',
     borderLight: '#444444',
     white: '#ffffff',
     black: '#000000',
     transparent: 'transparent',
-    
+
+    // Glassmorphism
+    glass: 'rgba(22, 22, 22, 0.85)',
+    glassLight: 'rgba(30, 30, 30, 0.75)',
+    glassBorder: 'rgba(255, 255, 255, 0.08)',
+    cardElevated: '#1a1a1a',
+
     // Gradient colors
     gradientStart: '#00d4ff',
     gradientEnd: '#7928ca',
-    
+
     // Rank colors
     gold: '#ffd700',
     silver: '#c0c0c0',
     bronze: '#cd7f32',
+
+    // Tab bar
+    tabBarBg: 'rgba(10, 10, 10, 0.92)',
+    tabBarBorder: 'rgba(0, 212, 255, 0.15)',
 };
 
 export const gradients = {

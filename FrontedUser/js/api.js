@@ -10,6 +10,20 @@ const API_BASE = 'http://localhost:3000';
 const cache = new Map();
 const CACHE_TTL = 60000; // 1 minute default
 
+// Extended TTLs by data type
+const CACHE_DURATIONS = {
+    GAMES: 600000,        // 10 minutes - rarely change
+    TOURNAMENTS: 120000,  // 2 minutes
+    BRACKET: 30000,       // 30 seconds - updates during live
+    LIVE_MATCHES: 10000,  // 10 seconds - very dynamic
+    TEAMS: 120000,        // 2 minutes
+    STANDINGS: 60000,     // 1 minute
+    PLANS: 600000,        // 10 minutes - static pricing
+    CLANS: 180000,        // 3 minutes
+    USER_PROFILE: 120000, // 2 minutes
+    RANKINGS: 120000,     // 2 minutes
+};
+
 export class ApiClient {
     constructor(baseUrl) {
         this.baseUrl = baseUrl;
@@ -164,16 +178,16 @@ export const API = {
 
     // Juegos (público)
     games: {
-        getAll: () => client.get('/games'),
-        getById: (id) => client.get(`/games/${id}`)
+        getAll: () => client.get('/games', { cacheTTL: CACHE_DURATIONS.GAMES }),
+        getById: (id) => client.get(`/games/${id}`, { cacheTTL: CACHE_DURATIONS.GAMES })
     },
 
     // Torneos (público - solo lectura + invitaciones)
     tournaments: {
-        getAll: () => client.get('/tournaments'),
-        getById: (id) => client.get(`/tournaments/${id}`),
-        getBracket: (id) => client.get(`/tournaments/${id}/bracket`),
-        getStandings: (id) => client.get(`/tournaments/${id}/standings`),
+        getAll: () => client.get('/tournaments', { cacheTTL: CACHE_DURATIONS.TOURNAMENTS }),
+        getById: (id) => client.get(`/tournaments/${id}`, { cacheTTL: CACHE_DURATIONS.TOURNAMENTS }),
+        getBracket: (id) => client.get(`/tournaments/${id}/bracket`, { cacheTTL: CACHE_DURATIONS.BRACKET }),
+        getStandings: (id) => client.get(`/tournaments/${id}/standings`, { cacheTTL: CACHE_DURATIONS.STANDINGS }),
         // Sistema de invitación
         getByInviteCode: (inviteCode) => client.get(`/tournaments/invite/${inviteCode}`),
         registerViaInvite: (inviteCode, data) => client.post(`/tournaments/invite/${inviteCode}/register`, data)
@@ -181,20 +195,26 @@ export const API = {
 
     // Equipos (público - solo lectura)
     teams: {
-        getAll: () => client.get('/teams'),
-        getByTournament: (tournamentId) => client.get(`/teams?tournament_id=${tournamentId}`),
-        getById: (id) => client.get(`/teams/${id}`),
+        getAll: () => client.get('/teams', { cacheTTL: CACHE_DURATIONS.TEAMS }),
+        getByTournament: (tournamentId) => client.get(`/teams?tournament_id=${tournamentId}`, { cacheTTL: CACHE_DURATIONS.TEAMS }),
+        getById: (id) => client.get(`/teams/${id}`, { cacheTTL: CACHE_DURATIONS.TEAMS }),
         // Autenticado - crear equipo
         create: (data) => client.post('/teams', data),
         addPlayer: (teamId, data) => client.post(`/teams/${teamId}/players`, data)
     },
 
-    // Partidas (público - solo lectura)
+    // Partidas (público - solo lectura + reporting)
     matches: {
-        getAll: () => client.get('/matches'),
-        getByTournament: (tournamentId) => client.get(`/matches?tournament_id=${tournamentId}`),
-        getById: (id) => client.get(`/matches/${id}`),
-        getLive: () => client.get('/matches?status=LIVE')
+        getAll: () => client.get('/matches', { cacheTTL: CACHE_DURATIONS.TOURNAMENTS }),
+        getByTournament: (tournamentId) => client.get(`/matches?tournament_id=${tournamentId}`, { cacheTTL: CACHE_DURATIONS.BRACKET }),
+        getById: (id) => client.get(`/matches/${id}`, { cacheTTL: CACHE_DURATIONS.BRACKET }),
+        getLive: () => client.get('/matches?status=LIVE', { cacheTTL: CACHE_DURATIONS.LIVE_MATCHES }),
+        // Match result reporting (captain only)
+        reportResult: (matchId, data) => client.post(`/matches/${matchId}/results`, data),
+        // Open dispute
+        openDispute: (matchId, data) => client.post(`/matches/${matchId}/dispute`, data),
+        // Get my disputes
+        getMyDisputes: () => client.get('/disputes/my')
     },
 
     // Autenticación
@@ -254,7 +274,7 @@ export const API = {
 
     // Suscripciones
     subscriptions: {
-        getPlans: () => client.get('/subscriptions/plans'),
+        getPlans: () => client.get('/subscriptions/plans', { cacheTTL: CACHE_DURATIONS.PLANS }),
         getMySubscription: () => client.get('/subscriptions/me'),
         checkout: (plan, interval) => client.post('/subscriptions/create-checkout-session', { plan, interval }),
         cancel: () => client.post('/subscriptions/cancel', {}),
@@ -292,7 +312,11 @@ export const API = {
             client.post('/payment/create-checkout-session', { amount, currency, description }),
         getHistory: () => client.get('/payment/history'),
         verifySession: (sessionId) => client.get(`/payment/verify-session/${sessionId}`),
-        createNameChangeCheckout: () => client.post('/payment/name-change-checkout', {})
+        createNameChangeCheckout: () => client.post('/payment/name-change-checkout', {}),
+        // Withdrawals
+        withdraw: (amount, method, account_details) =>
+            client.post('/payment/withdraw', { amount, method, account_details }),
+        getWithdrawals: () => client.get('/payment/withdrawals')
     },
 
     // Mantener compatibilidad con 'payment' sin 's'
@@ -301,7 +325,32 @@ export const API = {
         createCheckout: (amount, currency = 'mxn', description) =>
             client.post('/payment/create-checkout-session', { amount, currency, description }),
         getHistory: () => client.get('/payment/history'),
-        verifySession: (sessionId) => client.get(`/payment/verify-session/${sessionId}`)
+        verifySession: (sessionId) => client.get(`/payment/verify-session/${sessionId}`),
+        withdraw: (amount, method, account_details) =>
+            client.post('/payment/withdraw', { amount, method, account_details }),
+        getWithdrawals: () => client.get('/payment/withdrawals')
+    },
+
+    // Notificaciones
+    notifications: {
+        getAll: (limit = 30) => client.get(`/notifications?limit=${limit}`),
+        getUnreadCount: () => client.get('/notifications/unread-count'),
+        markRead: (id) => client.put(`/notifications/${id}/read`, {}),
+        markAllRead: () => client.put('/notifications/read-all', {}),
+        delete: (id) => client.delete(`/notifications/${id}`)
+    },
+
+    // Perfiles públicos
+    profiles: {
+        getPublic: (userId) => client.get(`/users/${userId}/profile`)
+    },
+
+    // Auth email
+    auth: {
+        sendVerification: () => client.post('/auth/send-verification', {}),
+        verifyEmail: (token) => client.get(`/auth/verify-email?token=${token}`),
+        forgotPassword: (email) => client.post('/auth/forgot-password', { email }),
+        resetPassword: (token, new_password) => client.post('/auth/reset-password', { token, new_password })
     },
 
     // Método genérico para llamadas custom

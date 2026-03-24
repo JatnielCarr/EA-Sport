@@ -403,6 +403,131 @@ Responde SOLO con un JSON válido (sin markdown, sin backticks):
             };
         }
     }
+    // =====================================================
+    // 12. SCREENSHOT ANALYSIS (Gemini Vision)
+    // =====================================================
+    async analyzeScreenshot(
+        imageBase64: string,
+        matchContext: { homeTeam: string; awayTeam: string; game: string }
+    ): Promise<{
+        detected: boolean;
+        homeScore: number | null;
+        awayScore: number | null;
+        winnerName: string | null;
+        confidence: number;
+        rawAnalysis: string;
+    }> {
+        try {
+            // Use a vision-capable model
+            const visionModels = ["gemini-2.0-flash-lite", "gemini-flash-latest"];
+            let rawText: string | null = null;
+
+            for (const modelName of visionModels) {
+                try {
+                    const model = this.genAI.getGenerativeModel({ model: modelName });
+
+                    // Strip data URI prefix if present
+                    const cleanBase64 = imageBase64.replace(/^data:image\/\w+;base64,/, "");
+
+                    const prompt = `Analiza esta captura de pantalla de un resultado de una partida del videojuego "${matchContext.game}".
+Los equipos que jugaron son:
+- Equipo Local (Home): "${matchContext.homeTeam}"
+- Equipo Visitante (Away): "${matchContext.awayTeam}"
+
+INSTRUCCIONES:
+1. Identifica los puntajes/scores visibles en la imagen
+2. Determina qué equipo ganó basándote en los scores
+3. Si NO puedes leer scores claros, indica detected: false
+
+Responde SOLO con un JSON válido (sin markdown, sin backticks):
+{
+  "detected": true/false,
+  "homeScore": número o null,
+  "awayScore": número o null,
+  "winnerName": "nombre del equipo ganador" o null,
+  "confidence": 0-100,
+  "rawAnalysis": "breve descripción de lo que se ve en la imagen"
+}`;
+
+                    const result = await model.generateContent([
+                        prompt,
+                        {
+                            inlineData: {
+                                mimeType: "image/png",
+                                data: cleanBase64
+                            }
+                        }
+                    ]);
+
+                    const response = await result.response;
+                    rawText = response.text();
+
+                    if (rawText) {
+                        console.log(`✅ Screenshot analizado con ${modelName}`);
+                        break;
+                    }
+                } catch (error: any) {
+                    console.warn(`⚠️ Vision model ${modelName} falló: ${error.message?.substring(0, 80)}`);
+                    continue;
+                }
+            }
+
+            if (!rawText) {
+                return {
+                    detected: false,
+                    homeScore: null,
+                    awayScore: null,
+                    winnerName: null,
+                    confidence: 0,
+                    rawAnalysis: "No se pudo analizar la imagen con ningún modelo de visión."
+                };
+            }
+
+            const cleaned = rawText.replace(/```json?\n?/g, "").replace(/```/g, "").trim();
+            const parsed = JSON.parse(cleaned);
+
+            return {
+                detected: parsed.detected ?? false,
+                homeScore: parsed.homeScore ?? null,
+                awayScore: parsed.awayScore ?? null,
+                winnerName: parsed.winnerName ?? null,
+                confidence: parsed.confidence ?? 0,
+                rawAnalysis: parsed.rawAnalysis ?? "Sin análisis disponible"
+            };
+        } catch (error: any) {
+            console.error("❌ Error en analyzeScreenshot:", error.message);
+            return {
+                detected: false,
+                homeScore: null,
+                awayScore: null,
+                winnerName: null,
+                confidence: 0,
+                rawAnalysis: `Error al procesar la imagen: ${error.message?.substring(0, 100)}`
+            };
+        }
+    }
+
+    // =====================================================
+    // 13. MATCH CAST (Virtual Commentator)
+    // =====================================================
+    async generateMatchCast(matchData: Record<string, any>): Promise<string> {
+        const prompt = `Eres un comentarista profesional de esports (estilo narrador deportivo latinoamericano).
+Genera una crónica épica y emocionante de esta partida que acaba de terminar:
+
+DATOS DE LA PARTIDA:
+${JSON.stringify(matchData, null, 2)}
+
+INSTRUCCIONES:
+1. Escribe 2-3 párrafos máximo estilo crónica deportiva
+2. Tono épico, con emoción como si narraras en vivo
+3. Menciona nombres de equipos, puntajes y el ganador
+4. Usa emojis con moderación
+5. En español
+6. Devuelve SOLO la crónica, sin títulos ni encabezados
+7. Si hay un momento decisivo (comeback, barrida, etc.), resáltalo`;
+
+        return this.generate(prompt);
+    }
 }
 
 export const aiService = new AIService();

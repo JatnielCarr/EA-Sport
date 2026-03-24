@@ -15,7 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../services/api';
 import { colors, gradients, shadows } from '../../theme/colors';
-import { Button, Card, StatCard, Loading, Badge } from '../../components/common';
+import { Button, Card, StatCard, Loading, Badge, AnimatedScreen, AnimatedItem } from '../../components/common';
 import { PLANS, APP_STATS } from '../../utils/constants';
 
 const { width } = Dimensions.get('window');
@@ -138,49 +138,51 @@ export default function HomeScreen({ navigation }) {
                 }
             >
                 {/* Hero Section */}
-                <LinearGradient
-                    colors={['rgba(0,212,255,0.15)', 'transparent']}
-                    style={styles.heroGradient}
-                >
-                    <View style={styles.hero}>
-                        <View style={styles.heroBadge}>
-                            <View style={styles.pulseDot} />
-                            <Text style={styles.heroBadgeText}>🎮 La mejor plataforma de esports</Text>
+                <AnimatedScreen>
+                    <LinearGradient
+                        colors={['rgba(0,212,255,0.2)', 'rgba(121,40,202,0.08)', 'transparent']}
+                        style={styles.heroGradient}
+                    >
+                        <View style={styles.hero}>
+                            <View style={styles.heroBadge}>
+                                <View style={styles.pulseDot} />
+                                <Text style={styles.heroBadgeText}>🎮 La mejor plataforma de esports</Text>
+                            </View>
+
+                            <Text style={styles.heroTitle}>
+                                Tu portal hacia{'\n'}
+                                <Text style={styles.heroTitleGradient}>la gloria competitiva</Text>
+                            </Text>
+
+                            <Text style={styles.heroSubtitle}>
+                                Compite en torneos épicos, crea tu clan y escala en el ranking mundial.
+                            </Text>
+
+                            <View style={styles.heroActions}>
+                                <Button
+                                    title="Explorar Torneos"
+                                    icon="trophy-outline"
+                                    onPress={() => navigation.navigate('Tournaments')}
+                                />
+                            </View>
+
+                            <View style={styles.trustBadges}>
+                                <TouchableOpacity style={styles.trustBadge} onPress={() => navigation.navigate('Profile', { screen: 'Security' })}>
+                                    <Ionicons name="shield-checkmark" size={16} color={colors.success} />
+                                    <Text style={styles.trustText}>100% Seguro</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity style={styles.trustBadge} onPress={() => navigation.navigate('Live')}>
+                                    <Ionicons name="flash" size={16} color={colors.warning} />
+                                    <Text style={styles.trustText}>Tiempo Real</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity style={styles.trustBadge} onPress={() => navigation.navigate('Ranking')}>
+                                    <Ionicons name="globe" size={16} color={colors.primary} />
+                                    <Text style={styles.trustText}>Global</Text>
+                                </TouchableOpacity>
+                            </View>
                         </View>
-
-                        <Text style={styles.heroTitle}>
-                            Tu portal hacia{'\n'}
-                            <Text style={styles.heroTitleGradient}>la gloria competitiva</Text>
-                        </Text>
-
-                        <Text style={styles.heroSubtitle}>
-                            Compite en torneos épicos, crea tu clan y escala en el ranking mundial.
-                        </Text>
-
-                        <View style={styles.heroActions}>
-                            <Button
-                                title="Explorar Torneos"
-                                icon="trophy-outline"
-                                onPress={() => navigation.navigate('Tournaments')}
-                            />
-                        </View>
-
-                        <View style={styles.trustBadges}>
-                            <TouchableOpacity style={styles.trustBadge} onPress={() => navigation.navigate('Profile', { screen: 'Security' })}>
-                                <Ionicons name="shield-checkmark" size={16} color={colors.success} />
-                                <Text style={styles.trustText}>100% Seguro</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity style={styles.trustBadge} onPress={() => navigation.navigate('Live')}>
-                                <Ionicons name="flash" size={16} color={colors.warning} />
-                                <Text style={styles.trustText}>Tiempo Real</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity style={styles.trustBadge} onPress={() => navigation.navigate('Ranking')}>
-                                <Ionicons name="globe" size={16} color={colors.primary} />
-                                <Text style={styles.trustText}>Global</Text>
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-                </LinearGradient>
+                    </LinearGradient>
+                </AnimatedScreen>
 
                 {/* Stats Section */}
                 <View style={styles.statsSection}>
@@ -226,60 +228,68 @@ export default function HomeScreen({ navigation }) {
                     </View>
 
                     <View style={styles.featuresGrid}>
-                        <TouchableOpacity
-                            style={[styles.featureCard, styles.featureHighlight]}
-                            onPress={() => navigation.navigate('Tournaments')}
-                            activeOpacity={0.8}
-                        >
-                            <LinearGradient
-                                colors={gradients.primary}
-                                style={styles.featureIconLarge}
+                        <AnimatedItem index={0}>
+                            <TouchableOpacity
+                                style={[styles.featureCard, styles.featureHighlight]}
+                                onPress={() => navigation.navigate('Tournaments')}
+                                activeOpacity={0.8}
                             >
-                                <Ionicons name="trophy" size={28} color={colors.black} />
-                            </LinearGradient>
-                            <Text style={styles.featureTitle}>Compite en Torneos</Text>
-                            <Text style={styles.featureDesc}>Participa en torneos con premios reales</Text>
-                            <View style={styles.featureLink}>
-                                <Text style={styles.featureLinkText}>Explorar</Text>
-                                <Ionicons name="arrow-forward" size={14} color={colors.primary} />
-                            </View>
-                        </TouchableOpacity>
+                                <LinearGradient
+                                    colors={gradients.primary}
+                                    style={styles.featureIconLarge}
+                                >
+                                    <Ionicons name="trophy" size={28} color={colors.black} />
+                                </LinearGradient>
+                                <Text style={styles.featureTitle}>Compite en Torneos</Text>
+                                <Text style={styles.featureDesc}>Participa en torneos con premios reales</Text>
+                                <View style={styles.featureLink}>
+                                    <Text style={styles.featureLinkText}>Explorar</Text>
+                                    <Ionicons name="arrow-forward" size={14} color={colors.primary} />
+                                </View>
+                            </TouchableOpacity>
+                        </AnimatedItem>
 
-                        <TouchableOpacity
-                            style={styles.featureCard}
-                            onPress={() => navigation.navigate('Clans')}
-                            activeOpacity={0.8}
-                        >
-                            <View style={[styles.featureIcon, styles.featureIconSecondary]}>
-                                <Ionicons name="shield" size={22} color={colors.secondary} />
-                            </View>
-                            <Text style={styles.featureTitle}>Crea tu Clan</Text>
-                            <Text style={styles.featureDesc}>Forma tu equipo y domina</Text>
-                        </TouchableOpacity>
+                        <AnimatedItem index={1}>
+                            <TouchableOpacity
+                                style={styles.featureCard}
+                                onPress={() => navigation.navigate('Clans')}
+                                activeOpacity={0.8}
+                            >
+                                <View style={[styles.featureIcon, styles.featureIconSecondary]}>
+                                    <Ionicons name="shield" size={22} color={colors.secondary} />
+                                </View>
+                                <Text style={styles.featureTitle}>Crea tu Clan</Text>
+                                <Text style={styles.featureDesc}>Forma tu equipo y domina</Text>
+                            </TouchableOpacity>
+                        </AnimatedItem>
 
-                        <TouchableOpacity
-                            style={styles.featureCard}
-                            onPress={() => navigation.navigate('Ranking')}
-                            activeOpacity={0.8}
-                        >
-                            <View style={[styles.featureIcon, styles.featureIconAccent]}>
-                                <Ionicons name="trending-up" size={22} color={colors.accent} />
-                            </View>
-                            <Text style={styles.featureTitle}>Escala el Ranking</Text>
-                            <Text style={styles.featureDesc}>Demuestra tu habilidad</Text>
-                        </TouchableOpacity>
+                        <AnimatedItem index={2}>
+                            <TouchableOpacity
+                                style={styles.featureCard}
+                                onPress={() => navigation.navigate('Ranking')}
+                                activeOpacity={0.8}
+                            >
+                                <View style={[styles.featureIcon, styles.featureIconAccent]}>
+                                    <Ionicons name="trending-up" size={22} color={colors.accent} />
+                                </View>
+                                <Text style={styles.featureTitle}>Escala el Ranking</Text>
+                                <Text style={styles.featureDesc}>Demuestra tu habilidad</Text>
+                            </TouchableOpacity>
+                        </AnimatedItem>
 
-                        <TouchableOpacity
-                            style={styles.featureCard}
-                            onPress={() => navigation.navigate('Live')}
-                            activeOpacity={0.8}
-                        >
-                            <View style={[styles.featureIcon, styles.featureIconLive]}>
-                                <Ionicons name="radio" size={22} color={colors.live} />
-                            </View>
-                            <Text style={styles.featureTitle}>Partidas en Vivo</Text>
-                            <Text style={styles.featureDesc}>Sigue en tiempo real</Text>
-                        </TouchableOpacity>
+                        <AnimatedItem index={3}>
+                            <TouchableOpacity
+                                style={styles.featureCard}
+                                onPress={() => navigation.navigate('Live')}
+                                activeOpacity={0.8}
+                            >
+                                <View style={[styles.featureIcon, styles.featureIconLive]}>
+                                    <Ionicons name="radio" size={22} color={colors.live} />
+                                </View>
+                                <Text style={styles.featureTitle}>Partidas en Vivo</Text>
+                                <Text style={styles.featureDesc}>Sigue en tiempo real</Text>
+                            </TouchableOpacity>
+                        </AnimatedItem>
                     </View>
                 </View>
 

@@ -136,10 +136,20 @@ export const api = {
     tournaments: {
         getAll: () => getCached('/tournaments', 'tournaments', CACHE_TTL.TOURNAMENTS),
         getById: (id) => getCached(`/tournaments/${id}`, `tournament_${id}`, CACHE_TTL.TOURNAMENTS),
+        getMatches: (id) => getCached(`/tournaments/${id}/matches`, `tournament_${id}_matches`, CACHE_TTL.TOURNAMENTS),
+        getTeams: (id) => getCached(`/tournaments/${id}/teams`, `tournament_${id}_teams`, CACHE_TTL.TOURNAMENTS),
+        getBracket: (id) => getCached(`/tournaments/${id}/bracket`, `tournament_${id}_bracket`, 2),
+        register: (id, data) => request(`/tournaments/${id}/register`, 'POST', data),
         refresh: () => refreshCached('/tournaments', 'tournaments', CACHE_TTL.TOURNAMENTS),
+        refreshDetail: (id) => {
+            refreshCached(`/tournaments/${id}`, `tournament_${id}`, CACHE_TTL.TOURNAMENTS);
+            refreshCached(`/tournaments/${id}/matches`, `tournament_${id}_matches`, CACHE_TTL.TOURNAMENTS);
+            refreshCached(`/tournaments/${id}/teams`, `tournament_${id}_teams`, CACHE_TTL.TOURNAMENTS);
+            refreshCached(`/tournaments/${id}/bracket`, `tournament_${id}_bracket`, 2);
+        },
         // Invite system
-        getByInviteCode: (inviteCode) => get(`/tournaments/invite/${inviteCode}`),
-        registerViaInvite: (inviteCode, data) => post(`/tournaments/invite/${inviteCode}/register`, data),
+        getByInviteCode: (inviteCode) => request(`/tournaments/invite/${inviteCode}`, 'GET'),
+        registerViaInvite: (inviteCode, data) => request(`/tournaments/invite/${inviteCode}/register`, 'POST', data),
     },
 
     rankings: {

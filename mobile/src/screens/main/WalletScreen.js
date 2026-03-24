@@ -42,6 +42,14 @@ export default function WalletScreen({ navigation }) {
     const [showCustomModal, setShowCustomModal] = useState(false);
     const [customAmount, setCustomAmount] = useState('');
 
+    // Withdrawal state
+    const [showWithdrawModal, setShowWithdrawModal] = useState(false);
+    const [withdrawAmount, setWithdrawAmount] = useState('');
+    const [withdrawMethod, setWithdrawMethod] = useState('paypal');
+    const [withdrawDetail, setWithdrawDetail] = useState('');
+    const [withdrawLoading, setWithdrawLoading] = useState(false);
+    const [withdrawals, setWithdrawals] = useState([]);
+
     const fetchBalance = async () => {
         try {
             const response = await api.get('/payment/balance');
@@ -66,7 +74,7 @@ export default function WalletScreen({ navigation }) {
 
     const loadData = async () => {
         setLoading(true);
-        await Promise.all([fetchBalance(), fetchHistory()]);
+        await Promise.all([fetchBalance(), fetchHistory(), fetchWithdrawals()]);
         setLoading(false);
     };
 
@@ -76,7 +84,7 @@ export default function WalletScreen({ navigation }) {
 
     const onRefresh = useCallback(async () => {
         setRefreshing(true);
-        await Promise.all([fetchBalance(), fetchHistory()]);
+        await Promise.all([fetchBalance(), fetchHistory(), fetchWithdrawals()]);
         setRefreshing(false);
     }, []);
 
@@ -116,6 +124,51 @@ export default function WalletScreen({ navigation }) {
         setShowCustomModal(false);
         setCustomAmount('');
         handleRecharge(amount);
+    };
+
+    const fetchWithdrawals = async () => {
+        try {
+            const response = await api.get('/payment/withdrawals');
+            if (response.success && response.data) {
+                setWithdrawals(response.data);
+            }
+        } catch (error) {
+            console.warn('Error fetching withdrawals:', error);
+        }
+    };
+
+    const handleWithdraw = async () => {
+        const amount = parseFloat(withdrawAmount);
+        if (isNaN(amount) || amount < 50) {
+            Alert.alert('Error', 'El monto mínimo de retiro es $50 MXN');
+            return;
+        }
+        if (amount > balance) {
+            Alert.alert('Error', 'Saldo insuficiente para este retiro');
+            return;
+        }
+
+        setWithdrawLoading(true);
+        try {
+            const response = await api.post('/payment/withdraw', {
+                amount,
+                method: withdrawMethod,
+                detail: withdrawDetail,
+            });
+            if (response.success) {
+                Alert.alert('Solicitud Enviada', `Tu retiro de $${amount} MXN ha sido solicitado. Será procesado en 1-3 días hábiles.`);
+                setShowWithdrawModal(false);
+                setWithdrawAmount('');
+                setWithdrawDetail('');
+                await Promise.all([fetchBalance(), fetchWithdrawals()]);
+            } else {
+                Alert.alert('Error', response.error || 'No se pudo procesar el retiro');
+            }
+        } catch (error) {
+            Alert.alert('Error', error?.message || 'Error al solicitar retiro');
+        } finally {
+            setWithdrawLoading(false);
+        }
     };
 
     const getTransactionIcon = (payment) => {
@@ -267,6 +320,60 @@ export default function WalletScreen({ navigation }) {
                     )}
                 </View>
 
+                {/* Withdraw Section */}
+                <View style={styles.withdrawSection}>
+                    <Text style={styles.sectionTitle}>Retirar Fondos</Text>
+                    <Text style={styles.sectionSubtitle}>Retira tus ganancias de torneos (mín. $50 MXN)</Text>
+
+                    <TouchableOpacity
+                        style={styles.withdrawButton}
+                        onPress={() => setShowWithdrawModal(true)}
+                        activeOpacity={0.7}
+                    >
+                        <LinearGradient
+                            colors={['rgba(255, 51, 102, 0.1)', 'rgba(255, 107, 107, 0.1)']}
+                            style={styles.withdrawButtonGradient}
+                        >
+                            <Ionicons name="arrow-up-circle" size={24} color={colors.error} />
+                            <View style={{ flex: 1 }}>
+                                <Text style={styles.withdrawButtonTitle}>Solicitar Retiro</Text>
+                                <Text style={styles.withdrawButtonSubtitle}>PayPal o transferencia bancaria</Text>
+                            </View>
+                            <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
+                        </LinearGradient>
+                    </TouchableOpacity>
+
+                    {withdrawals.length > 0 && (
+                        <View style={{ marginTop: 16 }}>
+                            <Text style={[styles.sectionSubtitle, { fontWeight: '600', color: colors.textSecondary }]}>
+                                Historial de Retiros
+                            </Text>
+                            {withdrawals.slice(0, 5).map((w) => (
+                                <View key={w.id} style={styles.withdrawalItem}>
+                                    <View style={[styles.transactionIcon, { backgroundColor: 'rgba(255, 51, 102, 0.1)' }]}>
+                                        <Ionicons name="arrow-up-circle" size={22} color={colors.error} />
+                                    </View>
+                                    <View style={{ flex: 1 }}>
+                                        <Text style={styles.transactionTitle}>-{formatCurrency(w.amount)} MXN</Text>
+                                        <Text style={styles.transactionDate}>{formatDate(w.created_at)}</Text>
+                                    </View>
+                                    <View style={[styles.statusBadge, {
+                                        backgroundColor: w.status === 'PENDING' ? `${colors.warning}15` :
+                                            w.status === 'COMPLETED' ? `${colors.success}15` : `${colors.error}15`
+                                    }]}>
+                                        <Text style={[styles.statusBadgeText, {
+                                            color: w.status === 'PENDING' ? colors.warning :
+                                                w.status === 'COMPLETED' ? colors.success : colors.error
+                                        }]}>
+                                            {w.status === 'PENDING' ? 'Pendiente' : w.status === 'COMPLETED' ? 'Completado' : 'Fallido'}
+                                        </Text>
+                                    </View>
+                                </View>
+                            ))}
+                        </View>
+                    )}
+                </View>
+
                 {/* Transactions */}
                 <View style={styles.transactionsSection}>
                     <View style={styles.sectionHeader}>
@@ -358,6 +465,92 @@ export default function WalletScreen({ navigation }) {
                                     style={styles.modalConfirmGradient}
                                 >
                                     <Text style={styles.modalConfirmText}>Recargar</Text>
+                                </LinearGradient>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
+
+            {/* Withdrawal Modal */}
+            <Modal
+                visible={showWithdrawModal}
+                transparent
+                animationType="fade"
+                onRequestClose={() => setShowWithdrawModal(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <Text style={styles.modalTitle}>Solicitar Retiro</Text>
+                        <Text style={styles.modalSubtitle}>Mín. $50 MXN • Saldo: {formatCurrency(balance)}</Text>
+
+                        <View style={styles.modalInputContainer}>
+                            <Text style={styles.modalCurrencySymbol}>$</Text>
+                            <TextInput
+                                style={styles.modalInput}
+                                value={withdrawAmount}
+                                onChangeText={setWithdrawAmount}
+                                placeholder="50"
+                                placeholderTextColor={colors.textMuted}
+                                keyboardType="numeric"
+                            />
+                            <Text style={styles.modalCurrencyLabel}>MXN</Text>
+                        </View>
+
+                        {/* Method Selection */}
+                        <View style={styles.methodRow}>
+                            <TouchableOpacity
+                                style={[styles.methodOption, withdrawMethod === 'paypal' && styles.methodOptionActive]}
+                                onPress={() => setWithdrawMethod('paypal')}
+                            >
+                                <Ionicons name="logo-paypal" size={20} color={withdrawMethod === 'paypal' ? colors.primary : colors.textSecondary} />
+                                <Text style={[styles.methodOptionText, withdrawMethod === 'paypal' && { color: colors.primary }]}>PayPal</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[styles.methodOption, withdrawMethod === 'bank' && styles.methodOptionActive]}
+                                onPress={() => setWithdrawMethod('bank')}
+                            >
+                                <Ionicons name="business-outline" size={20} color={withdrawMethod === 'bank' ? colors.primary : colors.textSecondary} />
+                                <Text style={[styles.methodOptionText, withdrawMethod === 'bank' && { color: colors.primary }]}>Transferencia</Text>
+                            </TouchableOpacity>
+                        </View>
+
+                        <TextInput
+                            style={styles.withdrawDetailInput}
+                            value={withdrawDetail}
+                            onChangeText={setWithdrawDetail}
+                            placeholder={withdrawMethod === 'paypal' ? 'Email de PayPal' : 'CLABE interbancaria (18 dígitos)'}
+                            placeholderTextColor={colors.textMuted}
+                            keyboardType={withdrawMethod === 'paypal' ? 'email-address' : 'numeric'}
+                        />
+
+                        <View style={styles.modalActions}>
+                            <TouchableOpacity
+                                style={styles.modalCancelButton}
+                                onPress={() => {
+                                    setShowWithdrawModal(false);
+                                    setWithdrawAmount('');
+                                    setWithdrawDetail('');
+                                }}
+                            >
+                                <Text style={styles.modalCancelText}>Cancelar</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={styles.modalConfirmButton}
+                                onPress={handleWithdraw}
+                                disabled={withdrawLoading}
+                            >
+                                <LinearGradient
+                                    colors={['#ff3366', '#ff6b6b']}
+                                    start={{ x: 0, y: 0 }}
+                                    end={{ x: 1, y: 0 }}
+                                    style={styles.modalConfirmGradient}
+                                >
+                                    {withdrawLoading ? (
+                                        <ActivityIndicator size="small" color="white" />
+                                    ) : (
+                                        <Text style={[styles.modalConfirmText, { color: 'white' }]}>Solicitar Retiro</Text>
+                                    )}
                                 </LinearGradient>
                             </TouchableOpacity>
                         </View>
@@ -673,5 +866,78 @@ const styles = StyleSheet.create({
         color: colors.black,
         fontSize: 16,
         fontWeight: '700',
+    },
+    // Withdrawal styles
+    withdrawSection: {
+        paddingHorizontal: 16,
+        marginBottom: 24,
+    },
+    withdrawButton: {
+        borderRadius: 14,
+        overflow: 'hidden',
+        borderWidth: 1,
+        borderColor: 'rgba(255, 51, 102, 0.2)',
+    },
+    withdrawButtonGradient: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 16,
+        gap: 12,
+    },
+    withdrawButtonTitle: {
+        fontSize: 15,
+        fontWeight: '700',
+        color: colors.text,
+    },
+    withdrawButtonSubtitle: {
+        fontSize: 12,
+        color: colors.textSecondary,
+        marginTop: 2,
+    },
+    withdrawalItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: colors.card,
+        borderRadius: 14,
+        padding: 14,
+        marginBottom: 8,
+        borderWidth: 1,
+        borderColor: colors.border,
+    },
+    methodRow: {
+        flexDirection: 'row',
+        gap: 12,
+        marginBottom: 16,
+    },
+    methodOption: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        paddingVertical: 12,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: colors.border,
+        backgroundColor: colors.background,
+    },
+    methodOptionActive: {
+        borderColor: colors.primary,
+        backgroundColor: 'rgba(0, 212, 255, 0.08)',
+    },
+    methodOptionText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: colors.textSecondary,
+    },
+    withdrawDetailInput: {
+        backgroundColor: colors.background,
+        borderRadius: 12,
+        padding: 14,
+        fontSize: 15,
+        color: colors.text,
+        borderWidth: 1,
+        borderColor: colors.border,
+        marginBottom: 16,
     },
 });

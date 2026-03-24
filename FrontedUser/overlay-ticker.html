@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Apex Tournament — OBS Results Ticker</title>
+    <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background: transparent;
+            overflow: hidden;
+            font-family: 'Rajdhani', sans-serif;
+        }
+
+        .ticker-wrapper {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 44px;
+            background: rgba(10, 22, 40, 0.95);
+            border-top: 2px solid rgba(59, 130, 246, 0.3);
+            display: flex;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        .ticker-label {
+            flex-shrink: 0;
+            padding: 0 16px;
+            font-size: 12px;
+            font-weight: 700;
+            color: #fbbf24;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            background: rgba(251, 191, 36, 0.1);
+            height: 100%;
+            display: flex;
+            align-items: center;
+            border-right: 2px solid rgba(251, 191, 36, 0.3);
+        }
+
+        .ticker-track {
+            display: flex;
+            align-items: center;
+            animation: scroll linear infinite;
+            white-space: nowrap;
+        }
+
+        .ticker-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 0 24px;
+            font-size: 15px;
+            font-weight: 600;
+            color: #e2e8f0;
+            flex-shrink: 0;
+        }
+
+        .ticker-item .team-a { color: #93c5fd; }
+        .ticker-item .team-b { color: #fca5a5; }
+        .ticker-item .score {
+            font-weight: 700;
+            color: #fbbf24;
+            font-size: 17px;
+        }
+        .ticker-item .vs {
+            color: rgba(148, 163, 184, 0.5);
+            font-size: 12px;
+        }
+
+        .ticker-divider {
+            width: 4px;
+            height: 4px;
+            background: rgba(148, 163, 184, 0.3);
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .winner-icon { color: #4ade80; font-size: 12px; }
+
+        @keyframes scroll {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-50%); }
+        }
+
+        .loading {
+            color: rgba(255,255,255,0.4);
+            font-size: 13px;
+            letter-spacing: 2px;
+            padding: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="ticker-wrapper">
+        <div class="ticker-label">⚡ RESULTADOS</div>
+        <div id="ticker-track" class="ticker-track">
+            <span class="loading">Cargando resultados...</span>
+        </div>
+    </div>
+
+    <script>
+        const params = new URLSearchParams(window.location.search);
+        const tournamentId = params.get('tournamentId');
+        const API_BASE = params.get('api') || 'http://localhost:3000';
+        const POLL_INTERVAL = 15000;
+
+        if (!tournamentId) {
+            document.getElementById('ticker-track').innerHTML =
+                '<span class="loading">⚠️ Usa ?tournamentId=xxx en la URL</span>';
+        } else {
+            fetchResults();
+            setInterval(fetchResults, POLL_INTERVAL);
+        }
+
+        async function fetchResults() {
+            try {
+                const res = await fetch(`${API_BASE}/matches?tournament_id=${tournamentId}&status=COMPLETED`);
+                const data = await res.json();
+
+                if (data.success && data.data && data.data.length > 0) {
+                    renderTicker(data.data);
+                } else {
+                    document.getElementById('ticker-track').innerHTML =
+                        '<span class="loading">Sin resultados completados aún</span>';
+                }
+            } catch (err) {
+                console.warn('Fetch error:', err);
+            }
+        }
+
+        function renderTicker(matches) {
+            const track = document.getElementById('ticker-track');
+            let html = '';
+
+            // Build items
+            const items = matches.map(m => {
+                const homeWon = m.winner_id === m.home_team_id;
+                const homeName = m.home_team?.name || 'TBD';
+                const awayName = m.away_team?.name || 'TBD';
+
+                return `
+                    <div class="ticker-item">
+                        <span class="team-a">${homeWon ? '<span class="winner-icon">✓</span> ' : ''}${homeName}</span>
+                        <span class="score">${m.home_score}</span>
+                        <span class="vs">-</span>
+                        <span class="score">${m.away_score}</span>
+                        <span class="team-b">${!homeWon ? '<span class="winner-icon">✓</span> ' : ''}${awayName}</span>
+                    </div>
+                    <div class="ticker-divider"></div>
+                `;
+            }).join('');
+
+            // Duplicate for seamless infinite scroll
+            track.innerHTML = items + items;
+
+            // Calculate scroll speed based on content width
+            const totalWidth = track.scrollWidth / 2;
+            const speed = totalWidth / 60; // pixels per second
+            const duration = totalWidth / speed;
+            track.style.animationDuration = `${duration}s`;
+        }
+    </script>
+</body>
+</html>

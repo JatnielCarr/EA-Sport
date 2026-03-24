@@ -1,5 +1,5 @@
-import React from 'react';
-import { StyleSheet, View, Text, TouchableOpacity } from 'react-native';
+import React, { useRef } from 'react';
+import { StyleSheet, View, Text, TouchableOpacity, Animated } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, gradients, shadows } from '../../theme/colors';
@@ -15,8 +15,29 @@ export default function Card({
     style,
     gradient = false,
 }) {
-    const Wrapper = onPress ? TouchableOpacity : View;
-    const wrapperProps = onPress ? { onPress, activeOpacity: 0.8 } : {};
+    const scaleAnim = useRef(new Animated.Value(1)).current;
+
+    const handlePressIn = () => {
+        if (onPress) {
+            Animated.spring(scaleAnim, {
+                toValue: 0.975,
+                useNativeDriver: true,
+                speed: 50,
+                bounciness: 4,
+            }).start();
+        }
+    };
+
+    const handlePressOut = () => {
+        if (onPress) {
+            Animated.spring(scaleAnim, {
+                toValue: 1,
+                useNativeDriver: true,
+                speed: 40,
+                bounciness: 6,
+            }).start();
+        }
+    };
 
     const cardContent = (
         <>
@@ -40,31 +61,63 @@ export default function Card({
         </>
     );
 
+    const cardStyle = [
+        styles.card,
+        variant === 'highlight' && styles.cardHighlight,
+        variant === 'flat' && styles.cardFlat,
+        variant === 'elevated' && styles.cardElevated,
+        style,
+    ];
+
     if (gradient) {
-        return (
-            <Wrapper {...wrapperProps}>
-                <LinearGradient
-                    colors={[colors.card, colors.background]}
-                    style={[styles.card, styles.cardGradient, style]}
+        if (onPress) {
+            return (
+                <TouchableOpacity
+                    onPress={onPress}
+                    onPressIn={handlePressIn}
+                    onPressOut={handlePressOut}
+                    activeOpacity={1}
                 >
+                    <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
+                        <LinearGradient
+                            colors={[colors.card, colors.background]}
+                            style={[styles.card, styles.cardGradient, style]}
+                        >
+                            {cardContent}
+                        </LinearGradient>
+                    </Animated.View>
+                </TouchableOpacity>
+            );
+        }
+        return (
+            <LinearGradient
+                colors={[colors.card, colors.background]}
+                style={[styles.card, styles.cardGradient, style]}
+            >
+                {cardContent}
+            </LinearGradient>
+        );
+    }
+
+    if (onPress) {
+        return (
+            <TouchableOpacity
+                onPress={onPress}
+                onPressIn={handlePressIn}
+                onPressOut={handlePressOut}
+                activeOpacity={1}
+            >
+                <Animated.View style={[cardStyle, { transform: [{ scale: scaleAnim }] }]}>
                     {cardContent}
-                </LinearGradient>
-            </Wrapper>
+                </Animated.View>
+            </TouchableOpacity>
         );
     }
 
     return (
-        <Wrapper 
-            {...wrapperProps}
-            style={[
-                styles.card,
-                variant === 'highlight' && styles.cardHighlight,
-                variant === 'flat' && styles.cardFlat,
-                style
-            ]}
-        >
+        <View style={cardStyle}>
             {cardContent}
-        </Wrapper>
+        </View>
     );
 }
 
@@ -85,6 +138,11 @@ const styles = StyleSheet.create({
     cardFlat: {
         borderWidth: 0,
         ...shadows.medium,
+    },
+    cardElevated: {
+        backgroundColor: colors.cardElevated,
+        borderColor: colors.glassBorder,
+        ...shadows.large,
     },
     cardGradient: {
         borderWidth: 1,

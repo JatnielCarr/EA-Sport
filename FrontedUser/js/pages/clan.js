@@ -428,7 +428,15 @@ function setupTabs() {
             var target = document.getElementById('tab-' + tabName);
             if (target) target.classList.add('active');
 
-            if (tabName === 'chat') loadChat();
+            if (tabName === 'chat') {
+                loadChat();
+                if (!chatInterval) chatInterval = setInterval(loadChat, 3000); // Polling cada 3s
+            } else {
+                if (chatInterval) {
+                    clearInterval(chatInterval);
+                    chatInterval = null;
+                }
+            }
         });
     }
 }

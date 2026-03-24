@@ -43,7 +43,10 @@ class Sidebar {
                 { href: '#/teams', icon: 'fas fa-shield-halved', text: 'Equipos' },
                 { href: '#/matches', icon: 'fas fa-crosshairs', text: 'Partidas' },
                 { href: '#/games', icon: 'fas fa-gamepad', text: 'Juegos' },
-                { href: '#/brackets', icon: 'fas fa-sitemap', text: 'Brackets', color: 'var(--primary)' }
+                { href: '#/brackets', icon: 'fas fa-sitemap', text: 'Brackets', color: 'var(--primary)' },
+                { href: '#/monetization', icon: 'fas fa-coins', text: 'Monetización', badge: 'NEW', badgeColor: '#00ff88' },
+                { href: '#/disputes', icon: 'fas fa-gavel', text: 'Disputas', color: '#ff3366' },
+                { href: '#/clans', icon: 'fas fa-fort-awesome', text: 'Clanes' }
             ];
         } else if (user) {
             // Fallback menu for any logged-in user

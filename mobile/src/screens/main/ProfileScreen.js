@@ -1,12 +1,13 @@
-import React, { useEffect, useState, useCallback } from 'react';
-import { 
-    StyleSheet, 
-    View, 
-    Text, 
-    ScrollView, 
-    Image, 
+import React, { useEffect, useState, useCallback, useRef } from 'react';
+import {
+    StyleSheet,
+    View,
+    Text,
+    ScrollView,
+    Image,
     TouchableOpacity,
     RefreshControl,
+    Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -14,7 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { api } from '../../services/api';
 import { colors, gradients } from '../../theme/colors';
 import { useAuth } from '../../context/AuthContext';
-import { Loading, Button, Badge, Card } from '../../components/common';
+import { Loading, Button, Badge, Card, AnimatedScreen, AnimatedItem } from '../../components/common';
 
 const DEFAULT_AVATAR = 'https://via.placeholder.com/150/161616/00d4ff?text=User';
 
@@ -23,6 +24,24 @@ export default function ProfileScreen({ navigation }) {
     const [profile, setProfile] = useState(null);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
+    const avatarGlow = useRef(new Animated.Value(0.3)).current;
+
+    useEffect(() => {
+        Animated.loop(
+            Animated.sequence([
+                Animated.timing(avatarGlow, {
+                    toValue: 0.8,
+                    duration: 2000,
+                    useNativeDriver: true,
+                }),
+                Animated.timing(avatarGlow, {
+                    toValue: 0.3,
+                    duration: 2000,
+                    useNativeDriver: true,
+                }),
+            ])
+        ).start();
+    }, []);
 
     const fetchProfile = async () => {
         try {
@@ -79,28 +98,34 @@ export default function ProfileScreen({ navigation }) {
                 }
             >
                 {/* Header with gradient */}
-                <LinearGradient
-                    colors={['rgba(0, 212, 255, 0.15)', 'transparent']}
-                    style={styles.headerGradient}
-                >
-                    <View style={styles.header}>
-                        <View style={styles.avatarContainer}>
-                            <Image
-                                source={{ uri: profile?.avatar_url || DEFAULT_AVATAR }}
-                                style={styles.avatar}
-                            />
-                            <TouchableOpacity 
-                                style={styles.editAvatarButton}
-                                onPress={() => navigation.navigate('EditProfile')}
-                            >
-                                <Ionicons name="camera" size={16} color={colors.white} />
-                            </TouchableOpacity>
+                <AnimatedScreen>
+                    <LinearGradient
+                        colors={['rgba(0, 212, 255, 0.2)', 'rgba(121, 40, 202, 0.08)', 'transparent']}
+                        style={styles.headerGradient}
+                    >
+                        <View style={styles.header}>
+                            <View style={styles.avatarContainer}>
+                                <Animated.View style={[
+                                    styles.avatarGlowRing,
+                                    { opacity: avatarGlow },
+                                ]} />
+                                <Image
+                                    source={{ uri: profile?.avatar_url || DEFAULT_AVATAR }}
+                                    style={styles.avatar}
+                                />
+                                <TouchableOpacity
+                                    style={styles.editAvatarButton}
+                                    onPress={() => navigation.navigate('EditProfile')}
+                                >
+                                    <Ionicons name="camera" size={16} color={colors.white} />
+                                </TouchableOpacity>
+                            </View>
+                            <Text style={styles.username}>{profile?.username || 'Usuario'}</Text>
+                            <Text style={styles.email}>{profile?.email}</Text>
+                            <Badge text={roleBadge.text} variant={roleBadge.variant} size="medium" />
                         </View>
-                        <Text style={styles.username}>{profile?.username || 'Usuario'}</Text>
-                        <Text style={styles.email}>{profile?.email}</Text>
-                        <Badge text={roleBadge.text} variant={roleBadge.variant} size="medium" />
-                    </View>
-                </LinearGradient>
+                    </LinearGradient>
+                </AnimatedScreen>
 
                 {/* Stats */}
                 <View style={styles.statsContainer}>
@@ -131,7 +156,7 @@ export default function ProfileScreen({ navigation }) {
 
                 {/* Quick Actions */}
                 <View style={styles.quickActions}>
-                    <TouchableOpacity 
+                    <TouchableOpacity
                         style={styles.quickAction}
                         onPress={() => navigation.navigate('Favorites')}
                     >
@@ -140,7 +165,7 @@ export default function ProfileScreen({ navigation }) {
                         </View>
                         <Text style={styles.quickActionText}>Favoritos</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity 
+                    <TouchableOpacity
                         style={styles.quickAction}
                         onPress={() => navigation.navigate('History')}
                     >
@@ -149,7 +174,7 @@ export default function ProfileScreen({ navigation }) {
                         </View>
                         <Text style={styles.quickActionText}>Historial</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity 
+                    <TouchableOpacity
                         style={styles.quickAction}
                         onPress={() => navigation.navigate('Wallet')}
                     >
@@ -164,23 +189,23 @@ export default function ProfileScreen({ navigation }) {
                 <View style={styles.section}>
                     <Text style={styles.sectionTitle}>Cuenta</Text>
                     <Card>
-                        <MenuItem 
-                            icon="person-outline" 
+                        <MenuItem
+                            icon="person-outline"
                             label="Editar Perfil"
                             onPress={() => navigation.navigate('EditProfile')}
                         />
-                        <MenuItem 
-                            icon="settings-outline" 
+                        <MenuItem
+                            icon="settings-outline"
                             label="Configuración"
                             onPress={() => navigation.navigate('Settings')}
                         />
-                        <MenuItem 
-                            icon="notifications-outline" 
+                        <MenuItem
+                            icon="notifications-outline"
                             label="Notificaciones"
                             onPress={() => navigation.navigate('Notifications')}
                         />
-                        <MenuItem 
-                            icon="shield-checkmark-outline" 
+                        <MenuItem
+                            icon="shield-checkmark-outline"
                             label="Seguridad"
                             onPress={() => navigation.navigate('Security')}
                             isLast
@@ -190,7 +215,7 @@ export default function ProfileScreen({ navigation }) {
 
                 <View style={styles.section}>
                     <Text style={styles.sectionTitle}>Suscripción</Text>
-                    <TouchableOpacity 
+                    <TouchableOpacity
                         activeOpacity={0.8}
                         onPress={() => navigation.navigate('Subscription')}
                     >
@@ -219,23 +244,23 @@ export default function ProfileScreen({ navigation }) {
                 <View style={styles.section}>
                     <Text style={styles.sectionTitle}>Soporte</Text>
                     <Card>
-                        <MenuItem 
-                            icon="help-circle-outline" 
+                        <MenuItem
+                            icon="help-circle-outline"
                             label="Centro de Ayuda"
                             onPress={() => navigation.navigate('Support')}
                         />
-                        <MenuItem 
-                            icon="chatbubble-outline" 
+                        <MenuItem
+                            icon="chatbubble-outline"
                             label="Contactar Soporte"
                             onPress={() => navigation.navigate('Support')}
                         />
-                        <MenuItem 
-                            icon="document-text-outline" 
+                        <MenuItem
+                            icon="document-text-outline"
                             label="Términos y Condiciones"
                             onPress={() => navigation.navigate('Support')}
                         />
-                        <MenuItem 
-                            icon="shield-outline" 
+                        <MenuItem
+                            icon="shield-outline"
                             label="Política de Privacidad"
                             onPress={() => navigation.navigate('Support')}
                             isLast
@@ -254,9 +279,9 @@ export default function ProfileScreen({ navigation }) {
                 </View>
 
                 <View style={styles.logoutContainer}>
-                    <Button 
-                        title="Cerrar Sesión" 
-                        variant="outline" 
+                    <Button
+                        title="Cerrar Sesión"
+                        variant="outline"
                         onPress={logout}
                         icon="log-out-outline"
                     />
@@ -270,7 +295,7 @@ export default function ProfileScreen({ navigation }) {
 
 function MenuItem({ icon, label, onPress, isLast = false }) {
     return (
-        <TouchableOpacity 
+        <TouchableOpacity
             style={[styles.menuItem, !isLast && styles.menuItemBorder]}
             onPress={onPress}
             activeOpacity={0.7}
@@ -306,6 +331,16 @@ const styles = StyleSheet.create({
         borderRadius: 50,
         borderWidth: 3,
         borderColor: colors.primary,
+    },
+    avatarGlowRing: {
+        position: 'absolute',
+        width: 112,
+        height: 112,
+        borderRadius: 56,
+        borderWidth: 2,
+        borderColor: colors.primary,
+        top: -6,
+        left: -6,
     },
     editAvatarButton: {
         position: 'absolute',

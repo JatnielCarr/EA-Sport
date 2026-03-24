@@ -6,6 +6,8 @@ import {
     ScrollView,
     TouchableOpacity,
     Alert,
+    Linking,
+    ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -44,7 +46,9 @@ export default function SubscriptionScreen({ navigation }) {
         }
     };
 
-    const handleSubscribe = (planId) => {
+    const [subscribing, setSubscribing] = useState(false);
+
+    const handleSubscribe = async (planId) => {
         if (planId === 'FREE') {
             Alert.alert('Plan Gratuito', 'Ya tienes acceso al plan gratuito.');
             return;
@@ -61,9 +65,54 @@ export default function SubscriptionScreen({ navigation }) {
                 { text: 'Cancelar', style: 'cancel' },
                 {
                     text: 'Continuar',
-                    onPress: () => {
-                        // Aquí iría la integración con Stripe
-                        Alert.alert('Próximamente', 'El sistema de pagos estará disponible pronto en la aplicación móvil. Por ahora, puedes suscribirte desde la versión web.');
+                    onPress: async () => {
+                        setSubscribing(true);
+                        try {
+                            const interval = isYearly ? 'year' : 'month';
+                            const response = await api.post('/subscriptions/create-checkout', {
+                                plan: planId,
+                                interval,
+                            });
+                            if (response.success && response.url) {
+                                await Linking.openURL(response.url);
+                            } else if (response.url) {
+                                await Linking.openURL(response.url);
+                            } else {
+                                Alert.alert('Error', response.error || 'No se pudo iniciar el proceso de suscripción.');
+                            }
+                        } catch (error) {
+                            console.error('Subscription error:', error);
+                            Alert.alert('Error', error?.message || 'Error al procesar la suscripción. Intenta desde la versión web.');
+                        } finally {
+                            setSubscribing(false);
+                        }
+                    }
+                }
+            ]
+        );
+    };
+
+    const handleCancelSubscription = () => {
+        Alert.alert(
+            'Cancelar Suscripción',
+            '¿Estás seguro de que deseas cancelar tu suscripción? Mantendrás los beneficios hasta el final del periodo actual.',
+            [
+                { text: 'No, mantener', style: 'cancel' },
+                {
+                    text: 'Sí, cancelar',
+                    style: 'destructive',
+                    onPress: async () => {
+                        try {
+                            const response = await api.post('/subscriptions/cancel');
+                            if (response.success) {
+                                Alert.alert('Suscripción Cancelada', 'Tu suscripción se cancelará al final del periodo actual.');
+                                fetchSubscriptionData();
+                            } else {
+                                Alert.alert('Error', response.error || 'No se pudo cancelar la suscripción.');
+                            }
+                        } catch (error) {
+                            Alert.alert('Error', error?.message || 'Error al cancelar la suscripción.');
+                        }
                     }
                 }
             ]
@@ -149,6 +198,12 @@ export default function SubscriptionScreen({ navigation }) {
                                     Válido hasta: {new Date(currentSubscription.current_period_end).toLocaleDateString()}
                                 </Text>
                             )}
+                            <TouchableOpacity
+                                style={styles.cancelSubButton}
+                                onPress={handleCancelSubscription}
+                            >
+                                <Text style={styles.cancelSubText}>Cancelar suscripción</Text>
+                            </TouchableOpacity>
                         </LinearGradient>
                     </View>
                 )}
@@ -542,6 +597,19 @@ const styles = StyleSheet.create({
     currentPlanPeriod: {
         fontSize: 12,
         color: colors.textSecondary,
+    },
+    cancelSubButton: {
+        marginTop: 12,
+        paddingVertical: 8,
+        paddingHorizontal: 16,
+        borderRadius: 8,
+        backgroundColor: 'rgba(255, 51, 102, 0.1)',
+        alignSelf: 'flex-start',
+    },
+    cancelSubText: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: '#ff3366',
     },
     plansContainer: {
         paddingHorizontal: 16,

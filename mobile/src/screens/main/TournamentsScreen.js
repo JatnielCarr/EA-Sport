@@ -1,9 +1,9 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { 
-    StyleSheet, 
-    View, 
-    FlatList, 
-    Text, 
+import {
+    StyleSheet,
+    View,
+    FlatList,
+    Text,
     RefreshControl,
     TouchableOpacity,
     TextInput,
@@ -17,7 +17,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '../../services/api';
 import { colors, gradients } from '../../theme/colors';
-import { Badge, Loading, EmptyState } from '../../components/common';
+import { Badge, Loading, EmptyState, AnimatedScreen } from '../../components/common';
 import TournamentCard from '../../components/tournament/TournamentCard';
 
 const { width } = Dimensions.get('window');
@@ -31,20 +31,31 @@ export default function TournamentsScreen({ navigation }) {
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedGame, setSelectedGame] = useState('');
     const [selectedStatus, setSelectedStatus] = useState('');
+    const [myTournaments, setMyTournaments] = useState([]);
 
     const fetchData = async () => {
         try {
-            const [tournamentsRes, gamesRes] = await Promise.all([
+            const [tournamentsRes, gamesRes, myRes] = await Promise.allSettled([
                 api.get('/tournaments'),
                 api.get('/games'),
+                api.get('/tournaments/my/list').catch(() => ({ data: [] })),
             ]);
-            
-            const tournamentsData = Array.isArray(tournamentsRes) ? tournamentsRes : (tournamentsRes.data || []);
-            const gamesData = Array.isArray(gamesRes) ? gamesRes : (gamesRes.data || []);
-            
-            setTournaments(tournamentsData);
-            setGames(gamesData);
-            setFilteredTournaments(tournamentsData);
+
+            if (tournamentsRes.status === 'fulfilled') {
+                const tournamentsData = Array.isArray(tournamentsRes.value) ? tournamentsRes.value : (tournamentsRes.value?.data || []);
+                setTournaments(tournamentsData);
+                setFilteredTournaments(tournamentsData);
+            }
+
+            if (gamesRes.status === 'fulfilled') {
+                const gamesData = Array.isArray(gamesRes.value) ? gamesRes.value : (gamesRes.value?.data || []);
+                setGames(gamesData);
+            }
+
+            if (myRes.status === 'fulfilled' && myRes.value) {
+                const myData = myRes.value?.data || myRes.value || [];
+                setMyTournaments(Array.isArray(myData) ? myData : []);
+            }
         } catch (error) {
             console.warn('Error fetching tournaments:', error);
             setTournaments([]);
@@ -62,21 +73,21 @@ export default function TournamentsScreen({ navigation }) {
 
     useEffect(() => {
         let filtered = [...tournaments];
-        
+
         if (searchQuery) {
-            filtered = filtered.filter(t => 
+            filtered = filtered.filter(t =>
                 t.name.toLowerCase().includes(searchQuery.toLowerCase())
             );
         }
-        
+
         if (selectedGame) {
             filtered = filtered.filter(t => t.game_id === selectedGame);
         }
-        
+
         if (selectedStatus) {
             filtered = filtered.filter(t => t.status === selectedStatus);
         }
-        
+
         setFilteredTournaments(filtered);
     }, [searchQuery, selectedGame, selectedStatus, tournaments]);
 
@@ -101,22 +112,95 @@ export default function TournamentsScreen({ navigation }) {
     const ListHeader = () => (
         <>
             {/* Hero */}
-            <LinearGradient
-                colors={['rgba(0, 212, 255, 0.1)', 'transparent']}
-                style={styles.hero}
-            >
-                <View style={styles.heroContent}>
-                    <Badge text="Competición" variant="primary" size="small" />
-                    <Text style={styles.heroTitle}>
-                        <Ionicons name="trophy" size={28} color={colors.primary} />
-                        {'  '}Torneos <Text style={styles.gradientText}>Épicos</Text>
-                    </Text>
-                    <Text style={styles.heroSubtitle}>
-                        Encuentra tu próximo desafío entre cientos de torneos activos. 
-                        <Text style={styles.heroHighlight}> ¡Compite y gana premios reales!</Text>
-                    </Text>
+            <AnimatedScreen>
+                <LinearGradient
+                    colors={['rgba(0, 212, 255, 0.15)', 'rgba(121,40,202,0.06)', 'transparent']}
+                    style={styles.hero}
+                >
+                    <View style={styles.heroContent}>
+                        <Badge text="Competición" variant="primary" size="small" />
+                        <Text style={styles.heroTitle}>
+                            <Ionicons name="trophy" size={28} color={colors.primary} />
+                            {'  '}Torneos <Text style={styles.gradientText}>Épicos</Text>
+                        </Text>
+                        <Text style={styles.heroSubtitle}>
+                            Encuentra tu próximo desafío entre cientos de torneos activos.
+                            <Text style={styles.heroHighlight}> ¡Compite y gana premios reales!</Text>
+                        </Text>
+                    </View>
+                </LinearGradient>
+            </AnimatedScreen>
+
+            {/* My Tournaments */}
+            {myTournaments.length > 0 && (
+                <View style={styles.myTourneysSection}>
+                    <View style={styles.myTourneysHeader}>
+                        <View style={styles.myTourneysTitleGroup}>
+                            <Badge text="⚔️ MIS TORNEOS" variant="success" size="small" />
+                            <Text style={styles.myTourneysTitle}>Inscrito</Text>
+                        </View>
+                        <View style={styles.myTourneysCount}>
+                            <Text style={styles.myTourneysCountText}>{myTournaments.length}</Text>
+                        </View>
+                    </View>
+                    <ScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        contentContainerStyle={styles.myTourneysScroll}
+                    >
+                        {myTournaments.map((t) => {
+                            const isLive = t.status === 'IN_PROGRESS';
+                            const isCompleted = t.status === 'COMPLETED';
+                            return (
+                                <TouchableOpacity
+                                    key={t.id}
+                                    style={styles.myTourneyCard}
+                                    onPress={() => navigation.navigate('TournamentDetail', { id: t.id })}
+                                    activeOpacity={0.8}
+                                >
+                                    <LinearGradient
+                                        colors={isLive
+                                            ? ['rgba(255, 51, 102, 0.12)', 'rgba(255, 51, 102, 0.04)']
+                                            : isCompleted
+                                                ? ['rgba(100, 100, 120, 0.12)', 'rgba(100, 100, 120, 0.04)']
+                                                : ['rgba(16, 185, 129, 0.12)', 'rgba(0, 212, 255, 0.06)']}
+                                        style={styles.myTourneyGradient}
+                                    >
+                                        <View style={styles.myTourneyTop}>
+                                            <View style={[styles.myTourneyTag,
+                                            isLive && { borderColor: 'rgba(255, 51, 102, 0.4)' }
+                                            ]}>
+                                                <Text style={styles.myTourneyTagText}>
+                                                    {t.my_team?.tag || '??'}
+                                                </Text>
+                                            </View>
+                                            {isLive && (
+                                                <View style={styles.myTourneyLive}>
+                                                    <View style={[styles.pulseDot, { backgroundColor: '#ff3366' }]} />
+                                                    <Text style={styles.myTourneyLiveText}>LIVE</Text>
+                                                </View>
+                                            )}
+                                            {isCompleted && (
+                                                <Ionicons name="checkmark-done" size={16} color="#64748b" />
+                                            )}
+                                            {!isLive && !isCompleted && (
+                                                <Ionicons name="checkmark-circle" size={16} color="#10b981" />
+                                            )}
+                                        </View>
+                                        <Text style={styles.myTourneyName} numberOfLines={2}>{t.name}</Text>
+                                        <View style={styles.myTourneyBottom}>
+                                            <Text style={styles.myTourneyTeamName}>{t.my_team?.name}</Text>
+                                            {t.my_team?.seed && (
+                                                <Text style={styles.myTourneySeed}>#{t.my_team.seed}</Text>
+                                            )}
+                                        </View>
+                                    </LinearGradient>
+                                </TouchableOpacity>
+                            );
+                        })}
+                    </ScrollView>
                 </View>
-            </LinearGradient>
+            )}
 
             {/* Featured Tournaments */}
             {featuredTournaments.length > 0 && (
@@ -127,8 +211,8 @@ export default function TournamentsScreen({ navigation }) {
                             <Text style={styles.featuredTitle}>Torneos Destacados</Text>
                         </View>
                     </View>
-                    <ScrollView 
-                        horizontal 
+                    <ScrollView
+                        horizontal
                         showsHorizontalScrollIndicator={false}
                         contentContainerStyle={styles.featuredScroll}
                     >
@@ -136,7 +220,7 @@ export default function TournamentsScreen({ navigation }) {
                             const game = games.find(g => g.id === tournament.game_id);
                             const isLive = tournament.status === 'IN_PROGRESS';
                             return (
-                                <TouchableOpacity 
+                                <TouchableOpacity
                                     key={tournament.id}
                                     style={[styles.featuredCard, index === 0 && styles.featuredCardMain]}
                                     onPress={() => navigation.navigate('TournamentDetail', { id: tournament.id })}
@@ -154,24 +238,24 @@ export default function TournamentsScreen({ navigation }) {
                                         ) : (
                                             <Badge text="Inscripciones Abiertas" variant="success" size="small" />
                                         )}
-                                        
+
                                         <Text style={styles.featuredGame}>
                                             <Ionicons name="game-controller" size={12} /> {game?.name || 'Juego'}
                                         </Text>
-                                        
+
                                         <Text style={[
                                             styles.featuredName,
                                             index === 0 && styles.featuredNameMain
                                         ]} numberOfLines={2}>
                                             {tournament.name}
                                         </Text>
-                                        
+
                                         <View style={styles.featuredInfo}>
                                             <Text style={styles.featuredInfoText}>
                                                 <Ionicons name="calendar" size={12} /> {new Date(tournament.start_date).toLocaleDateString()}
                                             </Text>
                                         </View>
-                                        
+
                                         {tournament.prize_pool && (
                                             <View style={styles.featuredPrize}>
                                                 <Ionicons name="cash" size={16} color={colors.warning} />
@@ -193,7 +277,7 @@ export default function TournamentsScreen({ navigation }) {
                 <Text style={styles.allTournamentsTitle}>
                     <Ionicons name="list" size={20} color={colors.primary} /> Todos los Torneos
                 </Text>
-                
+
                 <View style={styles.searchBox}>
                     <Ionicons name="search" size={20} color={colors.textSecondary} />
                     <TextInput
@@ -210,12 +294,12 @@ export default function TournamentsScreen({ navigation }) {
                     )}
                 </View>
 
-                <ScrollView 
-                    horizontal 
+                <ScrollView
+                    horizontal
                     showsHorizontalScrollIndicator={false}
                     style={styles.filterScroll}
                 >
-                    <TouchableOpacity 
+                    <TouchableOpacity
                         style={[styles.filterChip, selectedStatus === '' && selectedGame === '' && styles.filterChipActive]}
                         onPress={clearFilters}
                     >
@@ -223,7 +307,7 @@ export default function TournamentsScreen({ navigation }) {
                             Todos
                         </Text>
                     </TouchableOpacity>
-                    <TouchableOpacity 
+                    <TouchableOpacity
                         style={[styles.filterChip, selectedStatus === 'REGISTRATION_OPEN' && styles.filterChipActive]}
                         onPress={() => setSelectedStatus(selectedStatus === 'REGISTRATION_OPEN' ? '' : 'REGISTRATION_OPEN')}
                     >
@@ -232,7 +316,7 @@ export default function TournamentsScreen({ navigation }) {
                             Abiertos
                         </Text>
                     </TouchableOpacity>
-                    <TouchableOpacity 
+                    <TouchableOpacity
                         style={[styles.filterChip, selectedStatus === 'IN_PROGRESS' && styles.filterChipActive]}
                         onPress={() => setSelectedStatus(selectedStatus === 'IN_PROGRESS' ? '' : 'IN_PROGRESS')}
                     >
@@ -241,7 +325,7 @@ export default function TournamentsScreen({ navigation }) {
                             En Curso
                         </Text>
                     </TouchableOpacity>
-                    <TouchableOpacity 
+                    <TouchableOpacity
                         style={[styles.filterChip, selectedStatus === 'COMPLETED' && styles.filterChipActive]}
                         onPress={() => setSelectedStatus(selectedStatus === 'COMPLETED' ? '' : 'COMPLETED')}
                     >
@@ -266,7 +350,7 @@ export default function TournamentsScreen({ navigation }) {
 
     return (
         <SafeAreaView style={styles.container} edges={['top']}>
-            <KeyboardAvoidingView 
+            <KeyboardAvoidingView
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                 style={{ flex: 1 }}
             >
@@ -294,7 +378,7 @@ export default function TournamentsScreen({ navigation }) {
                         <EmptyState
                             icon="trophy-outline"
                             title="No hay torneos"
-                            message={searchQuery || selectedStatus || selectedGame 
+                            message={searchQuery || selectedStatus || selectedGame
                                 ? 'No se encontraron torneos con esos filtros'
                                 : 'No hay torneos disponibles por ahora'
                             }
@@ -504,5 +588,107 @@ const styles = StyleSheet.create({
     },
     cardWrapper: {
         paddingHorizontal: 20,
+    },
+    // My Tournaments
+    myTourneysSection: {
+        marginBottom: 24,
+    },
+    myTourneysHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingHorizontal: 20,
+        marginBottom: 14,
+    },
+    myTourneysTitleGroup: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+    },
+    myTourneysTitle: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: colors.text,
+    },
+    myTourneysCount: {
+        backgroundColor: 'rgba(16, 185, 129, 0.15)',
+        borderRadius: 12,
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderWidth: 1,
+        borderColor: 'rgba(16, 185, 129, 0.3)',
+    },
+    myTourneysCountText: {
+        color: '#10b981',
+        fontWeight: '800',
+        fontSize: 13,
+    },
+    myTourneysScroll: {
+        paddingHorizontal: 20,
+        gap: 12,
+    },
+    myTourneyCard: {
+        width: width * 0.55,
+        borderRadius: 16,
+        overflow: 'hidden',
+        borderWidth: 1,
+        borderColor: 'rgba(16, 185, 129, 0.2)',
+    },
+    myTourneyGradient: {
+        padding: 16,
+        minHeight: 120,
+        justifyContent: 'space-between',
+    },
+    myTourneyTop: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 8,
+    },
+    myTourneyTag: {
+        backgroundColor: 'rgba(0, 212, 255, 0.12)',
+        borderWidth: 1,
+        borderColor: 'rgba(0, 212, 255, 0.3)',
+        borderRadius: 8,
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+    },
+    myTourneyTagText: {
+        color: colors.primary,
+        fontWeight: '800',
+        fontSize: 12,
+        letterSpacing: 1,
+    },
+    myTourneyLive: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+    },
+    myTourneyLiveText: {
+        color: '#ff3366',
+        fontSize: 10,
+        fontWeight: '800',
+    },
+    myTourneyName: {
+        color: colors.text,
+        fontSize: 15,
+        fontWeight: '700',
+        lineHeight: 20,
+    },
+    myTourneyBottom: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginTop: 8,
+    },
+    myTourneyTeamName: {
+        color: colors.textSecondary,
+        fontSize: 12,
+        fontWeight: '600',
+    },
+    myTourneySeed: {
+        color: colors.primary,
+        fontSize: 11,
+        fontWeight: '700',
     },
 });

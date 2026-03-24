@@ -9,7 +9,7 @@ class BotPro {
     constructor() {
         this.isOpen = false;
         this.chatHistory = [];
-        this.api = new ApiClient('http://localhost:3000');
+        this.api = new ApiClient('http://localhost:3100');
         this.currentView = 'dashboard';
         this.init();
     }

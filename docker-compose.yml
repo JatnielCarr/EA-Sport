@@ -12,7 +12,7 @@ services:
       - N8N_PORT=5678
       - N8N_PROTOCOL=https
       # URL pública para webhooks (Cloudflare tunnel)
-      - WEBHOOK_URL=https://view-tion-weekly-pollution.trycloudflare.com/
+      - WEBHOOK_URL=https://apextournament.dev/
       # Zona horaria
       - GENERIC_TIMEZONE=America/Mexico_City
       - TZ=America/Mexico_City

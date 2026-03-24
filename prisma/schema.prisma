@@ -48,7 +48,7 @@ enum MatchStatus {
 
 enum UserRole {
   USER
-  ORGANIZER
+  LEADER
   ADMIN
 }
 
@@ -95,21 +95,24 @@ model User {
   username         String   @unique
   password_hash    String
   role             UserRole @default(USER)
-  verified         Boolean  @default(false)
-  balance          Decimal  @default(0) @db.Decimal(10, 2)
-  telegram_chat_id String?  @unique
-  stripe_customer_id String? @unique
-  avatar_url       String?  @db.LongText
-  banner_url       String?  @db.LongText
-  description      String?  @db.VarChar(500)
-  name_change_count Int     @default(0)
-  banned           Boolean  @default(false)
-  ban_reason       String?  @db.Text
-  ban_duration     String?  // "3d", "7d", "14d", "31d", "permanent"
-  banned_at        DateTime?
-  banned_until     DateTime?
-  created_at       DateTime @default(now())
-  updated_at       DateTime @updatedAt
+  verified           Boolean  @default(false)
+  email_verified_at  DateTime?
+  email_verify_token String?  @db.VarChar(128)
+  balance            Decimal  @default(0) @db.Decimal(10, 2)
+  telegram_chat_id   String?  @unique
+  stripe_customer_id String?  @unique
+  avatar_url         String?  @db.LongText
+  banner_url         String?  @db.LongText
+  description        String?  @db.VarChar(500)
+  name_change_count  Int      @default(0)
+  banned             Boolean  @default(false)
+  ban_reason         String?  @db.Text
+  ban_duration       String?  // "3d", "7d", "14d", "31d", "permanent"
+  banned_at          DateTime?
+  banned_until       DateTime?
+  last_seen_at       DateTime?
+  created_at         DateTime @default(now())
+  updated_at         DateTime @updatedAt
 
   // Relations
   game_accounts         GameAccount[]
@@ -121,12 +124,24 @@ model User {
   player_stats          PlayerStats[]
   payments              Payment[]
   subscription          Subscription?
+  refresh_tokens        RefreshToken[]
+  notifications         Notification[]
+  password_resets       PasswordResetToken[]
+  match_checkins        MatchCheckIn[]
   
   // Clan Relations
   led_clans             Clan[]             @relation("ClanLeader")
   clan_memberships      ClanMember[]
   clan_requests         ClanRequest[]
   clan_messages         ClanMessage[]
+
+  // Innovation Features
+  fcm_token             String?            // Firebase Cloud Messaging token for push notifications
+  reputation            PlayerReputation?
+  reviews_given         ReputationReview[] @relation("ReviewAuthor")
+  reviews_received      ReputationReview[] @relation("ReviewTarget")
+  free_agent_profile    FreeAgent?
+  free_agent_invites_sent FreeAgentInvite[] @relation("InviteSender")
   
   @@index([email])
   @@index([username])
@@ -153,12 +168,29 @@ model Subscription {
   @@map("subscriptions")
 }
 
+model RefreshToken {
+  id            String   @id @default(cuid())
+  token_hash    String   @unique
+  user_id       String
+  expires_at    DateTime
+  revoked       Boolean  @default(false)
+  created_at    DateTime @default(now())
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([token_hash])
+  @@index([expires_at])
+  @@map("refresh_tokens")
+}
+
 // ====================== REVENUE & MONETIZATION ======================
 
 enum TransactionType {
   SUBSCRIPTION        // Pago de suscripción
   TOURNAMENT_ENTRY    // Entrada a torneo
   PRIZE_COMMISSION    // Comisión sobre premios
+  PRIZE_CREDIT        // Premio depositado en wallet del jugador
   NAME_CHANGE         // Cambio de nombre
   BALANCE_TOPUP       // Recarga de saldo
   WITHDRAWAL          // Retiro de fondos
@@ -288,6 +320,7 @@ model Game {
   game_accounts GameAccount[]
   tournaments   Tournament[]
   player_stats  PlayerStats[]
+  free_agents   FreeAgent[]
 
   @@index([slug])
   @@map("games")
@@ -386,6 +419,7 @@ model Team {
   standings       Standing[]
   reported_by     MatchResult[] @relation("ReportingTeam")
   won_results     MatchResult[] @relation("WinningTeam")
+  free_agent_invites FreeAgentInvite[]
 
   @@unique([tournament_id, name])
   @@unique([tournament_id, tag])
@@ -442,6 +476,8 @@ model Match {
   away_team  Team?         @relation("AwayTeam", fields: [away_team_id], references: [id], onDelete: SetNull)
   winner     Team?         @relation("WinnerTeam", fields: [winner_id], references: [id], onDelete: SetNull)
   results    MatchResult[]
+  checkins   MatchCheckIn[]
+  reputation_reviews ReputationReview[]
 
   @@index([tournament_id])
   @@index([tournament_id, round])
@@ -465,6 +501,7 @@ model MatchResult {
   validated_at          DateTime?
   disputed              Boolean   @default(false)
   dispute_reason        String?   @db.Text
+  ai_analysis           Json?     // AI screenshot validation results (scores, confidence, etc.)
 
   // Relations
   match             Match  @relation(fields: [match_id], references: [id], onDelete: Cascade)
@@ -609,4 +646,173 @@ model ClanMessage {
   @@index([clan_id])
   @@index([clan_id, created_at])
   @@map("clan_messages")
+}
+
+// ====================== NOTIFICATIONS ======================
+
+enum NotificationType {
+  MATCH_READY       // Partido listo para jugar
+  MATCH_RESULT      // Resultado de partido
+  TOURNAMENT_START  // Torneo inicia
+  TOURNAMENT_END    // Torneo finalizado
+  PRIZE_RECEIVED    // Premio recibido
+  WITHDRAWAL_STATUS // Estado de retiro
+  TEAM_INVITE       // Invitación a equipo
+  CLAN_INVITE       // Invitación a clan
+  DISPUTE_UPDATE    // Actualización de disputa
+  CHECK_IN_REMINDER // Recordatorio de check-in
+  SYSTEM            // Notificación del sistema
+}
+
+model Notification {
+  id          String           @id @default(cuid())
+  user_id     String
+  type        NotificationType
+  title       String
+  message     String           @db.Text
+  data        Json?            // Metadata adicional (IDs, links, etc.)
+  read        Boolean          @default(false)
+  read_at     DateTime?
+  created_at  DateTime         @default(now())
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([user_id, read])
+  @@index([created_at])
+  @@map("notifications")
+}
+
+// ====================== PASSWORD RESET ======================
+
+model PasswordResetToken {
+  id          String   @id @default(cuid())
+  user_id     String
+  token_hash  String   @unique
+  expires_at  DateTime
+  used        Boolean  @default(false)
+  created_at  DateTime @default(now())
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([token_hash])
+  @@index([expires_at])
+  @@map("password_reset_tokens")
+}
+
+// ====================== MATCH CHECK-IN ======================
+
+model MatchCheckIn {
+  id            String   @id @default(cuid())
+  match_id      String
+  user_id       String
+  team_id       String
+  checked_in_at DateTime @default(now())
+
+  match Match @relation(fields: [match_id], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([match_id, user_id])
+  @@index([match_id])
+  @@index([user_id])
+  @@map("match_checkins")
+}
+
+// ====================== REPUTATION SYSTEM ======================
+
+model PlayerReputation {
+  id                  String   @id @default(cuid())
+  user_id             String   @unique
+  sportsmanship_score Float    @default(5.0)
+  communication_score Float    @default(5.0)
+  total_reviews       Int      @default(0)
+  positive_reviews    Int      @default(0)
+  negative_reviews    Int      @default(0)
+  is_flagged          Boolean  @default(false)
+  created_at          DateTime @default(now())
+  updated_at          DateTime @updatedAt
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([sportsmanship_score])
+  @@map("player_reputations")
+}
+
+model ReputationReview {
+  id                String   @id @default(cuid())
+  reviewer_id       String
+  reviewed_user_id  String
+  match_id          String
+  sportsmanship     Int      // 1-5
+  communication     Int      // 1-5
+  comment           String?  @db.Text
+  created_at        DateTime @default(now())
+
+  reviewer      User  @relation("ReviewAuthor", fields: [reviewer_id], references: [id], onDelete: Cascade)
+  reviewed_user User  @relation("ReviewTarget", fields: [reviewed_user_id], references: [id], onDelete: Cascade)
+  match         Match @relation(fields: [match_id], references: [id], onDelete: Cascade)
+
+  @@unique([reviewer_id, reviewed_user_id, match_id])
+  @@index([reviewed_user_id])
+  @@index([match_id])
+  @@map("reputation_reviews")
+}
+
+// ====================== FREE AGENT MARKET ======================
+
+enum FreeAgentStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum FreeAgentInviteStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
+
+model FreeAgent {
+  id              String          @id @default(cuid())
+  user_id         String          @unique
+  game_id         String
+  bio             String?         @db.Text
+  rank            String?
+  preferred_role  String?
+  availability    String?         // "weekdays", "weekends", "anytime"
+  highlight_url   String?         @db.Text  // URL to gameplay clip
+  looking_for     String          @default("competitive") // "competitive" | "casual"
+  is_active       Boolean         @default(true)
+  created_at      DateTime        @default(now())
+  updated_at      DateTime        @updatedAt
+
+  user    User              @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  game    Game              @relation(fields: [game_id], references: [id], onDelete: Cascade)
+  invites FreeAgentInvite[]
+
+  @@index([game_id])
+  @@index([is_active])
+  @@index([looking_for])
+  @@map("free_agents")
+}
+
+model FreeAgentInvite {
+  id                String               @id @default(cuid())
+  free_agent_id     String
+  team_id           String
+  invited_by_user_id String
+  message           String?              @db.Text
+  status            FreeAgentInviteStatus @default(PENDING)
+  created_at        DateTime             @default(now())
+  updated_at        DateTime             @updatedAt
+
+  free_agent   FreeAgent @relation(fields: [free_agent_id], references: [id], onDelete: Cascade)
+  team         Team      @relation(fields: [team_id], references: [id], onDelete: Cascade)
+  invited_by   User      @relation("InviteSender", fields: [invited_by_user_id], references: [id], onDelete: Cascade)
+
+  @@unique([free_agent_id, team_id])
+  @@index([free_agent_id])
+  @@index([team_id])
+  @@index([status])
+  @@map("free_agent_invites")
 }

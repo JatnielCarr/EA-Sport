@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Apex Tournament — OBS Scoreboard Overlay</title>
+    <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background: transparent;
+            overflow: hidden;
+            font-family: 'Rajdhani', sans-serif;
+        }
+
+        .scoreboard {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            align-items: center;
+            gap: 0;
+            filter: drop-shadow(0 4px 20px rgba(0,0,0,0.6));
+        }
+
+        .team-panel {
+            display: flex;
+            align-items: center;
+            padding: 12px 28px;
+            min-width: 240px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .team-panel::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            z-index: -1;
+        }
+
+        .team-home {
+            border-radius: 8px 0 0 8px;
+            flex-direction: row;
+            justify-content: flex-end;
+            text-align: right;
+        }
+
+        .team-home::before {
+            background: linear-gradient(135deg, #0a1628 0%, #1a2744 100%);
+            border: 2px solid rgba(59, 130, 246, 0.4);
+            border-right: none;
+            border-radius: 8px 0 0 8px;
+        }
+
+        .team-away {
+            border-radius: 0 8px 8px 0;
+            flex-direction: row-reverse;
+            justify-content: flex-end;
+            text-align: left;
+        }
+
+        .team-away::before {
+            background: linear-gradient(135deg, #1a2744 0%, #0a1628 100%);
+            border: 2px solid rgba(239, 68, 68, 0.4);
+            border-left: none;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .team-name {
+            font-size: 20px;
+            font-weight: 700;
+            color: #e2e8f0;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            white-space: nowrap;
+        }
+
+        .team-tag {
+            font-size: 12px;
+            color: rgba(148, 163, 184, 0.8);
+            font-weight: 500;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        .score-center {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0;
+            position: relative;
+            z-index: 2;
+        }
+
+        .score-box {
+            width: 56px;
+            height: 70px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Orbitron', monospace;
+            font-size: 34px;
+            font-weight: 900;
+            color: #fff;
+        }
+
+        .score-home {
+            background: linear-gradient(180deg, #1e40af, #1e3a8a);
+            border: 2px solid #3b82f6;
+            border-right: none;
+        }
+
+        .score-away {
+            background: linear-gradient(180deg, #991b1b, #7f1d1d);
+            border: 2px solid #ef4444;
+            border-left: none;
+        }
+
+        .score-divider {
+            width: 4px;
+            height: 70px;
+            background: linear-gradient(180deg, #fbbf24, #f59e0b, #fbbf24);
+            box-shadow: 0 0 12px rgba(251, 191, 36, 0.6);
+        }
+
+        .match-info {
+            position: fixed;
+            bottom: 8px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            font-size: 11px;
+            color: rgba(148, 163, 184, 0.7);
+            font-weight: 500;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .match-info .dot {
+            width: 4px;
+            height: 4px;
+            background: #fbbf24;
+            border-radius: 50%;
+        }
+
+        .status-live {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            color: #ef4444;
+            font-weight: 700;
+        }
+
+        .status-live .pulse {
+            width: 8px;
+            height: 8px;
+            background: #ef4444;
+            border-radius: 50%;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(0.7); }
+        }
+
+        /* Score change animation */
+        .score-flash {
+            animation: flash 0.6s ease-out;
+        }
+
+        @keyframes flash {
+            0% { transform: scale(1.3); color: #fbbf24; }
+            100% { transform: scale(1); color: #fff; }
+        }
+
+        .loading {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: rgba(255,255,255,0.4);
+            font-size: 14px;
+            letter-spacing: 2px;
+        }
+
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+    <div id="loading" class="loading">CARGANDO PARTIDO...</div>
+
+    <div id="scoreboard" class="scoreboard hidden">
+        <div class="team-panel team-home">
+            <div>
+                <div class="team-name" id="home-name">EQUIPO LOCAL</div>
+                <div class="team-tag" id="home-tag">HOME</div>
+            </div>
+        </div>
+
+        <div class="score-center">
+            <div class="score-box score-home" id="home-score">0</div>
+            <div class="score-divider"></div>
+            <div class="score-box score-away" id="away-score">0</div>
+        </div>
+
+        <div class="team-panel team-away">
+            <div>
+                <div class="team-name" id="away-name">EQUIPO VISITANTE</div>
+                <div class="team-tag" id="away-tag">AWAY</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="match-info" class="match-info hidden">
+        <span class="status-live"><span class="pulse"></span> EN VIVO</span>
+        <span class="dot"></span>
+        <span id="tournament-name">TORNEO</span>
+        <span class="dot"></span>
+        <span id="round-info">RONDA 1</span>
+    </div>
+
+    <script>
+        const params = new URLSearchParams(window.location.search);
+        const matchId = params.get('matchId');
+        const API_BASE = params.get('api') || 'http://localhost:3000';
+        const POLL_INTERVAL = 3000;
+
+        let lastHomeScore = -1;
+        let lastAwayScore = -1;
+
+        if (!matchId) {
+            document.getElementById('loading').textContent = '⚠️ Usa ?matchId=xxx en la URL';
+        } else {
+            fetchMatch();
+            setInterval(fetchMatch, POLL_INTERVAL);
+        }
+
+        async function fetchMatch() {
+            try {
+                // Try Firebase live match first
+                let res = await fetch(`${API_BASE}/api/firebase/live-matches/${matchId}`);
+                let data = await res.json();
+
+                if (data.success && data.data) {
+                    updateFromLive(data.data);
+                    return;
+                }
+
+                // Fallback to DB match
+                res = await fetch(`${API_BASE}/matches/${matchId}`);
+                data = await res.json();
+
+                if (data.success && data.data) {
+                    updateFromDB(data.data);
+                }
+            } catch (err) {
+                console.warn('Fetch error:', err);
+            }
+        }
+
+        function updateFromLive(match) {
+            document.getElementById('loading').classList.add('hidden');
+            document.getElementById('scoreboard').classList.remove('hidden');
+            document.getElementById('match-info').classList.remove('hidden');
+
+            document.getElementById('home-name').textContent = match.homeTeam?.name || 'HOME';
+            document.getElementById('away-name').textContent = match.awayTeam?.name || 'AWAY';
+            document.getElementById('home-tag').textContent = match.homeTeam?.tag || '';
+            document.getElementById('away-tag').textContent = match.awayTeam?.tag || '';
+
+            animateScore('home-score', match.homeScore || 0);
+            animateScore('away-score', match.awayScore || 0);
+        }
+
+        function updateFromDB(match) {
+            document.getElementById('loading').classList.add('hidden');
+            document.getElementById('scoreboard').classList.remove('hidden');
+            document.getElementById('match-info').classList.remove('hidden');
+
+            document.getElementById('home-name').textContent = match.home_team?.name || 'TBD';
+            document.getElementById('away-name').textContent = match.away_team?.name || 'TBD';
+            document.getElementById('home-tag').textContent = match.home_team?.tag || '';
+            document.getElementById('away-tag').textContent = match.away_team?.tag || '';
+            document.getElementById('tournament-name').textContent = match.tournament?.name || '';
+            document.getElementById('round-info').textContent = `RONDA ${match.round || '?'}`;
+
+            animateScore('home-score', match.home_score || 0);
+            animateScore('away-score', match.away_score || 0);
+        }
+
+        function animateScore(elementId, newScore) {
+            const el = document.getElementById(elementId);
+            const side = elementId.includes('home') ? 'home' : 'away';
+            const lastScore = side === 'home' ? lastHomeScore : lastAwayScore;
+
+            if (lastScore !== newScore && lastScore >= 0) {
+                el.classList.add('score-flash');
+                setTimeout(() => el.classList.remove('score-flash'), 600);
+            }
+
+            el.textContent = newScore;
+            if (side === 'home') lastHomeScore = newScore;
+            else lastAwayScore = newScore;
+        }
+    </script>
+</body>
+</html>

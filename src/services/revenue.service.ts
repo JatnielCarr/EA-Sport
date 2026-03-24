@@ -149,6 +149,71 @@ export class RevenueService {
     
     return distribution;
   }
+
+  /**
+   * Depositar premio en el wallet del jugador ganador
+   * - Calcula el monto neto (premio - comisión plataforma)
+   * - Incrementa user.balance
+   * - Crea registro de auditoría en PlatformRevenue
+   * - Registra la comisión de plataforma
+   */
+  async creditPrizeToWallet(
+    userId: string,
+    tournamentId: string,
+    teamId: string,
+    position: number,
+    grossAmount: number
+  ) {
+    const platformFee = grossAmount * (PLATFORM_FEES.PRIZE_POOL_COMMISSION_PERCENT / 100);
+    const netAmount = grossAmount - platformFee;
+
+    // 1. Incrementar balance del usuario
+    await prisma.user.update({
+      where: { id: userId },
+      data: { balance: { increment: netAmount } }
+    });
+
+    // 2. Crear registro de distribución de premio
+    const distribution = await prisma.prizeDistribution.create({
+      data: {
+        tournament_id: tournamentId,
+        team_id: teamId,
+        position,
+        gross_amount: new Decimal(grossAmount),
+        platform_fee: new Decimal(platformFee),
+        net_amount: new Decimal(netAmount)
+      }
+    });
+
+    // 3. Registrar depósito en historial del usuario (tipo PRIZE_CREDIT)
+    await prisma.platformRevenue.create({
+      data: {
+        transaction_type: 'PRIZE_CREDIT',
+        amount: new Decimal(netAmount),
+        status: 'COMPLETED',
+        user_id: userId,
+        tournament_id: tournamentId,
+        description: `Premio ${position}° lugar depositado en wallet`,
+        metadata: { teamId, position, grossAmount, netAmount, platformFee }
+      }
+    });
+
+    // 4. Registrar comisión de plataforma
+    await prisma.platformRevenue.create({
+      data: {
+        transaction_type: 'PRIZE_COMMISSION',
+        amount: new Decimal(platformFee),
+        status: 'COMPLETED',
+        tournament_id: tournamentId,
+        description: `Comisión premio ${position}° lugar`,
+        metadata: { teamId, position, grossAmount, platformFeePercent: PLATFORM_FEES.PRIZE_POOL_COMMISSION_PERCENT }
+      }
+    });
+
+    console.log(`💰 Premio depositado: $${netAmount} MXN a usuario ${userId} (comisión: $${platformFee})`);
+
+    return { distribution, netAmount, platformFee };
+  }
   
   /**
    * Registrar ingreso por cambio de nombre

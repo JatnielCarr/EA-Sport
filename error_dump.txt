@@ -1,0 +1,1 @@
+Method 'GET' already declared for route '/users/:userId/profile'

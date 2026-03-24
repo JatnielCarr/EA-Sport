@@ -1,0 +1,1088 @@
+/* =====================================================
+   MOBILE RESPONSIVE STYLES - ApexTournament
+   Dedicated mobile stylesheet for FrontedUser
+   ===================================================== */
+
+/* =====================================================
+   Nav Overlay (for hamburger menu backdrop)
+   ===================================================== */
+.nav-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    z-index: 999;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+}
+
+.nav-overlay.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* Prevent scrolling when menu is open */
+body.menu-open {
+    overflow: hidden;
+}
+
+/* =====================================================
+   TABLET BREAKPOINT (max-width: 1024px)
+   ===================================================== */
+@media (max-width: 1024px) {
+
+    /* Container padding */
+    .container {
+        padding: 0 20px;
+    }
+
+    .section {
+        padding: 40px 0;
+    }
+
+    /* Section title */
+    .section-title {
+        font-size: 24px;
+    }
+
+    /* Nav container height */
+    .nav-container {
+        height: 64px;
+    }
+
+    #app {
+        padding-top: 64px;
+    }
+
+    /* Tournament detail tabs - scrollable */
+    .tournament-tabs,
+    .detail-tabs {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+        flex-wrap: nowrap;
+        white-space: nowrap;
+        padding-bottom: 4px;
+    }
+
+    .tournament-tabs::-webkit-scrollbar,
+    .detail-tabs::-webkit-scrollbar {
+        display: none;
+    }
+
+    /* Tournament bracket - scrollable */
+    .bracket-container,
+    .bracket-wrapper {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        padding-bottom: 16px;
+    }
+
+    /* Subscription plans */
+    .plans-grid,
+    .subscription-plans {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    /* Settings */
+    .settings-container,
+    .settings-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .settings-sidebar {
+        order: -1;
+    }
+}
+
+/* =====================================================
+   MOBILE BREAKPOINT (max-width: 768px)
+   ===================================================== */
+@media (max-width: 768px) {
+
+    /* ---- NAVIGATION ---- */
+    .nav-container {
+        height: 60px;
+        padding: 0 16px;
+    }
+
+    #app {
+        padding-top: 60px;
+    }
+
+    .nav-logo {
+        font-size: 16px;
+        gap: 8px;
+    }
+
+    .nav-logo i {
+        font-size: 22px;
+    }
+
+    .nav-toggle {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 40px;
+        height: 40px;
+        border-radius: 8px;
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border-color);
+        z-index: 1001;
+    }
+
+    .nav-toggle i {
+        transition: transform 0.3s ease;
+    }
+
+    body.menu-open .nav-toggle i::before {
+        content: "\f00d";
+        /* fa-xmark */
+    }
+
+    /* Mobile nav menu - slide in from right */
+    .nav-menu {
+        display: flex !important;
+        flex-direction: column;
+        position: fixed;
+        top: 0;
+        right: -100%;
+        width: 280px;
+        height: 100vh;
+        height: 100dvh;
+        background: var(--bg-secondary);
+        border-left: 1px solid var(--border-color);
+        padding: 80px 20px 32px;
+        gap: 4px;
+        z-index: 1000;
+        transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        overflow-y: auto;
+        box-shadow: -10px 0 40px rgba(0, 0, 0, 0.5);
+    }
+
+    .nav-menu.show {
+        right: 0;
+    }
+
+    .nav-link {
+        padding: 14px 16px;
+        font-size: 16px;
+        border-radius: 10px;
+    }
+
+    .nav-link i {
+        width: 24px;
+        text-align: center;
+    }
+
+    /* Nav actions on mobile */
+    .nav-actions {
+        display: flex !important;
+        flex-direction: column;
+        gap: 10px;
+        position: fixed;
+        bottom: 0;
+        right: -100%;
+        width: 280px;
+        padding: 20px;
+        background: var(--bg-secondary);
+        border-top: 1px solid var(--border-color);
+        border-left: 1px solid var(--border-color);
+        z-index: 1000;
+        transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    body.menu-open .nav-actions {
+        right: 0;
+    }
+
+    .nav-actions .btn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .nav-actions .search-btn,
+    .nav-actions .theme-toggle {
+        display: none;
+    }
+
+    /* User menu on mobile */
+    .user-menu {
+        width: 100%;
+    }
+
+    .user-menu-btn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .user-name {
+        display: none;
+    }
+
+    .user-dropdown {
+        position: static;
+        width: 100%;
+        margin-top: 8px;
+        opacity: 1;
+        visibility: visible;
+        transform: none;
+        display: none;
+    }
+
+    .user-dropdown.show {
+        display: block;
+    }
+
+    /* ---- HERO SECTION ---- */
+    .hero {
+        padding: 60px 0;
+    }
+
+    .hero-content {
+        padding: 0 16px;
+    }
+
+    .hero-title {
+        font-size: 28px;
+    }
+
+    .hero-subtitle {
+        font-size: 15px;
+    }
+
+    .hero-badge {
+        font-size: 12px;
+    }
+
+    .hero-stats {
+        gap: 20px;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+
+    .hero-stat-value {
+        font-size: 28px;
+    }
+
+    /* ---- HERO MAIN (Home page) ---- */
+    .hero-main {
+        padding: 80px 0 50px;
+        min-height: auto;
+    }
+
+    .hero-main-content {
+        padding: 0 16px;
+    }
+
+    .hero-main-title {
+        font-size: 32px;
+        line-height: 1.15;
+    }
+
+    .hero-main-subtitle {
+        font-size: 15px;
+    }
+
+    .hero-main-actions {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .btn-hero-primary,
+    .btn-hero-secondary {
+        width: 100%;
+        max-width: 280px;
+    }
+
+    .hero-trust-badges {
+        flex-direction: column;
+        gap: 10px;
+        align-items: center;
+    }
+
+    .hero-stats-floating {
+        flex-direction: column;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .floating-stat {
+        width: 100%;
+        max-width: 280px;
+    }
+
+    /* Orbs - reduce on mobile for performance */
+    .orb {
+        filter: blur(60px);
+        opacity: 0.5;
+    }
+
+    .orb-1 {
+        width: 300px;
+        height: 300px;
+    }
+
+    .orb-2 {
+        width: 250px;
+        height: 250px;
+    }
+
+    .orb-3 {
+        width: 200px;
+        height: 200px;
+    }
+
+    /* ---- GRIDS → SINGLE COLUMN ---- */
+    .tournaments-grid,
+    .live-grid,
+    .games-showcase,
+    .features-grid,
+    .clans-grid,
+    .loading-skeleton,
+    .pricing-preview-grid {
+        grid-template-columns: 1fr;
+    }
+
+    /* ---- TOURNAMENT CARDS ---- */
+    .tournament-card:hover {
+        transform: none;
+    }
+
+    .tournament-banner {
+        height: 120px;
+    }
+
+    .tournament-name {
+        font-size: 16px;
+    }
+
+    .tournament-prize {
+        font-size: 18px;
+    }
+
+    .tournament-meta {
+        gap: 12px;
+        font-size: 12px;
+    }
+
+    .tournament-footer {
+        flex-direction: column;
+        gap: 12px;
+        align-items: flex-start;
+    }
+
+    /* ---- LIVE CARDS ---- */
+    .live-card {
+        padding: 20px;
+    }
+
+    .live-score-value {
+        font-size: 28px;
+    }
+
+    .live-team-avatar {
+        width: 48px;
+        height: 48px;
+        font-size: 20px;
+    }
+
+    .live-footer {
+        flex-direction: column;
+        gap: 12px;
+        align-items: flex-start;
+    }
+
+    /* ---- SECTION HEADERS ---- */
+    .section-header {
+        flex-direction: column;
+        gap: 12px;
+        text-align: center;
+    }
+
+    .section-title {
+        font-size: 22px;
+    }
+
+    .section-title-large {
+        font-size: 28px;
+    }
+
+    /* ---- AUTH PAGES ---- */
+    .auth-page {
+        grid-template-columns: 1fr;
+    }
+
+    .auth-decoration {
+        display: none;
+    }
+
+    .auth-container {
+        padding: 32px 20px;
+    }
+
+    .auth-title {
+        font-size: 24px;
+    }
+
+    /* ---- PROFILE ---- */
+    .profile-header {
+        flex-direction: column;
+        text-align: center;
+    }
+
+    .profile-grid,
+    .dashboard-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .profile-section.full-width,
+    .dashboard-section.full-width {
+        grid-column: span 1;
+    }
+
+    .profile-main-info {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+    }
+
+    .profile-avatar-wrapper {
+        margin-top: -50px;
+    }
+
+    .profile-banner {
+        height: 150px;
+    }
+
+    .profile-stats {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .profile-tabs {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        flex-wrap: nowrap;
+    }
+
+    .profile-tabs::-webkit-scrollbar {
+        display: none;
+    }
+
+    #editProfileBtn {
+        margin: 12px auto 0;
+    }
+
+    .subscription-banner-inner {
+        flex-direction: column;
+        text-align: center;
+        gap: 12px;
+    }
+
+    /* ---- DASHBOARD ---- */
+    .dashboard-stats {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    /* ---- SETTINGS ---- */
+    .settings-container,
+    .settings-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .settings-sidebar {
+        order: -1;
+    }
+
+    .settings-nav {
+        display: flex;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        gap: 4px;
+        padding-bottom: 4px;
+    }
+
+    .settings-nav::-webkit-scrollbar {
+        display: none;
+    }
+
+    .settings-nav-item {
+        white-space: nowrap;
+        flex-shrink: 0;
+    }
+
+    /* ---- SUBSCRIPTION / PAYMENT ---- */
+    .plans-grid,
+    .subscription-plans {
+        grid-template-columns: 1fr;
+    }
+
+    .pricing-preview-card.featured {
+        transform: none;
+    }
+
+    .pricing-preview-card.featured:hover {
+        transform: translateY(-5px);
+    }
+
+    .plan-price-preview {
+        font-size: 32px;
+    }
+
+    .payment-form,
+    .checkout-container {
+        padding: 20px;
+    }
+
+    .payment-methods {
+        flex-direction: column;
+    }
+
+    .payment-method-card {
+        width: 100%;
+    }
+
+    /* ---- FILTERS ---- */
+    .filters-bar {
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .filter-group {
+        width: 100%;
+    }
+
+    .filter-group select,
+    .filter-group input {
+        width: 100%;
+    }
+
+    .clans-filters {
+        flex-direction: column;
+    }
+
+    .clans-filters .filter-group {
+        flex-direction: column;
+    }
+
+    /* ---- CONTACT ---- */
+    .contact-grid {
+        grid-template-columns: 1fr;
+    }
+
+    /* ---- FOOTER ---- */
+    .footer-container {
+        grid-template-columns: 1fr;
+        gap: 32px;
+        text-align: center;
+        padding: 32px 20px;
+    }
+
+    .footer-links {
+        justify-content: center;
+        gap: 32px;
+        flex-wrap: wrap;
+    }
+
+    .footer-social {
+        justify-content: center;
+    }
+
+    .footer-bottom {
+        padding: 16px 20px;
+        font-size: 12px;
+    }
+
+    /* ---- TOASTS ---- */
+    .toast-container {
+        top: 70px;
+        right: 12px;
+        left: 12px;
+    }
+
+    .toast {
+        min-width: auto;
+        width: 100%;
+    }
+
+    /* ---- MODALS ---- */
+    .modal-content {
+        width: 95%;
+        max-height: 90vh;
+        overflow-y: auto;
+        border-radius: 12px;
+    }
+
+    .modal-header {
+        padding: 16px 20px;
+    }
+
+    .modal-body {
+        padding: 20px;
+    }
+
+    .modal-footer {
+        padding: 16px 20px;
+        flex-direction: column;
+    }
+
+    .modal-footer .btn {
+        width: 100%;
+    }
+
+    /* ---- SEARCH MODAL ---- */
+    .search-modal-content {
+        margin: 16px;
+        width: calc(100% - 32px);
+        max-height: calc(100vh - 32px);
+    }
+
+    .search-shortcut {
+        display: none;
+    }
+
+    /* ---- CLAN DETAIL ---- */
+    .clan-detail-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .clan-detail-sidebar {
+        order: -1;
+    }
+
+    .clan-detail-banner {
+        height: 200px;
+    }
+
+    .clan-detail-name {
+        font-size: 24px;
+    }
+
+    .clan-detail-tag {
+        font-size: 18px;
+    }
+
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+
+    .clans-hero-title {
+        font-size: 24px;
+        flex-direction: column;
+    }
+
+    /* ---- COMMUNITY ---- */
+    .community-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .community-visual {
+        display: none;
+    }
+
+    .community-actions {
+        flex-direction: column;
+    }
+
+    /* ---- IMPACT / CTA ---- */
+    .impact-grid {
+        grid-template-columns: 1fr;
+        gap: 24px;
+    }
+
+    .cta-title {
+        font-size: 28px;
+    }
+
+    .cta-actions {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .cta-features {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .btn-large {
+        width: 100%;
+    }
+
+    /* ---- BREADCRUMBS ---- */
+    .breadcrumbs {
+        padding: 12px 16px;
+        font-size: 12px;
+        overflow-x: auto;
+        white-space: nowrap;
+    }
+
+    /* ---- BUTTONS ---- */
+    .btn {
+        padding: 10px 20px;
+        font-size: 13px;
+    }
+
+    .btn-sm {
+        padding: 8px 14px;
+        font-size: 12px;
+    }
+
+    /* ---- EMPTY / LOADING STATES ---- */
+    .empty-state {
+        padding: 40px 20px;
+    }
+
+    .empty-state i {
+        font-size: 36px;
+    }
+
+    .loading {
+        padding: 40px 20px;
+    }
+
+    /* ---- TABLE RESPONSIVE WRAPPER ---- */
+    .rankings-table-container,
+    .table-responsive {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* ---- SKELETON LOADERS ---- */
+    .skeleton-stats-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .skeleton-table-row {
+        grid-template-columns: repeat(3, 1fr);
+    }
+
+    .skeleton-profile-header {
+        flex-direction: column;
+        text-align: center;
+    }
+
+    /* ---- AI PERFORMANCE ---- */
+    .ai-perf-header {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+    }
+
+    /* ---- FEATURE CARDS ---- */
+    .feature-card.feature-highlight {
+        grid-row: span 1;
+    }
+}
+
+/* =====================================================
+   SMALL MOBILE BREAKPOINT (max-width: 480px)
+   ===================================================== */
+@media (max-width: 480px) {
+
+    /* Container */
+    .container {
+        padding: 0 12px;
+    }
+
+    .section {
+        padding: 32px 0;
+    }
+
+    /* Nav */
+    .nav-container {
+        height: 56px;
+        padding: 0 12px;
+    }
+
+    #app {
+        padding-top: 56px;
+    }
+
+    .nav-logo {
+        font-size: 14px;
+    }
+
+    .nav-logo i {
+        font-size: 20px;
+    }
+
+    .nav-menu {
+        width: 100%;
+    }
+
+    .nav-actions {
+        width: 100%;
+    }
+
+    /* Hero */
+    .hero-title {
+        font-size: 24px;
+    }
+
+    .hero-main-title {
+        font-size: 26px;
+    }
+
+    .hero-stat-value {
+        font-size: 24px;
+    }
+
+    .hero-stats {
+        gap: 16px;
+    }
+
+    /* Cards reduce padding */
+    .tournament-content {
+        padding: 16px;
+    }
+
+    .live-card {
+        padding: 16px;
+    }
+
+    .clan-card-section {
+        padding: 16px;
+    }
+
+    /* Dashboard stats single column */
+    .dashboard-stats {
+        grid-template-columns: 1fr;
+    }
+
+    .profile-stats {
+        grid-template-columns: 1fr;
+    }
+
+    /* Auth */
+    .auth-container {
+        padding: 24px 16px;
+    }
+
+    .auth-title {
+        font-size: 22px;
+    }
+
+    /* Profile modal */
+    .profile-card {
+        width: calc(100vw - 24px);
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+
+    .profile-body {
+        padding: 0 16px 20px;
+    }
+
+    .profile-username {
+        font-size: 20px;
+    }
+
+    .stats-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+    }
+
+    .badges-row {
+        gap: 8px;
+    }
+
+    .badge-item {
+        padding: 6px 8px;
+        font-size: 11px;
+    }
+
+    /* Pricing */
+    .plan-price-preview {
+        font-size: 28px;
+    }
+
+    .pricing-preview-card {
+        padding: 24px 16px;
+    }
+
+    /* Footer */
+    .footer-links {
+        flex-direction: column;
+        gap: 24px;
+    }
+
+    /* Section titles */
+    .section-title {
+        font-size: 18px;
+        gap: 8px;
+    }
+
+    .section-title-large {
+        font-size: 24px;
+    }
+
+    .page-title {
+        font-size: 24px;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    /* Breadcrumbs */
+    .breadcrumbs {
+        padding: 8px 12px;
+        font-size: 11px;
+    }
+
+    /* Search Modal */
+    .search-modal-content {
+        margin: 8px;
+        width: calc(100% - 16px);
+    }
+
+    /* Chatbot */
+    .chatbot-window {
+        width: calc(100vw - 24px);
+        height: 75vh;
+        right: -8px;
+        bottom: 65px;
+    }
+
+    .chatbot-toggle {
+        width: 50px;
+        height: 50px;
+    }
+
+    .chatbot-toggle i {
+        font-size: 24px;
+    }
+
+    /* Live match scores */
+    .live-score-value {
+        font-size: 24px;
+    }
+
+    .live-team-avatar {
+        width: 40px;
+        height: 40px;
+        font-size: 16px;
+        border-radius: 8px;
+    }
+
+    /* Toast full width */
+    .toast-container {
+        top: 64px;
+        right: 8px;
+        left: 8px;
+    }
+
+    /* Modal */
+    .modal-content {
+        width: 98%;
+        border-radius: 10px;
+    }
+
+    /* CTA */
+    .cta-title {
+        font-size: 24px;
+    }
+
+    /* Podium */
+    .podium {
+        gap: 16px;
+    }
+
+    .podium-avatar {
+        width: 60px;
+        height: 60px;
+        font-size: 24px;
+    }
+
+    .podium-name {
+        font-size: 14px;
+    }
+
+    .podium-points {
+        font-size: 16px;
+    }
+}
+
+/* =====================================================
+   SAFE AREA / NOTCH SUPPORT
+   ===================================================== */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+    .footer-bottom {
+        padding-bottom: calc(20px + env(safe-area-inset-bottom));
+    }
+
+    .nav-actions {
+        padding-bottom: calc(20px + env(safe-area-inset-bottom));
+    }
+
+    .chatbot-widget {
+        bottom: calc(20px + env(safe-area-inset-bottom));
+    }
+}
+
+/* =====================================================
+   TOUCH OPTIMIZATIONS
+   ===================================================== */
+@media (hover: none) and (pointer: coarse) {
+
+    /* Disable hover transforms on touch devices for better performance */
+    .tournament-card:hover,
+    .pricing-preview-card:hover,
+    .clan-card:hover,
+    .live-card:hover,
+    .stream-embed:hover {
+        transform: none;
+    }
+
+    /* Bigger touch targets */
+    .nav-link {
+        min-height: 44px;
+    }
+
+    .dropdown-item {
+        min-height: 44px;
+    }
+
+    .btn {
+        min-height: 44px;
+    }
+
+    /* Remove hover effects that show odd on mobile */
+    .btn-primary:hover {
+        transform: none;
+    }
+
+    .btn-outline:hover {
+        transform: none;
+    }
+
+    .btn-pro-gradient:hover,
+    .btn-premium-gradient:hover {
+        transform: none;
+    }
+}
+
+/* =====================================================
+   LANDSCAPE MOBILE
+   ===================================================== */
+@media (max-height: 500px) and (orientation: landscape) {
+    .hero-main {
+        padding: 70px 0 40px;
+        min-height: auto;
+    }
+
+    .hero-main-title {
+        font-size: 28px;
+    }
+
+    .hero-stats-floating {
+        flex-direction: row;
+        flex-wrap: wrap;
+    }
+
+    .nav-menu {
+        padding-top: 64px;
+    }
+}

@@ -149,6 +149,40 @@ export async function renderPayment(container) {
                 </div>
             </div>
 
+            <!-- Withdrawal Section -->
+            <div class="withdrawal-section" id="withdrawalSection" style="display: ${isAuthenticated() ? 'block' : 'none'};">
+                <div class="withdrawal-card">
+                    <h3><i class="fas fa-money-bill-wave"></i> Retirar Fondos</h3>
+                    <p style="color: var(--text-secondary); margin-bottom: 16px; font-size: 0.9rem;">
+                        Retira tus ganancias de torneos. Mínimo: $50 MXN
+                    </p>
+                    <div class="withdrawal-form">
+                        <div class="custom-amount-input">
+                            <span class="prefix">$</span>
+                            <input type="number" id="withdrawAmount" placeholder="50" min="50" step="10" class="withdrawal-input">
+                            <span class="suffix">MXN</span>
+                        </div>
+                        <div class="withdrawal-method">
+                            <div class="method-option active" data-method="paypal">
+                                <i class="fab fa-paypal"></i>
+                                PayPal
+                            </div>
+                            <div class="method-option" data-method="bank">
+                                <i class="fas fa-university"></i>
+                                Transferencia
+                            </div>
+                        </div>
+                        <div id="withdrawDetailField" style="display:none;">
+                            <input type="text" id="withdrawDetail" placeholder="Email de PayPal o CLABE" class="withdrawal-input" style="width:100%;">
+                        </div>
+                        <button id="withdrawBtn" class="btn btn-primary" style="width:100%; padding: 14px; border-radius: 12px; font-weight: 700;">
+                            <i class="fas fa-arrow-up"></i> Solicitar Retiro
+                        </button>
+                    </div>
+                    <div id="withdrawalHistoryList" class="withdrawal-history"></div>
+                </div>
+            </div>
+
             <!-- Payment History -->
             <div class="history-section">
                 <div class="history-header">
@@ -822,6 +856,7 @@ export async function renderPayment(container) {
     // Load payment history
     if (isAuthenticated()) {
         loadPaymentHistory(container);
+        loadWithdrawalHistory(container);
     } else {
         container.querySelector('#paymentHistoryList').innerHTML = `
             <div class="empty-state">
@@ -829,6 +864,70 @@ export async function renderPayment(container) {
                 <p>Inicia sesión para ver tu historial</p>
             </div>
         `;
+    }
+
+    // Withdrawal method selection
+    container.querySelectorAll('.method-option').forEach(opt => {
+        opt.addEventListener('click', () => {
+            container.querySelectorAll('.method-option').forEach(o => o.classList.remove('active'));
+            opt.classList.add('active');
+            const detailField = container.querySelector('#withdrawDetailField');
+            const detailInput = container.querySelector('#withdrawDetail');
+            detailField.style.display = 'block';
+            detailInput.placeholder = opt.dataset.method === 'paypal' ? 'Email de PayPal' : 'CLABE interbancaria (18 dígitos)';
+        });
+    });
+
+    // Withdraw button
+    const withdrawBtn = container.querySelector('#withdrawBtn');
+    if (withdrawBtn) {
+        withdrawBtn.addEventListener('click', async () => {
+            if (!isAuthenticated()) {
+                showToast('warning', 'Inicia sesión', 'Debes iniciar sesión para retirar');
+                return;
+            }
+            const amount = parseFloat(container.querySelector('#withdrawAmount').value);
+            if (isNaN(amount) || amount < 50) {
+                showToast('warning', 'Monto inválido', 'El monto mínimo de retiro es $50 MXN');
+                return;
+            }
+            if (amount > balance) {
+                showToast('error', 'Saldo insuficiente', 'No tienes saldo suficiente para este retiro');
+                return;
+            }
+            const activeMethod = container.querySelector('.method-option.active');
+            const method = activeMethod ? activeMethod.dataset.method : 'paypal';
+            const detail = container.querySelector('#withdrawDetail')?.value || '';
+
+            withdrawBtn.disabled = true;
+            withdrawBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Procesando...';
+
+            try {
+                const response = await API.request('/payment/withdraw', {
+                    method: 'POST',
+                    body: JSON.stringify({ amount, method, detail }),
+                });
+                if (response.success) {
+                    showToast('success', 'Solicitud enviada', `Retiro de $${amount} MXN solicitado correctamente`);
+                    container.querySelector('#withdrawAmount').value = '';
+                    if (container.querySelector('#withdrawDetail')) container.querySelector('#withdrawDetail').value = '';
+                    loadWithdrawalHistory(container);
+                    // Refresh balance
+                    const balResp = await API.payment.getBalance();
+                    if (balResp.success) {
+                        const newBal = parseFloat(balResp.balance) || 0;
+                        container.querySelector('.balance-amount .value').textContent = newBal.toLocaleString('es-MX', { minimumFractionDigits: 2 });
+                    }
+                } else {
+                    showToast('error', 'Error', response.error || 'No se pudo procesar el retiro');
+                }
+            } catch (error) {
+                showToast('error', 'Error', error?.message || 'Error al solicitar retiro');
+            } finally {
+                withdrawBtn.disabled = false;
+                withdrawBtn.innerHTML = '<i class="fas fa-arrow-up"></i> Solicitar Retiro';
+            }
+        });
     }
 }
 
@@ -871,6 +970,33 @@ async function loadPaymentHistory(container) {
                 <p>Error al cargar historial</p>
             </div>
         `;
+    }
+}
+
+async function loadWithdrawalHistory(container) {
+    const list = container.querySelector('#withdrawalHistoryList');
+    if (!list) return;
+
+    try {
+        const response = await API.request('/payment/withdrawals');
+        if (response.success && response.data && response.data.length > 0) {
+            list.innerHTML = `
+                <h4 style="margin-top: 16px; margin-bottom: 8px; font-size: 0.9rem; color: var(--text-secondary);">
+                    <i class="fas fa-clock"></i> Historial de Retiros
+                </h4>
+                ${response.data.map(w => `
+                    <div class="withdrawal-item">
+                        <div>
+                            <div style="font-weight: 600; color: var(--text-primary);">-$${parseFloat(w.amount).toLocaleString('es-MX', { minimumFractionDigits: 2 })} MXN</div>
+                            <div style="font-size: 0.8rem; color: var(--text-muted);">${new Date(w.created_at).toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' })}</div>
+                        </div>
+                        <span class="withdrawal-status ${w.status.toLowerCase()}">${w.status === 'PENDING' ? '⏳ Pendiente' : w.status === 'COMPLETED' ? '✓ Completado' : '✗ Fallido'}</span>
+                    </div>
+                `).join('')}
+            `;
+        }
+    } catch (error) {
+        console.warn('Error loading withdrawal history:', error);
     }
 }
 

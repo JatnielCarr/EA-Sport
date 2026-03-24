@@ -38,6 +38,12 @@ import { renderPayment } from './pages/payment.js';
 import { renderSubscription } from './pages/subscription.js';
 import { renderPaymentSuccess } from './pages/payment-success.js';
 import { renderTournamentInvite } from './pages/tournament-invite.js';
+import { renderLiveBracketPage, cleanupLiveBracket } from './pages/live-bracket.js';
+import { renderWallet } from './pages/wallet.js';
+import { renderMatchReport } from './pages/match-report.js';
+import { renderCalendar } from './pages/calendar.js';
+import { renderStats } from './pages/stats.js';
+import { renderPublicProfile } from './pages/public-profile.js';
 
 import { initChatbot } from './components/chatbot.js';
 
@@ -147,7 +153,7 @@ async function handleRoute() {
     updateActiveNav(hash);
 
     // Protected routes that require authentication
-    const protectedRoutes = ['#/perfil', '#/dashboard', '#/configuracion', '#/historial', '#/logros'];
+    const protectedRoutes = ['#/perfil', '#/dashboard', '#/configuracion', '#/historial', '#/logros', '#/monedero'];
     if (protectedRoutes.some(route => hash.startsWith(route)) && !isAuthenticated()) {
         window.showToast('error', 'Acceso denegado', 'Debes iniciar sesión');
         window.location.hash = '#/login';
@@ -185,8 +191,17 @@ async function handleRoute() {
         '#/pagos': () => renderPayment(app),
         '#/pago': () => renderPayment(app),
         '#/pago/exito': () => renderPaymentSuccess(app),
-        '#/suscripcion': () => renderSubscription(app)
+        '#/suscripcion': () => renderSubscription(app),
+        '#/monedero': () => renderWallet(app),
+        '#/calendario': () => renderCalendar(app),
+        '#/estadisticas': () => renderStats(app)
     };
+
+    // Check for live bracket route
+    if (hash.startsWith('#/bracket/')) {
+        const tournamentId = hash.split('/')[2];
+        return renderLiveBracketPage(app, tournamentId);
+    }
 
     // Check for tournament invite route
     if (hash.startsWith('#/tournament/invite/')) {
@@ -204,6 +219,18 @@ async function handleRoute() {
     if (hash.startsWith('#/clan/')) {
         const clanId = hash.split('/')[2];
         return renderClanPage(app, clanId);
+    }
+
+    // Check for match report route
+    if (hash.startsWith('#/partida/')) {
+        const matchId = hash.split('/')[2];
+        return renderMatchReport(app, matchId);
+    }
+
+    // Check for public profile route
+    if (hash.startsWith('#/u/')) {
+        const userId = hash.split('/')[2];
+        return renderPublicProfile(app, userId);
     }
 
     // Execute route or default to home
@@ -242,19 +269,40 @@ function updateActiveNav(hash) {
 function initNavigation() {
     const toggle = document.querySelector('.nav-toggle');
     const menu = document.querySelector('.nav-menu');
+    const overlay = document.getElementById('navOverlay');
+
+    function openMenu() {
+        menu?.classList.add('show');
+        overlay?.classList.add('active');
+        document.body.classList.add('menu-open');
+    }
+
+    function closeMenu() {
+        menu?.classList.remove('show');
+        overlay?.classList.remove('active');
+        document.body.classList.remove('menu-open');
+    }
 
     if (toggle && menu) {
         toggle.addEventListener('click', () => {
-            menu.classList.toggle('show');
+            if (menu.classList.contains('show')) {
+                closeMenu();
+            } else {
+                openMenu();
+            }
         });
     }
 
+    // Close on overlay click
+    overlay?.addEventListener('click', closeMenu);
+
     // Close mobile menu when clicking a link
     document.querySelectorAll('.nav-link').forEach(link => {
-        link.addEventListener('click', () => {
-            menu?.classList.remove('show');
-        });
+        link.addEventListener('click', closeMenu);
     });
+
+    // Close on route change
+    window.addEventListener('hashchange', closeMenu);
 }
 
 function updateNavbarAuth() {

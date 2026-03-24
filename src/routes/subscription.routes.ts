@@ -11,6 +11,7 @@ declare module 'fastify' {
 
 // Price IDs from Stripe Dashboard - You'll need to create these in Stripe
 const PRICE_IDS = {
+    DEMO_MONTHLY: process.env.STRIPE_DEMO_MONTHLY_PRICE_ID || 'price_1TAY4vRrthiCDordFhKyML80',
     STANDARD_MONTHLY: process.env.STRIPE_STANDARD_MONTHLY_PRICE_ID || process.env.STRIPE_PRO_MONTHLY_PRICE_ID || 'price_standard_monthly',
     STANDARD_YEARLY: process.env.STRIPE_STANDARD_YEARLY_PRICE_ID || process.env.STRIPE_PRO_YEARLY_PRICE_ID || 'price_standard_yearly',
     PREMIUM_MONTHLY: process.env.STRIPE_PREMIUM_MONTHLY_PRICE_ID || 'price_premium_monthly',
@@ -235,13 +236,13 @@ export async function subscriptionRoutes(app: FastifyInstance) {
                 type: 'object',
                 required: ['plan', 'interval'],
                 properties: {
-                    plan: { type: 'string', enum: ['STANDARD', 'PREMIUM'] },
+                    plan: { type: 'string', enum: ['DEMO', 'STANDARD', 'PREMIUM'] },
                     interval: { type: 'string', enum: ['monthly', 'yearly'] }
                 }
             }
         }
     }, async (request: any, reply) => {
-        const { plan, interval } = request.body as { plan: 'STANDARD' | 'PREMIUM'; interval: 'monthly' | 'yearly' };
+        const { plan, interval } = request.body as { plan: 'DEMO' | 'STANDARD' | 'PREMIUM'; interval: 'monthly' | 'yearly' };
         const userId = request.user.id;
 
         try {

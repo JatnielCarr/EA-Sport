@@ -11,6 +11,23 @@ let currentPlan = 'STANDARD'; // Default plan
 
 // Planes de suscripción
 const PLANS = {
+    DEMO: {
+        id: 'DEMO',
+        name: 'Demo',
+        description: 'Plan de prueba para verificar pagos',
+        icon: 'fa-flask',
+        monthlyPrice: 0.10,
+        yearlyPrice: 0.10,
+        color: '#10b981',
+        gradient: 'linear-gradient(135deg, #10b981, #059669)',
+        maxUsers: null,
+        features: [
+            'Solo para demostración',
+            'Cobra $0.10 MXN real',
+            'Verifica flujo de Stripe',
+            'Cancélalo después de probar'
+        ]
+    },
     STANDARD: {
         id: 'STANDARD',
         name: 'Standard',
@@ -113,6 +130,10 @@ function createModal() {
                 
                 <!-- Selector de Plan -->
                 <div class="plan-selector">
+                    <button class="plan-tab ${currentPlan === 'DEMO' ? 'active' : ''}" data-plan="DEMO">
+                        <i class="fas fa-flask"></i>
+                        Demo
+                    </button>
                     <button class="plan-tab ${currentPlan === 'STANDARD' ? 'active' : ''}" data-plan="STANDARD">
                         <i class="fas fa-rocket"></i>
                         Standard

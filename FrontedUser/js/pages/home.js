@@ -18,8 +18,10 @@ export async function renderHome(container) {
         games = gamesRes.data || gamesRes || [];
         console.log('🎮 Juegos cargados:', games.length);
     } catch (error) {
-        console.warn('Could not load games:', error);
+        console.error('Could not load games in home.js:', error);
     }
+
+    try {
 
     const user = isAuthenticated() ? getStoredUser() : null;
     console.log('👤 Usuario autenticado:', !!user);
@@ -386,14 +388,41 @@ export async function renderHome(container) {
                     Premium
                 </span>
                 <h2 class="section-title-large">
-                    Elige tu <span class="gradient-text">plan perfecto</span>
+                    Elige tu 
+                    <span style="
+                        background: linear-gradient(to right, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #4b0082, #8f00ff, #ff0000);
+                        background-size: 200% auto;
+                        color: transparent;
+                        -webkit-background-clip: text;
+                        background-clip: text;
+                        animation: neon-spin 3s linear infinite;
+                        font-weight: 900;
+                        text-shadow: 0 0 15px rgba(255,100,200,0.5);
+                    ">plan perfecto</span>
+                    <style>@keyframes neon-spin { to { background-position: 200% center; } }</style>
                 </h2>
                 <p class="section-description">
                     Desbloquea todo el poder de ApexTournament con nuestros planes premium.
                 </p>
             </div>
             
-            <div class="pricing-preview-grid">
+            <div class="pricing-preview-grid" style="grid-template-columns: repeat(4, 1fr);">
+                <!-- DEMO Plan -->
+                <div class="pricing-preview-card demo-card" style="border-color: #10b981;">
+                    <div class="featured-badge" style="background: linear-gradient(135deg, #10b981, #059669);">🧪 Test</div>
+                    <div class="plan-icon" style="color: #10b981;"><i class="fas fa-flask"></i></div>
+                    <h3>Demo</h3>
+                    <div class="plan-price-preview">$0.10<span>/mes</span></div>
+                    <p class="plan-save" style="color: #10b981;">Solo para probar el pago</p>
+                    <ul>
+                        <li><i class="fas fa-check"></i> Prueba de Stripe</li>
+                        <li><i class="fas fa-check"></i> Cobra $0.10 MXN</li>
+                        <li><i class="fas fa-check"></i> Flujo completo</li>
+                        <li><i class="fas fa-check"></i> Cancélalo después</li>
+                    </ul>
+                    <button class="btn" id="homeSubscribeDemo" style="background: linear-gradient(135deg, #10b981, #059669); color: white; border: none; width: 100%;">Probar Demo</button>
+                </div>
+
                 <div class="pricing-preview-card">
                     <div class="plan-icon"><i class="fas fa-user"></i></div>
                     <h3>Gratis</h3>
@@ -431,7 +460,6 @@ export async function renderHome(container) {
                     <ul>
                         <li><i class="fas fa-check"></i> Todo lo de Standard</li>
                         <li><i class="fas fa-check"></i> Torneos exclusivos</li>
-
                         <li><i class="fas fa-check"></i> Badge LEGEND</li>
                         <li><i class="fas fa-check"></i> Soporte prioritario</li>
                     </ul>
@@ -487,8 +515,15 @@ export async function renderHome(container) {
     window.scrollTo(0, 0);
 
     // Event listeners para botones de suscripción
+    const demoBtn = container.querySelector('#homeSubscribeDemo');
     const standardBtn = container.querySelector('#homeSubscribeStandard');
     const premiumBtn = container.querySelector('#homeSubscribePremium');
+
+    if (demoBtn) {
+        demoBtn.addEventListener('click', () => {
+            openSubscriptionModal('DEMO');
+        });
+    }
 
     if (standardBtn) {
         standardBtn.addEventListener('click', () => {
@@ -501,4 +536,5 @@ export async function renderHome(container) {
             openSubscriptionModal('PREMIUM');
         });
     }
+  } catch(e) { console.error('Error rendered home page: ', e); }
 }

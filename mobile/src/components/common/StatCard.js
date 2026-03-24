@@ -28,10 +28,10 @@ export default function StatCard({
                 { backgroundColor: `${iconColors[variant]}20` },
                 isLarge && styles.iconWrapperLarge,
             ]}>
-                <Ionicons 
-                    name={icon} 
-                    size={isLarge ? 28 : 22} 
-                    color={iconColors[variant]} 
+                <Ionicons
+                    name={icon}
+                    size={isLarge ? 28 : 22}
+                    color={iconColors[variant]}
                 />
             </View>
             <Text style={[styles.value, isLarge && styles.valueLarge]}>{value}</Text>
@@ -47,7 +47,7 @@ const styles = StyleSheet.create({
         padding: 16,
         alignItems: 'center',
         borderWidth: 1,
-        borderColor: colors.border,
+        borderColor: colors.glassBorder,
         minWidth: 100,
     },
     containerLarge: {

@@ -1,5 +1,5 @@
-import React from 'react';
-import { StyleSheet, View, Text, TouchableOpacity } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { StyleSheet, View, Text, TouchableOpacity, Animated } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, gradients } from '../../theme/colors';
@@ -16,15 +16,45 @@ export default function Header({
     size = 'medium',
 }) {
     const titleSize = size === 'large' ? 28 : size === 'small' ? 18 : 22;
+    const fadeAnim = useRef(new Animated.Value(0)).current;
+    const slideAnim = useRef(new Animated.Value(10)).current;
+
+    useEffect(() => {
+        Animated.parallel([
+            Animated.timing(fadeAnim, {
+                toValue: 1,
+                duration: 350,
+                delay: 50,
+                useNativeDriver: true,
+            }),
+            Animated.timing(slideAnim, {
+                toValue: 0,
+                duration: 400,
+                delay: 50,
+                useNativeDriver: true,
+            }),
+        ]).start();
+    }, []);
 
     const content = (
         <>
             {showBack && (
-                <TouchableOpacity style={styles.backButton} onPress={onBack}>
-                    <Ionicons name="arrow-back" size={24} color={colors.text} />
+                <TouchableOpacity style={styles.backButton} onPress={onBack} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+                    <View style={styles.backButtonInner}>
+                        <Ionicons name="arrow-back" size={22} color={colors.text} />
+                    </View>
                 </TouchableOpacity>
             )}
-            <View style={[styles.textContainer, centered && styles.textCentered]}>
+            <Animated.View
+                style={[
+                    styles.textContainer,
+                    centered && styles.textCentered,
+                    {
+                        opacity: fadeAnim,
+                        transform: [{ translateY: slideAnim }],
+                    },
+                ]}
+            >
                 {badge && (
                     <View style={styles.badge}>
                         <Ionicons name={badge.icon || 'star'} size={12} color={colors.primary} />
@@ -33,7 +63,7 @@ export default function Header({
                 )}
                 <Text style={[styles.title, { fontSize: titleSize }]}>{title}</Text>
                 {subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
-            </View>
+            </Animated.View>
             {rightAction && <View style={styles.rightAction}>{rightAction}</View>}
         </>
     );
@@ -65,8 +95,18 @@ const styles = StyleSheet.create({
         marginBottom: 8,
     },
     backButton: {
-        marginRight: 12,
+        marginRight: 8,
         padding: 4,
+    },
+    backButtonInner: {
+        width: 40,
+        height: 40,
+        borderRadius: 12,
+        backgroundColor: 'rgba(255, 255, 255, 0.06)',
+        borderWidth: 1,
+        borderColor: colors.glassBorder,
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     textContainer: {
         flex: 1,
@@ -93,11 +133,13 @@ const styles = StyleSheet.create({
     title: {
         fontWeight: '800',
         color: colors.text,
+        letterSpacing: -0.3,
     },
     subtitle: {
         fontSize: 14,
         color: colors.textSecondary,
         marginTop: 4,
+        lineHeight: 20,
     },
     rightAction: {
         marginLeft: 12,

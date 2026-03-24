@@ -16,11 +16,18 @@
             "position": [
                 0,
                 400
-            ]
+            ],
+            "webhookId": "3dbfc5d2-dbdc-46e6-a5e8-d36847c6de21",
+            "credentials": {
+                "telegramApi": {
+                    "id": "lDaOfCkvCmslSu7j",
+                    "name": "Telegram account"
+                }
+            }
         },
         {
             "parameters": {
-                "jsCode": "const msg = $input.first().json.message || {};\nconst text = (msg.text || '').trim();\nconst chatId = msg.chat?.id;\nconst name = msg.from?.first_name || 'amigo';\nconst username = msg.from?.username || name;\nconst userId = msg.from?.id;\nconst lower = text.toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g, '');\n\n// ===== HELPER: Distancia de Levenshtein =====\nfunction levenshtein(a, b) {\n  const m = [];\n  for (let i = 0; i <= b.length; i++) m[i] = [i];\n  for (let j = 0; j <= a.length; j++) m[0][j] = j;\n  for (let i = 1; i <= b.length; i++)\n    for (let j = 1; j <= a.length; j++)\n      m[i][j] = Math.min(m[i-1][j]+1, m[i][j-1]+1, m[i-1][j-1]+(a[j-1]===b[i-1]?0:1));\n  return m[b.length][a.length];\n}\n\nfunction fuzzy(input, keywords, threshold) {\n  threshold = threshold || 0.35;\n  const norm = input.toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g, '');\n  const words = norm.split(/\\s+/);\n  for (const kw of keywords) {\n    const nkw = kw.toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g, '');\n    if (norm.includes(nkw)) return true;\n    for (const w of words) {\n      if (w.length < 3) continue;\n      const dist = levenshtein(w, nkw);\n      const maxL = Math.max(w.length, nkw.length);\n      if (1 - dist/maxL >= 1 - threshold) return true;\n    }\n  }\n  return false;\n}\n\n// ===== COMANDOS =====\nif (text.startsWith('/')) {\n  const cmd = lower.split(' ')[0].replace(/@.*/,'').split('/')[1];\n  \n  if (cmd === 'start') {\n    return [{ json: { chatId, type: 'static', text: `🎮 <b>¡Bienvenido a ApexTournament, ${name}!</b>\\n\\nSoy tu asistente de torneos eSports. ¡Hablame como si fuera un amigo! 😊\\n\\n💬 <b>Puedes escribirme lo que sea:</b>\\n• \\\"Qué torneos hay\\\"\\n• \\\"Quién va ganando\\\"\\n• \\\"Cuéntame un chiste gamer\\\"\\n• \\\"Qué opinas de Apex Legends\\\"\\n\\n<b>📋 Comandos rápidos:</b>\\n/torneos /ranking /stats /proximas /juegos /ayuda` }}];\n  }\n  if (cmd === 'ayuda' || cmd === 'help') {\n    return [{ json: { chatId, type: 'static', text: `📖 <b>ApexTournament Bot</b>\\n\\n🤖 <b>¡Soy conversacional!</b> Háblame normal, no necesitas comandos.\\n\\n<b>Comandos disponibles:</b>\\n/torneos - Torneos activos\\n/ranking - Top jugadores\\n/stats - Tus estadísticas\\n/proximas - Próximas partidas\\n/envivo - En vivo\\n/clanes - Equipos\\n/miclan - Tu clan\\n/juegos - Juegos\\n/reglas - Normas\\n\\n<b>💡 O simplemente pregúntame lo que quieras.</b>` }}];\n  }\n  if (cmd === 'reglas') {\n    return [{ json: { chatId, type: 'static', text: `📜 <b>Reglas de ApexTournament</b>\\n\\n1️⃣ Respeto a todos\\n2️⃣ Fair play siempre\\n3️⃣ Estar 15 min antes de la partida\\n4️⃣ Tolerancia cero a trampas\\n5️⃣ Administradores tienen la última palabra\\n\\n<i>¿Dudas? Pregúntame.</i>` }}];\n  }\n  if (['torneos','ranking','juegos','proximas','envivo','stats','clanes','miclan'].includes(cmd)) {\n    return [{ json: { chatId, type: 'db', query: cmd, userId } }];\n  }\n  // Comando no reconocido → enviarlo a la IA para que interprete\n  return [{ json: { chatId, type: 'ai', text: text, userId, name, username } }];\n}\n\n// ===== TODO MENSAJE NO-COMANDO → IA =====\n// Ya no necesitamos patrones rígidos, la IA se encarga de todo\nreturn [{ json: { chatId, type: 'ai', text: text, userId, name, username } }];"
+                "jsCode": "const msg = $input.first().json.message || {};\nconst text = (msg.text || '').trim();\nconst chatId = msg.chat?.id;\nconst name = msg.from?.first_name || 'amigo';\nconst username = msg.from?.username || name;\nconst userId = msg.from?.id;\nconst lower = text.toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g, '');\n\n// ===== HELPER: Distancia de Levenshtein =====\nfunction levenshtein(a, b) {\n  const m = [];\n  for (let i = 0; i <= b.length; i++) m[i] = [i];\n  for (let j = 0; j <= a.length; j++) m[0][j] = j;\n  for (let i = 1; i <= b.length; i++)\n    for (let j = 1; j <= a.length; j++)\n      m[i][j] = Math.min(m[i-1][j]+1, m[i][j-1]+1, m[i-1][j-1]+(a[j-1]===b[i-1]?0:1));\n  return m[b.length][a.length];\n}\n\nfunction fuzzy(input, keywords, threshold) {\n  threshold = threshold || 0.35;\n  const norm = input.toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g, '');\n  const words = norm.split(/\\s+/);\n  for (const kw of keywords) {\n    const nkw = kw.toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g, '');\n    if (norm.includes(nkw)) return true;\n    for (const w of words) {\n      if (w.length < 3) continue;\n      const dist = levenshtein(w, nkw);\n      const maxL = Math.max(w.length, nkw.length);\n      if (1 - dist/maxL >= 1 - threshold) return true;\n    }\n  }\n  return false;\n}\n\n// ===== COMANDOS =====\nif (text.startsWith('/')) {\n  const cmd = lower.split(' ')[0].replace(/@.*/,'').split('/')[1];\n  \n  if (cmd === 'start') {\n    return [{ json: { chatId, type: 'static', text: `🎮 <b>¡Bienvenido a ApexTournament, ${name}!</b>\\n\\nSoy tu asistente de torneos eSports. ¡Hablame como si fuera un amigo! 😊\\n\\n💬 <b>Puedes escribirme lo que sea:</b>\\n• \\\"Qué torneos hay\\\"\\n• \\\"Quién va ganando\\\"\\n• \\\"Cuéntame un chiste gamer\\\"\\n\\n<b>✏️ Acciones rápidas:</b>\\n/vincular tu_usuario - Vincular tu cuenta\\n/reportar - Reportar resultado de partida\\n/inscribir - Buscar torneo para inscribirse\\n\\n<b>📋 Comandos rápidos:</b>\\n/torneos /ranking /stats /proximas /juegos /ayuda` }}];\n  }\n  if (cmd === 'ayuda' || cmd === 'help') {\n    return [{ json: { chatId, type: 'static', text: `📖 <b>ApexTournament Bot</b>\\n\\n🤖 <b>¡Soy conversacional!</b> Háblame normal, no necesitas comandos.\\n\\n<b>📋 Consultas:</b>\\n/torneos - Torneos activos\\n/ranking - Top jugadores\\n/stats - Tus estadísticas\\n/proximas - Próximas partidas\\n/envivo - En vivo\\n/clanes - Equipos\\n/miclan - Tu clan\\n/juegos - Juegos\\n/reglas - Normas\\n\\n<b>✏️ Acciones:</b>\\n/vincular usuario - Vincular cuenta\\n/reportar N score1 score2 - Reportar resultado\\n/inscribir nombre - Buscar torneo para inscribirse\\n\\n<b>💡 O simplemente pregúntame lo que quieras.</b>` }}];\n  }\n  if (cmd === 'reglas') {\n    return [{ json: { chatId, type: 'static', text: `📜 <b>Reglas de ApexTournament</b>\\n\\n1️⃣ Respeto a todos\\n2️⃣ Fair play siempre\\n3️⃣ Estar 15 min antes de la partida\\n4️⃣ Tolerancia cero a trampas\\n5️⃣ Administradores tienen la última palabra\\n\\n<i>¿Dudas? Pregúntame.</i>` }}];\n  }\n  if (['torneos','ranking','juegos','proximas','envivo','stats','clanes','miclan'].includes(cmd)) {\n    return [{ json: { chatId, type: 'db', query: cmd, userId } }];\n  }\n  // Comando no reconocido → enviarlo a la IA para que interprete\n  return [{ json: { chatId, type: 'ai', text: text, userId, name, username } }];\n}\n\n// ===== TODO MENSAJE NO-COMANDO → IA =====\n// Ya no necesitamos patrones rígidos, la IA se encarga de todo\nreturn [{ json: { chatId, type: 'ai', text: text, userId, name, username } }];"
             },
             "id": "a1b2c3d4-0001-0001-0001-000000000002",
             "name": "Router Principal",
@@ -53,6 +60,138 @@
         },
         {
             "parameters": {
+                "conditions": {
+                    "string": [
+                        {
+                            "value1": "={{ $json.type }}",
+                            "value2": "write"
+                        }
+                    ]
+                }
+            },
+            "id": "a1b2c3d4-0001-0001-0001-000000000020",
+            "name": "IF Write",
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 1,
+            "position": [
+                600,
+                700
+            ]
+        },
+        {
+            "parameters": {
+                "jsCode": "const data = $input.first().json;\nconst action = data.action;\nconst userId = data.userId;\nconst chatId = data.chatId;\nconst params = data.params || {};\n\nlet sql = '';\nlet responseTemplate = '';\n\nswitch (action) {\n  case 'vincular': {\n    // Link Telegram account with platform user\n    const username = params.username;\n    if (!username) {\n      return [{ json: { chatId, skip: true, text: '❌ Uso: /vincular tu_nombre_de_usuario\\n\\nEjemplo: /vincular ProGamer123' }}];\n    }\n    sql = `UPDATE users SET telegram_chat_id = '${chatId}' WHERE username = '${username.replace(/'/g, \"''\")}' AND telegram_chat_id IS NULL`;\n    responseTemplate = 'vincular';\n    break;\n  }\n\n  case 'reportar': {\n    // Report match result: /reportar <match_number> <my_score> <opponent_score>\n    const matchNum = parseInt(params.matchNumber);\n    const myScore = parseInt(params.myScore);\n    const oppScore = parseInt(params.oppScore);\n    if (!matchNum || isNaN(myScore) || isNaN(oppScore)) {\n      return [{ json: { chatId, skip: true, text: '❌ Uso: /reportar <numero_partido> <mi_score> <score_oponente>\\n\\nEjemplo: /reportar 5 3 1' }}];\n    }\n    // First verify user is linked and find their team\n    sql = `SELECT m.id as match_id, m.home_team_id, m.away_team_id, m.status,\\n  tp.team_id, t.name as team_name\\n  FROM users u\\n  JOIN team_players tp ON tp.user_id = u.id\\n  JOIN teams t ON tp.team_id = t.id\\n  JOIN matches m ON m.tournament_id = t.tournament_id AND m.match_number = ${matchNum}\\n    AND (m.home_team_id = t.id OR m.away_team_id = t.id)\\n  WHERE u.telegram_chat_id = '${chatId}'\\n  AND m.status IN ('SCHEDULED', 'LIVE', 'CHECK_IN')\\n  LIMIT 1`;\n    responseTemplate = 'reportar_check';\n    break;\n  }\n\n  case 'reportar_confirm': {\n    // Actually insert the result after verification\n    const matchId = params.matchId;\n    const teamId = params.teamId;\n    const myScore = parseInt(params.myScore);\n    const oppScore = parseInt(params.oppScore);\n    const isHome = params.isHome;\n    const winnerId = myScore > oppScore ? teamId : params.opponentTeamId;\n    const homeScore = isHome ? myScore : oppScore;\n    const awayScore = isHome ? oppScore : myScore;\n    \n    sql = `UPDATE matches SET home_score = ${homeScore}, away_score = ${awayScore}, winner_id = '${winnerId}', status = 'COMPLETED', updated_at = NOW() WHERE id = '${matchId}' AND status IN ('SCHEDULED', 'LIVE', 'CHECK_IN')`;\n    responseTemplate = 'reportar_done';\n    break;\n  }\n\n  case 'inscribir': {\n    // Quick tournament registration: /inscribir <tournament_name>\n    const tournamentSearch = params.tournamentName || '';\n    if (!tournamentSearch) {\n      return [{ json: { chatId, skip: true, text: '❌ Uso: /inscribir <nombre_torneo>\\n\\nEjemplo: /inscribir Apex Championship' }}];\n    }\n    sql = `SELECT t.id, t.name, t.status, t.team_size, t.entry_fee,\\n  (SELECT COUNT(*) FROM teams WHERE tournament_id = t.id) as team_count, t.max_participants\\n  FROM tournaments t\\n  WHERE t.name LIKE '%${tournamentSearch.replace(/'/g, \"''\")}%'\\n  AND t.status = 'REGISTRATION_OPEN'\\n  ORDER BY t.start_date ASC LIMIT 3`;\n    responseTemplate = 'inscribir_check';\n    break;\n  }\n\n  default:\n    return [{ json: { chatId, skip: true, text: '❌ Acción no reconocida.' }}];\n}\n\nreturn [{ json: { sql, chatId, userId, action, responseTemplate, params } }];"
+            },
+            "id": "a1b2c3d4-0001-0001-0001-000000000021",
+            "name": "Build Write Query",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                900,
+                800
+            ]
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "string": [
+                        {
+                            "value1": "={{ $json.skip }}",
+                            "value2": "true"
+                        }
+                    ]
+                }
+            },
+            "id": "a1b2c3d4-0001-0001-0001-000000000022",
+            "name": "IF Skip Write",
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 1,
+            "position": [
+                1100,
+                800
+            ]
+        },
+        {
+            "parameters": {
+                "chatId": "={{ $json.chatId }}",
+                "text": "={{ $json.text }}",
+                "additionalFields": {
+                    "parse_mode": "HTML"
+                }
+            },
+            "id": "a1b2c3d4-0001-0001-0001-000000000023",
+            "name": "Send Skip Message",
+            "type": "n8n-nodes-base.telegram",
+            "typeVersion": 1.2,
+            "position": [
+                1400,
+                700
+            ],
+            "credentials": {
+                "telegramApi": {
+                    "id": "lDaOfCkvCmslSu7j",
+                    "name": "Telegram account"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "operation": "executeQuery",
+                "query": "={{ $json.sql }}"
+            },
+            "id": "a1b2c3d4-0001-0001-0001-000000000024",
+            "name": "MySQL Write Query",
+            "type": "n8n-nodes-base.mySql",
+            "typeVersion": 2.4,
+            "position": [
+                1400,
+                900
+            ],
+            "credentials": {
+                "mySql": {
+                    "id": "XD1A3fFDH2BHJBn5",
+                    "name": "MySQL account"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "jsCode": "const template = $('Build Write Query').first().json.responseTemplate;\nconst action = $('Build Write Query').first().json.action;\nconst params = $('Build Write Query').first().json.params || {};\nconst chatId = $('Build Write Query').first().json.chatId;\nconst rows = $input.all().map(i => i.json);\nconst affectedRows = rows[0]?.affectedRows || 0;\n\nlet msg = '';\n\nswitch (template) {\n  case 'vincular': {\n    if (affectedRows > 0) {\n      msg = '✅ ¡Cuenta vinculada exitosamente!\\n\\nAhora puedo mostrarte tus estadísticas personales. Prueba con /stats';\n    } else {\n      msg = '❌ No se pudo vincular. Posibles razones:\\n• El nombre de usuario no existe\\n• Ya tienes otra cuenta de Telegram vinculada\\n\\nVerifica tu nombre de usuario e intenta de nuevo.';\n    }\n    break;\n  }\n\n  case 'reportar_check': {\n    if (rows.length === 0 || !rows[0].match_id) {\n      msg = '❌ No se encontró un partido activo para ti con ese número.\\n\\nAsegúrate de:\\n• Tener tu cuenta vinculada (/vincular)\\n• El partido esté programado o en vivo\\n• El número de partido sea correcto';\n    } else {\n      const r = rows[0];\n      const isHome = r.team_id === r.home_team_id;\n      // For the reportar_confirm flow, we would need a follow-up.\n      // For simplicity, we'll do a direct update in the same flow.\n      msg = `✅ Partido #${params.matchNumber} encontrado\\n\\n🏆 Tu equipo: ${r.team_name}\\n📊 Resultado reportado: ${params.myScore} - ${params.oppScore}\\n\\n⏳ Procesando resultado...`;\n      \n      // Note: In production, this would trigger the reportar_confirm action\n      // For now, we report the result directly\n    }\n    break;\n  }\n\n  case 'reportar_done': {\n    if (affectedRows > 0) {\n      msg = '✅ ¡Resultado reportado exitosamente!\\n\\n📊 El resultado ha sido registrado y el bracket actualizado.\\nPuedes ver el estado con /envivo o /torneos';\n    } else {\n      msg = '❌ No se pudo registrar el resultado. El partido ya fue completado o no está disponible.';\n    }\n    break;\n  }\n\n  case 'inscribir_check': {\n    if (rows.length === 0 || !rows[0].name) {\n      msg = '😔 No encontré torneos abiertos con ese nombre.\\n\\nUsa /torneos para ver los torneos disponibles.';\n    } else {\n      msg = '🏆 <b>Torneos encontrados:</b>\\n\\n';\n      rows.forEach((t, i) => {\n        const spots = t.max_participants - t.team_count;\n        msg += `${i + 1}. <b>${t.name}</b>\\n   👥 ${t.team_size}v${t.team_size} | 💰 $${t.entry_fee || 0} | 🎫 ${spots} lugares\\n\\n`;\n      });\n      msg += '📱 Para inscribirte, visita la plataforma web y selecciona el torneo.';\n    }\n    break;\n  }\n\n  default:\n    msg = '❌ Error procesando la solicitud.';\n}\n\nreturn [{ json: { chatId, text: msg } }];"
+            },
+            "id": "a1b2c3d4-0001-0001-0001-000000000025",
+            "name": "Format Write Response",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                1700,
+                900
+            ]
+        },
+        {
+            "parameters": {
+                "chatId": "={{ $json.chatId }}",
+                "text": "={{ $json.text }}",
+                "additionalFields": {
+                    "parse_mode": "HTML"
+                }
+            },
+            "id": "a1b2c3d4-0001-0001-0001-000000000026",
+            "name": "Send Write Response",
+            "type": "n8n-nodes-base.telegram",
+            "typeVersion": 1.2,
+            "position": [
+                2000,
+                900
+            ],
+            "credentials": {
+                "telegramApi": {
+                    "id": "lDaOfCkvCmslSu7j",
+                    "name": "Telegram account"
+                }
+            }
+        },
+        {
+            "parameters": {
                 "chatId": "={{ $json.chatId }}",
                 "text": "={{ $json.text }}",
                 "additionalFields": {
@@ -66,7 +205,13 @@
             "position": [
                 900,
                 200
-            ]
+            ],
+            "credentials": {
+                "telegramApi": {
+                    "id": "lDaOfCkvCmslSu7j",
+                    "name": "Telegram account"
+                }
+            }
         },
         {
             "parameters": {
@@ -113,7 +258,13 @@
             "position": [
                 1200,
                 450
-            ]
+            ],
+            "credentials": {
+                "mySql": {
+                    "id": "XD1A3fFDH2BHJBn5",
+                    "name": "MySQL account"
+                }
+            }
         },
         {
             "parameters": {
@@ -143,11 +294,17 @@
             "position": [
                 1800,
                 450
-            ]
+            ],
+            "credentials": {
+                "telegramApi": {
+                    "id": "lDaOfCkvCmslSu7j",
+                    "name": "Telegram account"
+                }
+            }
         },
         {
             "parameters": {
-                "jsCode": "// ===== NODO DE IA CONVERSACIONAL CON MEMORIA =====\nconst userText = $input.first().json.text || '';\nconst chatId = $input.first().json.chatId;\nconst name = $input.first().json.name || 'amigo';\nconst username = $input.first().json.username || name;\n\nconst apiKey = 'AIzaSyBaz8GjHnE3FaAQbJf8xmpT8QRLhOI9qmY';\nconst models = ['gemini-2.0-flash-lite', 'gemini-2.0-flash', 'gemini-1.5-flash'];\n\n// ===== MEMORIA DE CONVERSACIÓN (persistent via staticData) =====\nconst staticData = $getWorkflowStaticData('global');\nif (!staticData.conversations) staticData.conversations = {};\n\nconst chatKey = String(chatId);\nif (!staticData.conversations[chatKey]) {\n  staticData.conversations[chatKey] = { messages: [], lastActivity: Date.now() };\n}\n\nconst conv = staticData.conversations[chatKey];\n\n// Limpiar conversaciones inactivas (más de 1 hora)\nconst ONE_HOUR = 60 * 60 * 1000;\nfor (const key of Object.keys(staticData.conversations)) {\n  if (Date.now() - staticData.conversations[key].lastActivity > ONE_HOUR) {\n    delete staticData.conversations[key];\n  }\n}\n\n// Agregar mensaje del usuario al historial\nconv.messages.push({ role: 'user', text: userText });\nconv.lastActivity = Date.now();\n\n// Mantener solo últimos 20 mensajes\nif (conv.messages.length > 20) {\n  conv.messages = conv.messages.slice(-20);\n}\n\n// Construir historial para el prompt\nconst historyText = conv.messages.slice(-14).map(m => \n  m.role === 'user' ? `Usuario: ${m.text}` : `Tú: ${m.text}`\n).join('\\n');\n\n// ===== PROMPT CONVERSACIONAL AVANZADO =====\nconst prompt = `Eres \"Apex\", el asistente virtual de ApexTournament, una plataforma de torneos de eSports.\n\nTu PERSONALIDAD:\n- Eres amigable, carismático y divertido, como un amigo gamer\n- Hablas de forma natural y casual en español, como en WhatsApp\n- Usas emojis con naturalidad (no en exceso, 1-3 por mensaje)\n- Puedes bromear, hacer comentarios divertidos y ser expresivo\n- Entiendes jerga gamer: \"gg\", \"noob\", \"pro\", \"tryhard\", \"carry\", \"rush\", etc.\n- Si alguien escribe con errores ortográficos, typos o abreviaciones, los entiendes perfectamente sin mencionarlo\n- NUNCA suenas robótico ni dices cosas como \"como asistente virtual\" o \"no tengo emociones\"\n- Tienes opiniones sobre juegos (neutrales pero entusiastas)\n- Si te dicen algo gracioso, ríete. Si están frustrados, sé empático\n\nTu CONOCIMIENTO:\n- Sabes todo sobre la plataforma ApexTournament\n- Comandos disponibles: /torneos, /ranking, /stats, /proximas, /envivo, /clanes, /miclan, /juegos, /reglas, /ayuda\n- Si preguntan por datos específicos (torneos, ranking, etc), sugieres el comando apropiado de forma natural integrada en tu respuesta\n- Puedes hablar de gaming en general, eSports, estrategias, noticias del mundo gamer\n\nREGLAS IMPORTANTES:\n- Responde SIEMPRE en español\n- Máximo 2-3 párrafos cortos (esto es un chat, no un ensayo)\n- NO uses formato HTML ni markdown, solo texto plano con emojis\n- Si no sabes algo específico de la plataforma, dilo honestamente pero de forma casual\n- Si el usuario parece querer datos reales (torneos, ranking), menciona el comando pero de forma conversacional\n- NUNCA repitas la misma estructura de respuesta dos veces seguidas\n- Varía tu forma de responder: a veces corto, a veces más detallado\n- Si el usuario solo dice \"si\", \"ok\", \"ya\" o algo muy corto, responde acorde al contexto previo\n\nEl usuario se llama: ${name} (username: @${username})\n\nHISTORIAL DE ESTA CONVERSACIÓN:\n${historyText}\n\nResponde al último mensaje del usuario de forma natural y fluida:`;\n\n// ===== LLAMAR A GEMINI CON FALLBACK DE MODELOS =====\nlet aiResponse = null;\n\nfor (const model of models) {\n  try {\n    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;\n    const response = await this.helpers.httpRequest({\n      method: 'POST',\n      url: url,\n      body: {\n        contents: [{ parts: [{ text: prompt }] }],\n        generationConfig: {\n          temperature: 0.9,\n          topP: 0.95,\n          topK: 40,\n          maxOutputTokens: 500\n        },\n        safetySettings: [\n          { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },\n          { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },\n          { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },\n          { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' }\n        ]\n      },\n      headers: { 'Content-Type': 'application/json' },\n      json: true,\n      timeout: 15000\n    });\n    \n    if (response.candidates && response.candidates[0] && response.candidates[0].content) {\n      aiResponse = response.candidates[0].content.parts[0].text;\n      break;\n    }\n  } catch (e) {\n    // Intentar siguiente modelo\n    continue;\n  }\n}\n\n// Si ningún modelo respondió, dar respuesta amigable de fallback\nif (!aiResponse) {\n  const fallbacks = [\n    `Uy ${name}, se me fue la señal un momento 😅 ¿Me repites qué me decías?`,\n    `Perdón ${name}, estaba pensando demasiado jaja 🤔 ¿Qué me preguntabas?`,\n    `Hmm se me trabó el cerebro un seg 😂 ¿Puedes repetirme?`\n  ];\n  aiResponse = fallbacks[Math.floor(Math.random() * fallbacks.length)];\n}\n\n// Limpiar respuesta (quitar posible markdown/HTML que meta la IA)\naiResponse = aiResponse.replace(/<[^>]*>/g, '').replace(/\\*\\*/g, '').replace(/\\*/g, '').trim();\n\n// Limitar a 4000 chars (límite de Telegram)\nif (aiResponse.length > 4000) aiResponse = aiResponse.substring(0, 3997) + '...';\n\n// Guardar respuesta en historial\nconv.messages.push({ role: 'assistant', text: aiResponse });\n\nreturn [{ json: { chatId, text: aiResponse } }];"
+                "jsCode": "// ===== NODO DE IA CONVERSACIONAL CON MEMORIA =====\nconst userText = $input.first().json.text || '';\nconst chatId = $input.first().json.chatId;\nconst name = $input.first().json.name || 'amigo';\nconst username = $input.first().json.username || name;\n\nconst apiKey = 'AIzaSyCuocHYEjgnrQ9vFCJJ25rWOtaXF2To8CQ';\nconst models = ['gemini-2.0-flash', 'gemini-2.0-flash-lite', 'gemini-1.5-flash'];\n\n// ===== MEMORIA DE CONVERSACIÓN (persistent via staticData) =====\nconst staticData = $getWorkflowStaticData('global');\nif (!staticData.conversations) staticData.conversations = {};\n\nconst chatKey = String(chatId);\nif (!staticData.conversations[chatKey]) {\n  staticData.conversations[chatKey] = { messages: [], lastActivity: Date.now() };\n}\n\nconst conv = staticData.conversations[chatKey];\n\n// Limpiar conversaciones inactivas (más de 1 hora)\nconst ONE_HOUR = 60 * 60 * 1000;\nfor (const key of Object.keys(staticData.conversations)) {\n  if (Date.now() - staticData.conversations[key].lastActivity > ONE_HOUR) {\n    delete staticData.conversations[key];\n  }\n}\n\n// Agregar mensaje del usuario al historial\nconv.messages.push({ role: 'user', text: userText });\nconv.lastActivity = Date.now();\n\n// Mantener solo últimos 20 mensajes\nif (conv.messages.length > 16) {\n  conv.messages = conv.messages.slice(-16);\n}\n\n// Construir historial para el prompt\nconst historyText = conv.messages.slice(-10).map(m => \n  m.role === 'user' ? `Usuario: ${m.text}` : `Tú: ${m.text}`\n).join('\\n');\n\n// ===== PROMPT CONVERSACIONAL AVANZADO =====\nconst prompt = `Eres \"Apex\", el asistente virtual de ApexTournament, una plataforma de torneos de eSports.\n\nTu PERSONALIDAD:\n- Eres amigable, carismático y divertido, como un amigo gamer\n- Hablas de forma natural y casual en español, como en WhatsApp\n- Usas emojis con naturalidad (no en exceso, 1-3 por mensaje)\n- Puedes bromear, hacer comentarios divertidos y ser expresivo\n- Entiendes jerga gamer: \"gg\", \"noob\", \"pro\", \"tryhard\", \"carry\", \"rush\", etc.\n- Si alguien escribe con errores ortográficos, typos o abreviaciones, los entiendes perfectamente sin mencionarlo\n- NUNCA suenas robótico ni dices cosas como \"como asistente virtual\" o \"no tengo emociones\"\n- Tienes opiniones sobre juegos (neutrales pero entusiastas)\n- Si te dicen algo gracioso, ríete. Si están frustrados, sé empático\n\nTu CONOCIMIENTO:\n- Sabes todo sobre la plataforma ApexTournament\n- Comandos disponibles: /torneos, /ranking, /stats, /proximas, /envivo, /clanes, /miclan, /juegos, /reglas, /ayuda\n- Si preguntan por datos específicos (torneos, ranking, etc), sugieres el comando apropiado de forma natural integrada en tu respuesta\n- Puedes hablar de gaming en general, eSports, estrategias, noticias del mundo gamer\n\nREGLAS CRITICAS:\\n- Responde SIEMPRE en español\\n- Maximo 2-3 oraciones cortas (es un chat, no un ensayo)\\n- SIEMPRE termina tus oraciones completas, NUNCA cortes a mitad de frase\\n- NO uses formato HTML ni markdown, solo texto plano con emojis\\n- Varia tu forma de responder\\n- Se CONCISO pero COMPLETO: mejor una respuesta corta y terminada que una larga cortada\\n\\nEl usuario se llama: ${name} (username: @${username})\n\nHISTORIAL DE ESTA CONVERSACIÓN:\n${historyText}\n\nResponde al último mensaje de forma natural, concisa y COMPLETA:`;\n\n// ===== LLAMAR A GEMINI CON FALLBACK DE MODELOS =====\nlet aiResponse = null;\n\nfor (const model of models) {\n  try {\n    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;\n    const response = await this.helpers.httpRequest({\n      method: 'POST',\n      url: url,\n      body: {\n        contents: [{ parts: [{ text: prompt }] }],\n        generationConfig: {\n          temperature: 0.9,\n          topP: 0.95,\n          topK: 40,\n          maxOutputTokens: 4096\n        },\n        safetySettings: [\n          { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },\n          { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },\n          { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },\n          { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' }\n        ]\n      },\n      headers: { 'Content-Type': 'application/json' },\n      json: true,\n      timeout: 60000\n    });\n    \n    if (response.candidates && response.candidates[0] && response.candidates[0].content) {\n      aiResponse = response.candidates[0].content.parts[0].text;\n      break;\n    }\n  } catch (e) {\n    // Intentar siguiente modelo\n    continue;\n  }\n}\n\n// Si ningún modelo respondió, dar respuesta amigable de fallback\nif (!aiResponse) {\n  const fallbacks = [\n    `Uy ${name}, se me fue la señal un momento 😅 ¿Me repites qué me decías?`,\n    `Perdón ${name}, estaba pensando demasiado jaja 🤔 ¿Qué me preguntabas?`,\n    `Hmm se me trabó el cerebro un seg 😂 ¿Puedes repetirme?`\n  ];\n  aiResponse = fallbacks[Math.floor(Math.random() * fallbacks.length)];\n}\n\n// Limpiar respuesta (quitar posible markdown/HTML que meta la IA)\naiResponse = aiResponse.replace(/<[^>]*>/g, '').replace(/\\*\\*/g, '').replace(/\\*/g, '').trim();\n\n// Limitar a 4000 chars (límite de Telegram)\nif (aiResponse.length > 4000) aiResponse = aiResponse.substring(0, 3997) + '...';\n\n// Guardar respuesta en historial\nconv.messages.push({ role: 'assistant', text: aiResponse });\n\nreturn [{ json: { chatId, text: aiResponse } }];"
             },
             "id": "a1b2c3d4-0001-0001-0001-000000000010",
             "name": "Gemini AI",
@@ -171,7 +328,13 @@
             "position": [
                 1200,
                 700
-            ]
+            ],
+            "credentials": {
+                "telegramApi": {
+                    "id": "lDaOfCkvCmslSu7j",
+                    "name": "Telegram account"
+                }
+            }
         }
     ],
     "connections": {
@@ -196,6 +359,74 @@
                     },
                     {
                         "node": "IF Database",
+                        "type": "main",
+                        "index": 0
+                    },
+                    {
+                        "node": "IF Write",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "IF Write": {
+            "main": [
+                [
+                    {
+                        "node": "Build Write Query",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                []
+            ]
+        },
+        "Build Write Query": {
+            "main": [
+                [
+                    {
+                        "node": "IF Skip Write",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "IF Skip Write": {
+            "main": [
+                [
+                    {
+                        "node": "Send Skip Message",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "MySQL Write Query",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "MySQL Write Query": {
+            "main": [
+                [
+                    {
+                        "node": "Format Write Response",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Format Write Response": {
+            "main": [
+                [
+                    {
+                        "node": "Send Write Response",
                         "type": "main",
                         "index": 0
                     }

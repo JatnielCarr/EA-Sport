@@ -749,6 +749,11 @@ function renderBracket(matches, teams, tournament) {
     rounds[round].push(match);
   });
 
+  // Sort matches within rounds by match_number
+  Object.keys(rounds).forEach(round => {
+    rounds[round].sort((a, b) => (a.match_number || 0) - (b.match_number || 0));
+  });
+
   const totalRounds = Object.keys(rounds).length;
   const roundNames = [];
   for (let i = 0; i < totalRounds; i++) {
@@ -760,6 +765,12 @@ function renderBracket(matches, teams, tournament) {
 
   const roundEntries = Object.entries(rounds);
 
+  // Stats summary bar
+  const totalMatches = matches.length;
+  const liveMatches = matches.filter(m => m.status === 'LIVE' || m.status === 'IN_PROGRESS').length;
+  const completedMatches = matches.filter(m => m.status === 'COMPLETED').length;
+  const progress = totalMatches > 0 ? Math.round((completedMatches / totalMatches) * 100) : 0;
+
   return `
     <div class="bracket-header-section">
       <h3><i class="fas fa-sitemap"></i> ${isSolo ? 'Enfrentamientos (Jugador vs Jugador)' : 'Enfrentamientos (Equipo vs Equipo)'}</h3>
@@ -769,12 +780,28 @@ function renderBracket(matches, teams, tournament) {
         <span class="legend-item"><span class="legend-color pending"></span> Pendiente</span>
       </div>
     </div>
+
+    <!-- Progress bar -->
+    <div class="bracket-progress-bar">
+      <div class="bracket-progress-info">
+        <span>${completedMatches} de ${totalMatches} partidos completados</span>
+        ${liveMatches > 0 ? `<span class="bracket-live-count"><span class="live-dot"></span> ${liveMatches} en vivo</span>` : ''}
+      </div>
+      <div class="bracket-progress-track">
+        <div class="bracket-progress-fill" style="width: ${progress}%"></div>
+      </div>
+    </div>
+
     <div class="bracket-container">
       <div class="bracket-rounds">
         ${roundEntries.map(([roundNum, roundMatches], idx) => `
-          <div class="bracket-round">
-            <div class="round-title">${roundNames[idx] || 'Ronda ' + roundNum}</div>
-            ${roundMatches.map(match => {
+          <div class="bracket-round" data-round="${roundNum}">
+            <div class="round-title">
+              <span class="round-name">${roundNames[idx] || 'Ronda ' + roundNum}</span>
+              <span class="round-count">${roundMatches.filter(m => m.status === 'COMPLETED').length}/${roundMatches.length}</span>
+            </div>
+            <div class="bracket-round-matches">
+              ${roundMatches.map((match, matchIdx) => {
     const team1 = teams.find(t => t.id === match.home_team_id);
     const team2 = teams.find(t => t.id === match.away_team_id);
     const isMatchLive = match.status === 'LIVE' || match.status === 'IN_PROGRESS';
@@ -783,6 +810,7 @@ function renderBracket(matches, teams, tournament) {
     const score2 = match.away_score || 0;
     const team1Won = match.winner_id === match.home_team_id;
     const team2Won = match.winner_id === match.away_team_id;
+    const isFinal = idx === totalRounds - 1;
 
     const team1Name = isSolo ? (team1?.name || 'Por definir') : (team1 ? '[' + team1.tag + '] ' + team1.name : 'Por definir');
     const team2Name = isSolo ? (team2?.name || 'Por definir') : (team2 ? '[' + team2.tag + '] ' + team2.name : 'Por definir');
@@ -801,18 +829,23 @@ function renderBracket(matches, teams, tournament) {
       scheduleHtml = '<div class="match-schedule"><i class="fas fa-clock"></i> ' + formatDate(match.scheduled_datetime) + ' - ' + sd.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }) + '</div>';
     }
 
+    const bestOfHtml = match.best_of > 1 ? `<span class="match-best-of">Bo${match.best_of}</span>` : '';
+
     return `
-                <div class="bracket-match ${isMatchLive ? 'live' : ''} ${isCompleted ? 'completed' : ''}">
+                <div class="bracket-match ${isMatchLive ? 'live' : ''} ${isCompleted ? 'completed' : ''} ${isFinal ? 'final-match' : ''}" data-match-id="${match.id}">
                   ${isMatchLive ? '<div class="match-live-indicator"><span class="live-dot"></span> EN VIVO</div>' : ''}
+                  ${isFinal && isCompleted ? '<div class="match-trophy-indicator"><i class="fas fa-trophy"></i> CAMPE\u00d3N</div>' : ''}
                   <div class="match-team ${team1Won ? 'winner' : ''} ${!team1 ? 'tbd' : ''}">
+                    <span class="match-team-seed">${team1?.seed || '-'}</span>
                     <span class="match-team-name">
                       <span class="match-team-avatar">${team1Avatar}</span>
                       <span class="match-team-text">${team1Name}</span>
                     </span>
                     <span class="match-team-score ${team1Won ? 'score-winner' : ''}">${score1}</span>
                   </div>
-                  <div class="match-vs">VS</div>
+                  <div class="match-vs">${bestOfHtml} VS</div>
                   <div class="match-team ${team2Won ? 'winner' : ''} ${!team2 ? 'tbd' : ''}">
+                    <span class="match-team-seed">${team2?.seed || '-'}</span>
                     <span class="match-team-name">
                       <span class="match-team-avatar">${team2Avatar}</span>
                       <span class="match-team-text">${team2Name}</span>
@@ -821,12 +854,49 @@ function renderBracket(matches, teams, tournament) {
                   </div>
                   ${scheduleHtml}
                 </div>
+                ${matchIdx < roundMatches.length - 1 && idx === 0 && matchIdx % 2 === 1 ? '<div class="bracket-connector-gap"></div>' : ''}
               `;
   }).join('')}
+            </div>
           </div>
+          ${idx < roundEntries.length - 1 ? `
+            <div class="bracket-connector-column">
+              ${roundMatches.length > 1 ? Array.from({ length: Math.ceil(roundMatches.length / 2) }).map((_, ci) => `
+                <div class="bracket-connector">
+                  <svg class="connector-svg" viewBox="0 0 40 100" preserveAspectRatio="none">
+                    <path d="M0 25 L20 25 L20 75 L0 75" fill="none" stroke="rgba(0,212,255,0.3)" stroke-width="2"/>
+                    <path d="M20 50 L40 50" fill="none" stroke="rgba(0,212,255,0.3)" stroke-width="2"/>
+                  </svg>
+                </div>
+              `).join('') : `
+                <div class="bracket-connector single">
+                  <svg class="connector-svg" viewBox="0 0 40 20" preserveAspectRatio="none">
+                    <path d="M0 10 L40 10" fill="none" stroke="rgba(0,212,255,0.3)" stroke-width="2"/>
+                  </svg>
+                </div>
+              `}
+            </div>
+          ` : ''}
         `).join('')}
       </div>
     </div>
+
+    <!-- Winner card (if final is completed) -->
+    ${(() => {
+      const finalMatch = matches.find(m => m.round === totalRounds && m.status === 'COMPLETED' && m.winner_id);
+      if (!finalMatch) return '';
+      const winnerTeam = teams.find(t => t.id === finalMatch.winner_id);
+      if (!winnerTeam) return '';
+      return `
+        <div class="bracket-winner-card">
+          <div class="winner-glow"></div>
+          <i class="fas fa-crown winner-crown"></i>
+          <h3 class="winner-title">\uD83C\uDFC6 Campe\u00f3n del Torneo</h3>
+          <div class="winner-team-name">${winnerTeam.name}</div>
+          <span class="winner-tag">[${winnerTeam.tag}]</span>
+        </div>
+      `;
+    })()}
   `;
 }
 
@@ -1058,6 +1128,45 @@ function renderTournamentStyles() {
       .bracket-empty h3 { font-size: 22px; font-weight: 700; margin-bottom: 12px; }
       .bracket-empty p { color: var(--text-secondary); font-size: 15px; max-width: 500px; margin: 0 auto 20px; }
       .bracket-hint { display: inline-flex; align-items: center; gap: 8px; padding: 10px 20px; background: rgba(0, 212, 255, 0.08); border: 1px solid rgba(0, 212, 255, 0.15); border-radius: 10px; font-size: 13px; color: var(--primary); }
+
+      /* Bracket Progress Bar */
+      .bracket-progress-bar { margin-bottom: 24px; padding: 16px 20px; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; }
+      .bracket-progress-info { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-size: 13px; color: var(--text-secondary); }
+      .bracket-live-count { display: flex; align-items: center; gap: 6px; color: var(--danger); font-weight: 600; }
+      .bracket-progress-track { width: 100%; height: 6px; background: var(--bg-tertiary); border-radius: 3px; overflow: hidden; }
+      .bracket-progress-fill { height: 100%; background: linear-gradient(90deg, var(--primary), var(--secondary)); border-radius: 3px; transition: width 0.5s ease; }
+
+      /* Bracket Connectors */
+      .bracket-connector-column { display: flex; flex-direction: column; justify-content: space-around; align-items: center; min-width: 40px; }
+      .bracket-connector { flex: 1; display: flex; align-items: center; }
+      .bracket-connector.single { flex: 0; height: 20px; }
+      .connector-svg { width: 40px; height: 100%; }
+      .bracket-connector-gap { height: 24px; }
+
+      /* Match Seed */
+      .match-team-seed { font-family: var(--font-display); font-size: 11px; font-weight: 800; color: var(--text-muted); width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.03); border-radius: 6px; flex-shrink: 0; margin-right: 4px; }
+      .match-team.winner .match-team-seed { background: rgba(0, 255, 136, 0.1); color: var(--secondary); }
+      
+      /* Best of badge */
+      .match-best-of { font-size: 10px; font-weight: 700; color: var(--primary); background: rgba(0, 212, 255, 0.1); padding: 2px 6px; border-radius: 4px; margin-right: 6px; }
+
+      /* Final Match */
+      .bracket-match.final-match { border-color: rgba(255, 215, 0, 0.3); box-shadow: 0 0 30px rgba(255, 215, 0, 0.08); }
+      .bracket-match.final-match .round-title { color: var(--warning); }
+      .match-trophy-indicator { display: flex; align-items: center; gap: 6px; padding: 8px 14px; background: linear-gradient(90deg, rgba(255, 215, 0, 0.15), rgba(255, 184, 0, 0.05)); color: var(--warning); font-size: 12px; font-weight: 700; letter-spacing: 1px; }
+      .match-trophy-indicator i { font-size: 14px; }
+
+      /* Winner Card */
+      .bracket-winner-card { position: relative; text-align: center; padding: 40px 30px; margin-top: 30px; background: var(--bg-card); border: 1px solid rgba(255, 215, 0, 0.3); border-radius: 20px; overflow: hidden; }
+      .winner-glow { position: absolute; inset: 0; background: radial-gradient(ellipse at center, rgba(255, 215, 0, 0.08) 0%, transparent 70%); pointer-events: none; }
+      .winner-crown { font-size: 40px; color: #ffd700; margin-bottom: 12px; display: block; animation: crownBounce 2s ease-in-out infinite; }
+      @keyframes crownBounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-5px)} }
+      .winner-title { font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 2px; color: var(--text-muted); margin-bottom: 12px; }
+      .winner-team-name { font-family: var(--font-display); font-size: 32px; font-weight: 900; background: linear-gradient(135deg, #ffd700, #ffb800, #ffd700); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; margin-bottom: 6px; }
+      .winner-tag { font-size: 16px; color: var(--text-secondary); font-weight: 600; }
+
+      /* Round count badge */
+      .round-count { font-size: 11px; color: var(--text-muted); font-weight: 500; margin-left: 8px; }
 
       /* Registration modal extras */
       .registration-info { display: flex; align-items: flex-start; gap: 12px; padding: 16px; background: rgba(0, 212, 255, 0.08); border-radius: 10px; color: var(--text-secondary); font-size: 14px; }

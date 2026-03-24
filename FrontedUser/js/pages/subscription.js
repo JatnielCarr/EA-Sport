@@ -84,6 +84,7 @@ export async function renderSubscription(container) {
         <section class="pricing-section">
             <div class="container">
                 <div class="pricing-grid">
+                    ${renderPlanCard(getDefaultDemoPlan(), currentSubscription, isYearlyBilling)}
                     ${renderPlanCard(plans.find(p => p.id === 'FREE') || getDefaultFreePlan(), currentSubscription, isYearlyBilling)}
                     ${renderPlanCard(plans.find(p => p.id === 'STANDARD') || getDefaultStandardPlan(), currentSubscription, isYearlyBilling)}
                     ${renderPlanCard(plans.find(p => p.id === 'PREMIUM') || getDefaultPremiumPlan(), currentSubscription, isYearlyBilling, true)}
@@ -447,8 +448,8 @@ export async function renderSubscription(container) {
 
         .pricing-grid {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 2rem;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1.5rem;
             align-items: stretch;
         }
 
@@ -629,6 +630,19 @@ export async function renderSubscription(container) {
             transform: scale(1.02);
             box-shadow: 0 10px 30px rgba(240, 147, 251, 0.4);
         }
+
+        .btn-demo {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            border: none;
+        }
+
+        .btn-demo:hover {
+            transform: scale(1.02);
+            box-shadow: 0 10px 30px rgba(16, 185, 129, 0.4);
+        }
+
+        .plan-icon.demo { color: #10b981; }
 
         /* Section Titles */
         .section-title {
@@ -961,6 +975,22 @@ export async function renderSubscription(container) {
     }
 }
 
+function getDefaultDemoPlan() {
+    return {
+        id: 'DEMO',
+        name: '🧪 Demo',
+        description: 'Solo $0.10 MXN para probar el flujo de pago',
+        monthlyPrice: 0.10,
+        yearlyPrice: 0.10,
+        features: [
+            { text: 'Solo para demostración', included: true },
+            { text: 'Cobra $0.10 MXN reales', included: true },
+            { text: 'Verifica flujo de Stripe', included: true },
+            { text: 'Cancélalo después de probar', included: true }
+        ]
+    };
+}
+
 function getDefaultFreePlan() {
     return {
         id: 'FREE',
@@ -1018,8 +1048,8 @@ function renderPlanCard(plan, currentSubscription, isYearly, isPopular = false) 
     const price = plan.id === 'FREE' ? 0 : (isYearly ? plan.yearlyPrice : plan.monthlyPrice);
     const interval = plan.id === 'FREE' ? '' : (isYearly ? '/año' : '/mes');
 
-    const iconClass = plan.id === 'FREE' ? 'fa-user' : 'fa-gem';
-    const btnClass = plan.id === 'PREMIUM' ? 'btn-premium' : 'btn-outline';
+    const iconClass = plan.id === 'FREE' ? 'fa-user' : plan.id === 'DEMO' ? 'fa-flask' : 'fa-gem';
+    const btnClass = plan.id === 'PREMIUM' ? 'btn-premium' : plan.id === 'DEMO' ? 'btn-demo' : 'btn-outline';
 
     // Get features array
     let features = plan.features;

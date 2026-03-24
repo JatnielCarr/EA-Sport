@@ -13,6 +13,9 @@ import { renderBrackets } from './pages/brackets.js';
 import { renderLogin, cleanupLogin } from './pages/login.js';
 import { renderRegister, cleanupRegister } from './pages/register.js';
 import { renderBracket } from './pages/bracket.js';
+import { renderMonetization } from './pages/monetization.js';
+import { renderDisputes } from './pages/disputes.js';
+import { renderClans } from './pages/clans.js';
 
 import { showToast, initGamingEffects, closeModal, initModalHandlers, cleanupModalHandlers } from './ui.js';
 import { getInitials } from './utils.js';
@@ -36,6 +39,9 @@ const routes = {
   '/games': renderGames,
   '/leaderboard': renderLeaderboard,
   '/brackets': renderBrackets,
+  '/monetization': renderMonetization,
+  '/disputes': renderDisputes,
+  '/clans': renderClans,
 
   '/login': renderLogin,
   '/register': renderRegister
@@ -47,7 +53,7 @@ const dynamicRoutes = [
 ];
 
 // Protected routes that require authentication
-const protectedRoutes = ['/', '/dashboard', '/users', '/tournaments', '/teams', '/matches', '/games', '/leaderboard', '/brackets'];
+const protectedRoutes = ['/', '/dashboard', '/users', '/tournaments', '/teams', '/matches', '/games', '/leaderboard', '/brackets', '/monetization', '/disputes', '/clans'];
 
 // =====================================================
 // Application State
@@ -190,6 +196,9 @@ function updatePageTitle(route) {
     '/teams': 'Equipos',
     '/matches': 'Partidas',
     '/games': 'Juegos',
+    '/monetization': 'Monetización',
+    '/disputes': 'Disputas',
+    '/clans': 'Clanes',
     '/login': 'Iniciar Sesión'
   };
 
